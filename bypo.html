@@ -71,6 +71,10 @@
   .status{font-family:"European Teletext",monospace;color:var(--field);letter-spacing:.08em}
   .cta{align-self:flex-start;border:1px solid var(--light);color:var(--light);padding:12px 22px;letter-spacing:.08em}
   .cta:hover{background:var(--light);color:var(--black)}
+  .cta .fmt{font-family:"European Teletext",monospace;color:inherit;opacity:.7;margin-left:10px;letter-spacing:.06em}
+  .dl{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+  .cta.ghost{border-color:var(--rule);color:var(--inactive)}
+  .cta.ghost:hover{background:none;border-color:var(--light);color:var(--light)}
 
   footer{padding:28px 32px;border-top:1px solid var(--rule);
     font-family:"European Teletext",monospace;color:var(--field);letter-spacing:.06em;
@@ -91,7 +95,7 @@
   <header>
     <h1>BYPO</h1>
     <p class="tagline">blow your phase off — monophonic fm drone synth</p>
-    <p class="ver">v1.0.2 · VST3 + CLAP · rust · MIT</p>
+    <p class="ver">v1.0.2 · standalone app (Windows) · rust · MIT</p>
   </header>
 
   <section>
@@ -141,8 +145,8 @@
       <dt>envelopes</dt><dd>none</dd>
       <dt>controls</dt><dd>13, including THE FIELD</dd>
       <dt>presets</dt><dd>banked, contributors credited</dd>
-      <dt>formats</dt><dd class="val">VST3 · CLAP</dd>
-      <dt>platforms</dt><dd class="val">WIN · LINUX</dd>
+      <dt>formats</dt><dd class="val">standalone · VST3/CLAP soon</dd>
+      <dt>platforms</dt><dd class="val">WIN now · LINUX/MAC soon</dd>
       <dt>written in</dt><dd>rust</dd>
       <dt>licence</dt><dd>MIT · public repo</dd>
       <dt>version</dt><dd class="val">1.0.2</dd>
@@ -151,11 +155,14 @@
 
   <section class="get">
     <h2>GET IT</h2>
-    <p>BYPO installs through Slate Shell — it writes the plugin straight into
-    your VST3 and CLAP folders, so there is no loose installer to fight your
-    antivirus over.</p>
-    <p class="status">▸ release wiring in progress — drop a line to be told when it lands</p>
-    <a class="cta" href="mailto:akindoflikeness@gmail.com?subject=BYPO">NOTIFY ME</a>
+    <p>free, and the source is public. the Windows build is a standalone app —
+    download, unzip, run. no installer.</p>
+    <div class="dl">
+      <a class="cta" href="https://github.com/wraithsys/fibonacci-synth/releases/download/v1.0.2/blow-your-phase-off-v1.0.2-windows-x64.zip">DOWNLOAD · WINDOWS <span class="fmt">standalone · v1.0.2</span></a>
+      <a class="cta ghost" href="https://github.com/wraithsys/fibonacci-synth/releases/tag/v1.0.2">all files · checksums ▸</a>
+    </div>
+    <p class="status">first run, Windows may warn it is unsigned — "more info → run
+    anyway". VST3/CLAP plugin builds, macOS, and Slate Shell delivery are on the way.</p>
   </section>
 
   <div class="hr"></div>
