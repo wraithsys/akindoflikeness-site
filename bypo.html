@@ -69,6 +69,10 @@
 
   .get{display:flex;flex-direction:column;gap:12px}
   .status{font-family:"European Teletext",monospace;color:var(--field);letter-spacing:.08em}
+  dl.log{display:grid;grid-template-columns:8ch 1fr;gap:10px 20px;margin:0}
+  dl.log dt{font-family:"European Teletext",monospace;color:var(--light);letter-spacing:.06em}
+  dl.log dd{margin:0;color:var(--text);max-width:60ch}
+  dl.log .d{font-family:"European Teletext",monospace;color:var(--field);margin-right:10px;letter-spacing:.06em}
   .cta{align-self:flex-start;border:1px solid var(--light);color:var(--light);padding:12px 22px;letter-spacing:.08em}
   .cta:hover{background:var(--light);color:var(--black)}
   .cta .fmt{font-family:"European Teletext",monospace;color:inherit;opacity:.7;margin-left:10px;letter-spacing:.06em}
@@ -150,6 +154,15 @@
       <dt>written in</dt><dd>rust</dd>
       <dt>licence</dt><dd>MIT · public repo</dd>
       <dt>version</dt><dd class="val">1.0.2</dd>
+    </dl>
+  </section>
+
+  <section>
+    <h2>CHANGELOG</h2>
+    <dl class="log">
+      <dt>1.0.2</dt><dd><span class="d">2026-08-06</span> THE FIELD — the drone stops being flat: amplitude and pitch move continuously, shaped by the ratio mode.</dd>
+      <dt>1.0.1</dt><dd><span class="d">2026-08-05</span> the instrument wears its own face (the Logalith), and a 32-preset starter bank.</dd>
+      <dt>1.0.0</dt><dd><span class="d">2026-08-05</span> first release — Fibonacci FM drone, golden-ratio inharmonicity, no envelopes.</dd>
     </dl>
   </section>
 
