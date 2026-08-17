@@ -294,6 +294,15 @@
   .social a{ display:inline-flex; align-items:center; gap:10px; color:var(--inactive); text-decoration:none; letter-spacing:.06em; }
   .social a:hover, .social a:focus-visible{ color:var(--light); }
   .social svg{ width:22px; height:22px; display:block; }
+
+  .notify{ display:flex; gap:12px; flex-wrap:wrap; align-items:center; max-width:520px; }
+  .notify input{ flex:1; min-width:200px; background:#000; border:1px solid var(--rule); color:var(--light);
+    font-family:"Modern DOS",ui-monospace,monospace; font-size:16px; padding:11px 14px; }
+  .notify input:focus{ outline:none; border-color:var(--light); }
+  .notify button{ background:none; border:1px solid var(--light); color:var(--light);
+    font:inherit; letter-spacing:.06em; padding:11px 18px; cursor:pointer; }
+  .notify button:hover{ background:var(--light); color:var(--black); }
+  .notify-msg{ color:var(--field); font-family:"European Teletext",monospace; font-size:13px; letter-spacing:.04em; margin:0; min-height:1em; }
 </style>
 
 <div class="page">
@@ -362,8 +371,12 @@
       <a href="https://akindoflikeness.bandcamp.com" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="3"/><path d="M7.5 9h9l-4.5 6h-9z" fill="currentColor" stroke="none"/></svg><span>bandcamp</span></a>
       <a href="https://instagram.com/akindoflikeness" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.4" cy="6.6" r="1.1" fill="currentColor" stroke="none"/></svg><span>instagram</span></a>
     </div>
+    <form class="notify" id="notify">
+      <input type="email" name="email" placeholder="email" required aria-label="your email">
+      <button type="submit">keep me in the loop ▸</button>
+    </form>
+    <p class="notify-msg" id="notify-msg" role="status"></p>
   </section>
-  </div>
   <div class="hr"></div>
 
   <div class="pad">
@@ -538,5 +551,25 @@
     });
   },{threshold:0.05});
   io.observe(c);
+})();
+</script>
+
+<script>
+(function(){
+  var f=document.getElementById('notify'); if(!f) return;
+  var m=document.getElementById('notify-msg');
+  f.addEventListener('submit', function(e){
+    e.preventDefault();
+    var email=f.email.value.trim();
+    m.textContent='...';
+    fetch('/api/notify',{method:'POST',headers:{'content-type':'application/json'},
+      body:JSON.stringify({email:email})})
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(d.ok){ f.reset(); m.textContent="in the loop — you'll hear when there's a build or a record, and only then."; }
+        else { m.textContent=(d.error||'that didn’t take — try again?'); }
+      })
+      .catch(function(){ m.textContent='no connection — try again?'; });
+  });
 })();
 </script>
