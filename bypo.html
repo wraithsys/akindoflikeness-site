@@ -51,6 +51,9 @@
     letter-spacing:.06em;
   }
   .hear:hover{border-color:var(--light)}
+  .hear{background:none;cursor:pointer;font:inherit;color:var(--light)}
+  .embed{position:relative;width:100%;max-width:720px;aspect-ratio:16/9;border:1px solid var(--rule)}
+  .embed iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
   .hear .tri{width:0;height:0;border-left:14px solid var(--light);
     border-top:9px solid transparent;border-bottom:9px solid transparent}
   .hear:hover .tri{border-left-color:var(--light)}
@@ -104,10 +107,18 @@
 
   <section>
     <h2>HEAR IT</h2>
-    <a class="hear" href="https://www.youtube.com/watch?v=h526p_4KtEc" target="_blank" rel="noopener">
-      <span class="tri"></span> ALGO PM PHASE SHEAR — demo
-    </a>
-    <p>it is a drone synth. the only way to know what it is, is to hear it.</p>
+    <div class="hearwrap" id="hearwrap">
+      <button class="hear" id="hearbtn" type="button" aria-label="Play the BYPO demo">
+        <span class="tri"></span> ALGO PM PHASE SHEAR — demo
+      </button>
+    </div>
+    <p>it is a drone synth. the only way to know what it is, is to hear it — so hear it.</p>
+    <script>
+      document.getElementById('hearbtn').addEventListener('click',function(){
+        document.getElementById('hearwrap').innerHTML=
+          '<div class="embed"><iframe src="https://www.youtube-nocookie.com/embed/h526p_4KtEc?autoplay=1" title="BYPO demo" allow="autoplay; encrypted-media; fullscreen" allowfullscreen loading="lazy"></iframe></div>';
+      });
+    </script>
   </section>
 
   <section class="voice">
