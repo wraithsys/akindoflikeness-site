@@ -749,7 +749,13 @@ So **no single decay can match both rests.** It can sit on the short one
 (decay ≈ 0.50), the long one (≈ 0.66), between them at their geometric mean of
 0.569 s (≈ 0.60), or past both. The shipped default of 0.74 gives an RT60 of
 0.943 s — longer than either — so the tail carries *through* the rest instead of
-filling it, and that is the setting preferred by ear.
+filling it.
+
+**Settled by ear, 2026-08-19**, against 0.60 on the same passage: *"A feels
+tighter, go with that."* Which is the counterintuitive half — the longer tail is
+the tighter-sounding one, because carrying across the rest means the next
+gesture starts from something rather than from a gap. Overrunning the rest is
+the feature, not a value that wants trimming toward the arithmetic.
 
 Deliberately **not** derived into a coupling. §8 already records why: a chain
 that computes itself from the structure is the instrument deciding, and it
