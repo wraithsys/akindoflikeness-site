@@ -612,6 +612,37 @@ Two consequences:
 7. WASM boundary and the worklet.
 8. Surface.
 
+### The bare voice is the benchmark, and everything after it has to beat it
+
+Recorded 2026-08-19, on hearing the first renders of the real signal path — three
+operators, two-voice unison, a cosine swell, and **nothing else**: no field, no
+filter, no FX, no Cadence.
+
+> *"Every decision on audio is stellar — I don't know a single thing even in my
+> own roster that comes close to sounding like this."*
+
+That verdict is on a signal path missing five of the eight things this document
+specifies. Which makes the remaining build unusually dangerous, in the ordinary
+way instruments get dulled: **nobody adds the bad thing.** Everyone adds a
+defensible thing, each stage is individually justified, and the sum is worse than
+the part that already worked.
+
+So, for steps 3 through 8:
+
+1. **Every stage renders an A/B against the bare voice** — same chord, same
+   algorithm, the stage in and the stage out — and the pair is listened to before
+   the stage is called done. `phyllotaxis-voice/examples/audition.rs` is the
+   harness; adding a stage means adding its comparison.
+2. **Anything that does not clearly improve that A/B gets a switch, or gets
+   cut.** Billy's standard for the density control, generalised: *"have a toggle
+   that turns it on and off and we will see if it earns its keep."*
+3. **The bare voice stays reachable as a preset.** Not as a debug mode — as a
+   patch, with a name, that a player can get back to.
+
+This is the only place in the document where a *process* is recorded rather than
+a design. It is here because the thing being protected already exists, and the
+threat to it is the rest of the plan.
+
 Steps 1–6 are testable offline against rendered WAVs, bit-deterministically, the
 way `fibonacci-synth` already does it. The browser is the last thing that has to
 work, not the first.
