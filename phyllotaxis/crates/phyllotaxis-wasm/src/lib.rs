@@ -484,6 +484,7 @@ impl Engine {
     }
 
     pub fn process(&mut self, out: &mut [f32]) {
+        self.pool.drift_indices(out.len() as f32 / self.sample_rate);
         for s in out.iter_mut() {
             let (l, r) = self.tick();
             *s = (l + r) * 0.5;
@@ -492,6 +493,8 @@ impl Engine {
 
     /// Render into both output blocks.
     pub fn process_stereo(&mut self, n: usize) {
+        // Timbre breathes at control rate — once per block, not per sample.
+        self.pool.drift_indices(n.min(QUANTUM) as f32 / self.sample_rate);
         for i in 0..n.min(QUANTUM) {
             let (l, r) = self.tick();
             self.out[i] = l;

@@ -331,7 +331,10 @@ footer a:hover { color: var(--sap); }
       </div>
       <div class="ctl">
         <label for="p1">Index</label><output id="o1"></output>
-        <input type="range" id="p1" data-param="1" min="0.2" max="12" step="0.05" value="4">
+        <!-- Was 0.2–12: "far too much lattitude on the index - fm is almost
+             always better as subtle and shifting on pads" (Billy, 2026-08-19).
+             Incoming presets above 5 clamp. -->
+        <input type="range" id="p1" data-param="1" min="0.2" max="5" step="0.05" value="4">
       </div>
       <div class="ctl">
         <label for="p18">Root</label><output id="o18"></output>
@@ -432,7 +435,7 @@ footer a:hover { color: var(--sap); }
 // be a new URL, or a returning browser pairs a fresh engine with a stale
 // worklet and the instrument quietly degrades for twelve months. worklet.js
 // went a whole release unhashed under that rule.
-const WASM_URL = "./build/engine-1ad45f8c.wasm";
+const WASM_URL = "./build/engine-efd6e333.wasm";
 const WORKLET_URL = "./build/worklet-0607611d.js";
 const TUNER_URL = "./build/tuner-989ed7e4.js";
 const PARAMS = 21; // mirrors param::COUNT

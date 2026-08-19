@@ -82,10 +82,30 @@ pub struct Slot {
     pub started: u64,
 }
 
+/// How far each voice's modulation index breathes around the panel value.
+///
+/// Billy, 2026-08-19: *"fm is almost always better as subtle and shifting on
+/// pads — perhaps thats the main thing it lacks at the moment … natural
+/// movement of things that aren't the inherited field model."* The field
+/// moves amplitude and the chorus moves time; before this, nothing moved
+/// timbre — the index sat wherever the slider left it.
+pub const DRIFT_DEPTH: f32 = 0.15;
+
+/// Seconds per breath, one per voice. Fibonacci, so adjacent rates relate by
+/// ~φ and the set never re-aligns inside a session; assigned so the pedal
+/// (slot 0) breathes slowest. Deterministic throughout — phase accumulates,
+/// nothing reads wall time, and a preset remains a coordinate.
+const DRIFT_PERIOD_S: [f32; VOICES] = [233.0, 89.0, 55.0, 144.0, 34.0];
+
 pub struct Pool {
     pub slots: Vec<Slot>,
     pub field_params: FieldParams,
     counter: u64,
+    /// The panel index — the anchor the drift breathes around.
+    base_index: f32,
+    /// One breath phase per voice, in cycles, started on the golden rotation
+    /// so the five don't cross their centre together at t = 0.
+    drift_phase: [f32; VOICES],
 }
 
 fn cents_between(a: f32, b: f32) -> f32 {
@@ -130,13 +150,34 @@ impl Pool {
                 Slot { voice, field, freq_hz: 0.0, state: SlotState::Free, started: 0 }
             })
             .collect();
-        Self { slots, field_params: FieldParams::default(), counter: 0 }
+        Self {
+            slots,
+            field_params: FieldParams::default(),
+            counter: 0,
+            base_index: params.index,
+            drift_phase: [0.0, 0.618_034, 0.236_068, 0.854_102, 0.472_136],
+        }
     }
 
     pub fn set_entry(&mut self, entry: usize, params: VoiceParams) {
+        self.base_index = params.index;
         for s in self.slots.iter_mut() {
             s.voice.set_params(params);
             s.field.set_entry(entry);
+        }
+    }
+
+    /// Breathe each voice's index around the panel value. Control rate: the
+    /// caller hands in the block's duration and the phases integrate it, per
+    /// the same rule the field lives by — phase accumulates, it is never
+    /// derived from elapsed time.
+    pub fn drift_indices(&mut self, dt: f32) {
+        for i in 0..VOICES {
+            let ph = (self.drift_phase[i] + dt / DRIFT_PERIOD_S[i]).fract();
+            self.drift_phase[i] = ph;
+            let idx = self.base_index
+                * (1.0 + DRIFT_DEPTH * (core::f32::consts::TAU * ph).sin());
+            self.slots[i].voice.set_index(idx);
         }
     }
 
@@ -485,6 +526,47 @@ mod tests {
             let truth = s.field.predict(at, s.freq_hz, &p.field_params);
             assert!((inherit - truth).abs() < 1e-6, "inherit {inherit} vs {truth}");
         }
+    }
+
+    /// The drift breathes each voice around the panel index, stays inside its
+    /// stated depth, actually excursions (it is movement, not a constant), and
+    /// the five voices are not breathing in unison.
+    #[test]
+    fn the_index_breathes_around_the_panel_value_and_not_in_unison() {
+        let mut p = pool();
+        let panel = p.slots[0].voice.params().index;
+        let block = 128.0 / SR;
+        let mut lo = [f32::MAX; VOICES];
+        let mut hi = [0.0f32; VOICES];
+        // Six minutes of control blocks — longer than every period in the set.
+        let blocks = (360.0 / block) as usize;
+        for _ in 0..blocks {
+            p.drift_indices(block);
+            for v in 0..VOICES {
+                let idx = p.slots[v].voice.params().index;
+                lo[v] = lo[v].min(idx);
+                hi[v] = hi[v].max(idx);
+            }
+        }
+        for v in 0..VOICES {
+            assert!(
+                lo[v] >= panel * (1.0 - DRIFT_DEPTH - 0.01)
+                    && hi[v] <= panel * (1.0 + DRIFT_DEPTH + 0.01),
+                "voice {v} escaped the stated depth: [{}, {}] around {panel}",
+                lo[v], hi[v]
+            );
+            assert!(
+                hi[v] - lo[v] > panel * DRIFT_DEPTH,
+                "voice {v} barely moved: [{}, {}]",
+                lo[v], hi[v]
+            );
+        }
+        // Not in unison: at this instant the voices hold distinct indices.
+        let now: Vec<f32> = (0..VOICES).map(|v| p.slots[v].voice.params().index).collect();
+        let mut sorted = now.clone();
+        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        let closest = sorted.windows(2).map(|w| w[1] - w[0]).fold(f32::MAX, f32::min);
+        assert!(closest > 1e-4, "two voices breathe as one: {now:?}");
     }
 
     #[test]

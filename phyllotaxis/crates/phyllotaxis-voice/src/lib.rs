@@ -100,6 +100,18 @@ impl Voice {
         self.retune();
     }
 
+    /// Move only the modulation depth, leaving everything else alone.
+    ///
+    /// The pool breathes this at control rate; the full `set_params` path
+    /// would recompute the spectrum-derived gain from a predicted partial
+    /// list every block. The gain stays anchored at the panel index on
+    /// purpose: the drift is a few percent of spectrum, not a change of
+    /// voice, and level-matching against a moving target would turn
+    /// breathing into pumping.
+    pub fn set_index(&mut self, index: f32) {
+        self.params.index = index;
+    }
+
     /// Spread the unison pair's starting phases so a two-voice stack does not
     /// begin as one voice at double amplitude.
     pub fn set_phase_offset(&mut self, phase01: f32) {

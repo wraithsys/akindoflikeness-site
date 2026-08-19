@@ -401,11 +401,76 @@ impl Hyperchorus {
     }
 }
 
+/// The low-mid dip on the plate send — a verdict, not a parameter.
+///
+/// Billy, 2026-08-19: the 300–450 Hz region is *"the region that always ruins
+/// everything for droney stuff … low mid pokeyness"* — found by sweeping
+/// noise through a band-pass on the master (349 Hz, Q 1.35), and audible on
+/// the stream even at index 1. It is structural: at the default root the
+/// first sidebands land at 330/440 Hz, and the register table puts two
+/// voices' 2nd harmonics there too.
+///
+/// The cut sits on the SEND, not the master: the plate is linear, so the
+/// only real placement question is whether the dry gets cut too — and with a
+/// long tail every chord *stacks* another layer of that band into a reverb
+/// that never empties, while the dry poke is partly what makes a note read
+/// as a note. Wet-only can therefore afford to be deeper than a master cut
+/// could: −6 dB where −4.5 was the master proposal. Billy: *"typically
+/// dynamic tho so i think -6 static sounds right."*
+///
+/// RBJ peaking cut, coefficients fixed at construction.
+pub struct SendDip {
+    b0: f32,
+    b1: f32,
+    b2: f32,
+    a1: f32,
+    a2: f32,
+    s1: f32,
+    s2: f32,
+}
+
+impl SendDip {
+    pub const HZ: f32 = 350.0;
+    pub const Q: f32 = 1.4;
+    pub const GAIN_DB: f32 = -6.0;
+
+    pub fn new(sample_rate: f32) -> Self {
+        let a = 10f32.powf(Self::GAIN_DB / 40.0);
+        let w0 = TAU * Self::HZ / sample_rate;
+        let alpha = w0.sin() / (2.0 * Self::Q);
+        let a0 = 1.0 + alpha / a;
+        Self {
+            b0: (1.0 + alpha * a) / a0,
+            b1: -2.0 * w0.cos() / a0,
+            b2: (1.0 - alpha * a) / a0,
+            a1: -2.0 * w0.cos() / a0,
+            a2: (1.0 - alpha / a) / a0,
+            s1: 0.0,
+            s2: 0.0,
+        }
+    }
+
+    /// Transposed direct form II; states flushed like every feedback path here.
+    #[inline]
+    pub fn process(&mut self, x: f32) -> f32 {
+        let y = self.b0 * x + self.s1;
+        self.s1 = flush(self.b1 * x - self.a1 * y + self.s2);
+        self.s2 = flush(self.b2 * x - self.a2 * y);
+        y
+    }
+
+    pub fn clear(&mut self) {
+        self.s1 = 0.0;
+        self.s2 = 0.0;
+    }
+}
+
 /// The whole bus.
 pub struct Bus {
     pub plate: Plate,
     pub chorus: Hyperchorus,
     pub density: density::Density,
+    pub dip: SendDip,
 }
 
 impl Bus {
@@ -414,6 +479,7 @@ impl Bus {
             plate: Plate::new(sample_rate),
             chorus: Hyperchorus::new(sample_rate),
             density: density::Density::new(sample_rate),
+            dip: SendDip::new(sample_rate),
         }
     }
 
@@ -473,7 +539,7 @@ impl Bus {
         p.decay *= self.density.decay_scale(density);
         let (wl, wr) = self
             .plate
-            .process_stereo((chorused_l + chorused_r) * 0.5 * send, &p);
+            .process_stereo(self.dip.process((chorused_l + chorused_r) * 0.5 * send), &p);
         // Equal-power here too, and WET_MAKEUP because the tank is quiet.
         //
         // The plate "having barely any impact" was gain, not topology. The
@@ -503,6 +569,37 @@ mod tests {
     use super::*;
 
     const SR: f32 = 48_000.0;
+
+    /// The send dip does what its constants say: −6 dB at the pokey centre,
+    /// and out of the way an octave-and-more to either side.
+    #[test]
+    fn the_send_dip_cuts_the_centre_and_leaves_the_rest() {
+        let gain_db_at = |hz: f32| {
+            let mut d = SendDip::new(SR);
+            let (mut xe, mut ye) = (0.0f64, 0.0f64);
+            let n = SR as usize;
+            for i in 0..n {
+                let x = (TAU * hz * i as f32 / SR).sin();
+                let y = d.process(x);
+                // Skip the filter's settling before measuring.
+                if i > n / 10 {
+                    xe += (x * x) as f64;
+                    ye += (y * y) as f64;
+                }
+            }
+            10.0 * (ye / xe).log10()
+        };
+        let centre = gain_db_at(SendDip::HZ);
+        assert!(
+            (centre - SendDip::GAIN_DB as f64).abs() < 0.5,
+            "centre gain {centre:.2} dB, wanted {} dB",
+            SendDip::GAIN_DB
+        );
+        for hz in [60.0, 2000.0, 8000.0] {
+            let g = gain_db_at(hz);
+            assert!(g.abs() < 1.0, "{hz} Hz moved by {g:.2} dB — the dip is too wide");
+        }
+    }
 
     /// Diagnostic: where exactly does the tail ring? Not an assertion.
     #[test]
