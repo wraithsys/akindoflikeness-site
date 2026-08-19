@@ -127,6 +127,21 @@ repository root, so any source directory left here would also be served at
 `akindoflikeness.net/<dir>/`. `robots.txt` disallows `/phyllotaxis/` as a
 stopgap, which keeps it out of search results but does not make it unreadable.
 
+## Titles are not search terms, deliberately
+
+`AKOL — art / tools / systems` and `BYPO — blow your phase off` were briefly
+rewritten to carry search keywords — "a free FM drone synth" and similar. Billy
+reverted it: *"let's not sloppify the site and downsell our own vision and
+innovation."*
+
+He is right and the reasoning is worth keeping. Filing BYPO under "free FM drone
+synth" makes it findable by people looking for the category it exists to not be
+in, and the ones who would actually want it cannot search for a thing that has
+no name yet. The structured data below carries the descriptive language for
+machines; the visible copy does not have to repeat it for humans.
+
+Keep the plumbing, leave the voice alone.
+
 ## activate.akindoflikeness.net
 
 Not a page, and it should not be linked from the footer. It is the activation
