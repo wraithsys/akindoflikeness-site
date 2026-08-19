@@ -142,6 +142,15 @@ button.share {
 
 button.share:hover, button.share:focus-visible { border-color: var(--sap); color: var(--sap); }
 
+/* Who sent the patch now playing, in live mode. Empty otherwise. */
+.credit {
+  font-family: var(--face-data);
+  font-size: 16px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sap);
+}
+
 /* ── the centrepiece ─────────────────────────────────────────────── */
 
 /* 16:9, and nothing capping it.
@@ -292,6 +301,7 @@ footer a:hover { color: var(--sap); }
     <h1>PHYLLOTAXIS</h1>
     <div class="state" id="state">idle</div>
     <button class="share" id="share" title="Copy this patch as a URL">share</button>
+    <div class="credit" id="credit"></div>
   </header>
 
   <div class="stage">
@@ -449,16 +459,39 @@ let scope = new Float32Array(2048);
    The whole state reconstructs from its parameters, so the address bar
    IS the preset. No server, no accounts, no file format. */
 
-function readHash() {
+function parseHash(h) {
   const out = {};
-  const h = location.hash.replace(/^#/, "");
-  for (const pair of h.split(",")) {
+  for (const pair of h.replace(/^#/, "").split(",")) {
     const [k, v] = pair.split(":");
     const id = parseInt(k, 10);
     const val = parseFloat(v);
     if (Number.isFinite(id) && Number.isFinite(val)) out[id] = val;
   }
   return out;
+}
+
+function readHash() { return parseHash(location.hash); }
+
+// Apply a patch to the running instrument as if the sliders had been moved by
+// hand: values go through the inputs, so the browser clamps each one to its
+// slider's range and the existing input listeners do the sending, the tuning
+// re-derive and the hash write. Nothing in a patch can reach the engine except
+// through a control that already exists.
+function applyPatch(hash) {
+  const saved = parseHash(hash);
+  if (saved[0] !== undefined) {
+    entry = Math.max(0, Math.min(ROSTER.length - 1, saved[0] | 0));
+    showEntry();
+    setParam(0, entry);
+    requestTuningSoon();
+  }
+  for (const input of document.querySelectorAll("input[data-param]")) {
+    const id = +input.dataset.param;
+    if (saved[id] === undefined) continue;
+    input.value = saved[id];
+    input.dispatchEvent(new Event("input"));
+  }
+  writeHash();
 }
 
 function hashString() {
@@ -994,7 +1027,51 @@ function initGL() {
   })();
 }
 
+/* ── live mode ────────────────────────────────────────────────────
+   `?live` is the streaming rig, not a visitor feature. A local relay
+   (phyllotaxis/crates/phyllotaxis-live) watches a stream chat for shared
+   patches and re-serves the current one on 127.0.0.1; the page polls it and
+   plays whatever it holds, crediting the viewer who sent it. Without the
+   query param none of this runs and the public page never makes a request. */
+
+const LIVE = new URLSearchParams(location.search);
+
+function pollLive() {
+  const port = +LIVE.get("live") || 7341;
+  let seq = null;
+  const tick = async () => {
+    const r = await fetch(`http://127.0.0.1:${port}/patch`, { cache: "no-store" });
+    const m = await r.json();
+    // Applying on EVERY seq change includes the first fetch: after a page
+    // refresh the relay still holds the current patch, so the rig comes back
+    // in the state the stream was in, not at the defaults.
+    if (m && typeof m.hash === "string" && m.hash && m.seq !== seq) {
+      seq = m.seq;
+      el("credit").textContent = "◂ " + (m.from || "chat");
+      applyPatch(m.hash);
+    }
+  };
+  const loop = async () => {
+    try { await tick(); } catch { /* relay not up yet; keep listening */ }
+    setTimeout(loop, 2000);
+  };
+  loop();
+}
+
 wire();
 initGL();
+
+if (LIVE.has("live")) {
+  pollLive();
+  // A rebooted rig must not sit silent behind a Begin button. Probe whether
+  // audio is allowed to start on its own (Chromium launched with
+  // --autoplay-policy=no-user-gesture-required) before begin() commits the
+  // once-only start button; under normal policy the probe reports
+  // "suspended" and the gate stays, waiting for the click.
+  const probe = new AudioContext();
+  const allowed = probe.state === "running";
+  probe.close();
+  if (allowed) begin();
+}
 </script>
 </html>
