@@ -282,6 +282,15 @@
 
   a:focus-visible { outline: 1px solid var(--light); outline-offset: 2px; }
 
+  /* The nav only ever looked right on a phone because there was no viewport
+     meta: the browser laid the page out at 980px and scaled it down. With a
+     real viewport, the mark plus three 36px-gapped links overflow 390px and
+     CONTACT falls off the edge. Let the row wrap instead. */
+  @media (max-width: 640px) {
+    nav { height: auto; padding: 14px 0; flex-wrap: wrap; gap: 10px 20px; }
+    .navlinks { gap: 20px; }
+  }
+
   @media (max-width: 900px) {
     .columns { grid-template-columns: 1fr; padding: 36px; gap: 36px; }
     .vr { display: none; }

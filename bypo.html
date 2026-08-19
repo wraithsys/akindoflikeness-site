@@ -109,6 +109,22 @@
   .cta.ghost{border-color:var(--rule);color:var(--inactive)}
   .cta.ghost:hover{background:none;border-color:var(--light);color:var(--light)}
 
+  /* Same as the landing page: with a real viewport meta the nav row and the
+     16ch spec grid no longer fit a 390px screen. */
+  @media(max-width:640px){
+    nav{height:auto;padding:14px 0;flex-wrap:wrap;gap:10px 20px}
+    .navlinks{gap:20px}
+    .pad{padding:0 18px}
+    section{padding:28px 18px}
+    header{padding:40px 18px 28px}
+    h1{font-size:40px}
+    dl.spec{grid-template-columns:1fr;gap:2px 0}
+    dl.spec dt{margin-top:10px}
+    dl.log{grid-template-columns:1fr;gap:2px 0}
+    dl.log dt{margin-top:14px}
+    footer{padding:24px 18px}
+  }
+
   footer{padding:28px 32px;border-top:1px solid var(--rule);
     font-family:"European Teletext",monospace;color:var(--field);letter-spacing:.06em;
     display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
