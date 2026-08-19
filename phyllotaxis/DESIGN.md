@@ -200,11 +200,58 @@ third, minor sixth and octave. Those are the intervals ring modulation at the
 golden ratio actually wants, and the instrument now plays them rather than
 pretending it has a scale.
 
+### Auditioned, 2026-08-19 — confirmed by ear
+
+Rendered with `examples/audition.rs`: the same chord, the same timbre, played
+first in the computed tuning and then in the nearest 12-TET, so nothing changes
+but the tuning. Billy's verdict on the roster, `fm II` carrying the largest
+drift at 32 ¢:
+
+> *"ghostly — atmospheric — but also capable of harmonic precision … those wavs
+> made me way more confident in the design than I was when I first thought of
+> it."*
+
+So §3 stops being the headline claim and becomes the confirmed core: an
+inharmonic spectrum played in a scale computed from itself is **more** consonant
+than the same spectrum on the grid, and it is audible without training or
+prompting. Everything downstream can be built on it.
+
+**One honest caveat about what was heard.** The audition is a bare additive sine
+bank — no filter, no plate, no hyperchorus, no unison, no field movement. The
+ghostliness may be partly the *purity* of that path rather than the tuning, and
+the full signal chain could bury it. Keep a route back to it: filter wide open,
+plate low, unison off should reproduce the audition's thinness, and that should
+be a preset rather than a coincidence.
+
 **Applied at chord change, not to held notes.** The tuning drifts while INDEX
 moves; retuning a held pad mid-note is worse than letting the next chord land in
 the new scale. Glide covers the seam.
 
 ---
+
+### Why this sounds nothing like Blow Your Phase Off
+
+Billy, on first hearing the renders: *"it sounds really different to the other
+fibonaccis too — I knew it would, the design takes heavy detours, but I didn't
+think it would be that different."*
+
+The reason is one decision, and stating it makes the family coherent rather than
+merely adjacent. **Both instruments use the same mathematics and take opposite
+positions on it.**
+
+BYPO tunes its operators to φ — maximally inharmonic partials — and then plays
+notes on a grid those partials do not fit. The mismatch is not a shortcoming, it
+*is* the instrument: the partials grind against the pitches, and that grinding is
+the phase violence the whole thing is named for.
+
+Phyllotaxis computes the scale from those same partials, so they land where the
+notes are. Identical inharmonicity, deliberately met instead of deliberately
+refused — and it comes out consonant, spacious and ghostly rather than brutal.
+
+So the pair is not two synths that share a number. It is one idea and its two
+answers: **what golden-ratio inharmonicity sounds like when you refuse to tune to
+it, and what it sounds like when you do.** Nothing in either instrument needs to
+change for that to be true; it already is. It just needed hearing.
 
 ## 4. Cadence — the harmony engine
 
