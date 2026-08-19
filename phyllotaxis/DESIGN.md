@@ -386,6 +386,56 @@ Bipolar offsetting of note events, ordered by pitch:
   notes blur into one swell. Scale the span against the gesture, not against a
   fixed millisecond range.
 
+### Built — and the two mirrors are one mechanism
+
+`phyllotaxis-cadence` implements the word, the mirror and the strum. Each was
+derived and then adversarially re-checked before becoming code, because a wrong
+test vector locks in a wrong implementation more durably than no test at all.
+
+**The mirrors unify.** The schedule deciding which chords get reflected is
+`frac(n(φ−1) + β) < m`: a Sturmian set of density exactly `m`, aperiodic, with
+gaps bounded to three distinct values by the three-distance theorem, so mirrored
+chords cannot clump. **At `m = 1/φ² ≈ 0.382` that schedule *is* the Fibonacci
+word** — asserted symbol-for-symbol over ten thousand steps. Asking for both was
+asking for one thing at a particular density.
+
+**`0 → long` is derived, not chosen.** With `L = φ²/√5·T̄` and `S = φ/√5·T̄`, the
+n-th Fibonacci block lasts exactly `S·φⁿ`. Reverse the assignment and the
+identity vanishes. And it closes a ladder with §5: the gesture of a long step
+**is** a short step, exactly, and the rest after a long step is the gesture of a
+short one. Two articulations that are one shape at adjacent rungs.
+
+It is also a clock rather than a rubato: every window of every length stays
+within `L − S = 1/√5` of the mean, forever. Measured worst case over two
+thousand steps and four hundred window lengths: 0.4467, against the bound
+0.4472.
+
+**The mirror needed a per-tuning axis, and `fm fb II` proves why.** That tuning
+tops out at 1160 ¢, so its octave seam is 40 ¢ — under §3's own 50 ¢ floor. With
+a plain 700 ¢ axis its reflection maps 0 → 720 → 1160 → 720 and never returns:
+not an involution, therefore not a mirror. Its own near-fifth at 720 ¢ restores
+it. Any implementation that ignores the seam is wrong on exactly that table, and
+the involution assertion catches a bad axis, a missed seam and a wrong capture
+radius in one line.
+
+**The pedal exemption belongs at the voice level, not in the table.** Mirroring
+the lowest voice moves the key centre, which is a modulation. But exempting the
+tonic *inside* the reflection would send the tonic to itself while the dominant
+still mapped to the tonic — a collision, and no longer an involution. So the
+table reflects everything and `reflect_chord` skips the pedal.
+
+**Strum offsets land on Fibonacci numbers.** At a 144 ms budget the four-note
+ascending strum is 0, 55, 89, 110 ms with gaps 55, 34, 21 — because `1 − φ⁻ⁿ`
+is a ratio of Fibonacci numbers, so a Fibonacci budget produces Fibonacci
+offsets. Nothing was tuned to make that happen. The budget itself is `Δ/φ⁵`,
+which is `gesture/φ⁴` — four rungs below the shape the note is making, on the
+same ladder as everything else.
+
+Still open: **voice leading**. Greedy nearest-first is provably wrong — the
+derivation supplies a counterexample where it costs 480 cents against an optimal
+410 and crosses two voices to do it — so it needs a real assignment, not a
+sort.
+
 ### Voicing
 
 **Nearest-note voice leading.** Hold common tones, move each remaining voice the
