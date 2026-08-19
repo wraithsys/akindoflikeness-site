@@ -21,6 +21,8 @@ functions/api/        Pages Functions (the opt-in mailing list endpoint)
 _headers              cache policy + the COOP/COEP scope
 _routes.json          keeps static assets off the Functions runtime
 phyllotaxis/          Rust workspace for the next instrument (source, not a page)
+                      NOTE: this repo is PUBLIC. See "phyllotaxis is in the
+                      wrong repo" below before pushing anything else here.
 ```
 
 ## index.html is a build artefact
@@ -106,3 +108,32 @@ form returns ok and stores nothing.
   colophon, the cover metadata and the form's status line. It is a deliberate
   part of the chrome ladder, so it has been left alone, but it is below WCAG AA
   and those strings are hard to read.
+
+
+## phyllotaxis is in the wrong repo
+
+**This repository is public.** The `phyllotaxis/` workspace was put here because
+repository creation is blocked for the automation account, and that was a
+mistake: its `DESIGN.md` and full source are readable by anyone on GitHub today,
+on the `claude/feedback-request-b0u1rw` branch, regardless of what Cloudflare
+does or does not publish.
+
+It needs to move to a private repository of its own. Until it does, do not push
+further phyllotaxis work here. The branch history can be rewritten to drop it
+once it has somewhere to go — nothing depends on that branch.
+
+Separately, and only relevant after the move: Cloudflare Pages publishes the
+repository root, so any source directory left here would also be served at
+`akindoflikeness.net/<dir>/`. `robots.txt` disallows `/phyllotaxis/` as a
+stopgap, which keeps it out of search results but does not make it unreadable.
+
+## activate.akindoflikeness.net
+
+Not a page, and it should not be linked from the footer. It is the activation
+server for **Slate Shell** (`wraithsys/slate_shell`) — an Axum/SQLite service
+behind a Cloudflare tunnel that checks license keys against a machine
+fingerprint. Hardcoded at `crates/slate_shell/src/slates/unlock.rs:10`.
+
+The footer link that pointed at it was a placeholder aimed at `#instruments`.
+When Slate Shell ships, the thing to link is the **installer download**, not the
+activation host.

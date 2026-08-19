@@ -1,0 +1,9 @@
+# akindoflikeness.net
+User-agent: *
+Allow: /
+
+# Source directories are not pages. They are excluded from indexing here as
+# well as being kept off main; see README.
+Disallow: /phyllotaxis/
+
+Sitemap: https://akindoflikeness.net/sitemap.xml
