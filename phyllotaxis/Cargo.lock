@@ -44,3 +44,15 @@ version = "0.1.0"
 dependencies = [
  "phyllotaxis-tuning",
 ]
+
+[[package]]
+name = "phyllotaxis-wasm"
+version = "0.1.0"
+dependencies = [
+ "phyllotaxis-cadence",
+ "phyllotaxis-field",
+ "phyllotaxis-fx",
+ "phyllotaxis-pool",
+ "phyllotaxis-tuning",
+ "phyllotaxis-voice",
+]

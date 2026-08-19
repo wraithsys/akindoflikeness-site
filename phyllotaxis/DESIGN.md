@@ -844,6 +844,43 @@ Two consequences:
 7. WASM boundary and the worklet.
 8. Surface.
 
+### The WASM boundary — built, and it imports nothing
+
+`phyllotaxis-wasm` is a `cdylib` exporting plain `extern "C"`. Verified against
+the built module rather than asserted:
+
+| | |
+|---|---|
+| module | **145,947 bytes** |
+| imports | **none** |
+| exports | 10 functions, `memory`, two globals |
+
+**Zero imports is the number that matters.** A module with no imports needs no
+JS glue object at all — nothing to construct, nothing to keep alive, nothing
+that can allocate behind the worklet's back. `WebAssembly.instantiate` with an
+empty import object is the whole setup, which is what makes synchronous
+instantiation inside `AudioWorkletGlobalScope` possible after the
+`WebAssembly.Module` arrives over `postMessage`.
+
+Nothing allocates after `phy_new`. The pool is five slots, the pending-event
+queue is bounded by the voice count and lives in a fixed array, and the scope
+ring is a boxed fixed array whose pointer JS reads directly out of wasm memory
+— `phy_scope_ptr` plus `phy_scope_head`, so the visualiser reads samples where
+they already are instead of being sent copies.
+
+The parameter block is an ABI: eighteen `f32` addresses, and the note in the
+source says plainly that reordering them breaks the JS side. A test asserts the
+first, the last and the count, so a reorder fails here rather than in a browser.
+
+Four properties are asserted at this boundary because they are cheap here and
+expensive anywhere else: it makes sound for eight seconds without a non-finite
+sample; every roster entry runs; the same settings produce byte-identical output
+twice, which is §10's whole thesis; and a live parameter change never steps the
+output by more than half a unit, since every control is live and a click is not
+a sound this instrument makes.
+
+
+
 ### The bare voice is the benchmark, and everything after it has to beat it
 
 Recorded 2026-08-19, on hearing the first renders of the real signal path — three
