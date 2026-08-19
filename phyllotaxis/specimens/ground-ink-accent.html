@@ -1,0 +1,1074 @@
+<title>Phyllotaxis Specimen Sheet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@300;400;600&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;1,6..72,300&display=swap">
+
+<style>
+/* ──────────────────────────────────────────────────────────────────────
+   PHYLLOTAXIS — specimen sheet 01
+
+   Not an audit of inherited law. A survey of what THIS platform is good at,
+   run at the extremes, so the instrument's rules can be derived from the
+   machine it actually runs on.
+
+   Committed single-theme on purpose: the page is one of the arguments it is
+   making. Every colour painted explicitly, body ground included.
+   ────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --paper:      #ECEFE9;
+  --plate:      #E3E7DE;
+  --ink:        #14180F;
+  --ink-soft:   #4A5142;
+  --ink-faint:  #8B9182;
+  --rule:       #C3C9BB;
+
+  --sap:    #6E9B72;
+  --straw:  #C4A24C;
+  --slate:  #7B94A8;
+  --clay:   #C2705C;
+
+  --gap: clamp(2.5rem, 6vw, 5rem);
+  --measure: 62ch;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Newsreader", Georgia, "Times New Roman", serif;
+  font-size: 17px;
+  line-height: 1.6;
+  font-weight: 300;
+  -webkit-font-smoothing: antialiased;
+}
+
+.sheet {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: clamp(1.75rem, 4vw, 3.5rem) clamp(1.25rem, 4vw, 3rem) 6rem;
+}
+
+.masthead {
+  border-top: 3px solid var(--ink);
+  border-bottom: 1px solid var(--ink);
+  padding: 1.1rem 0 0.9rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.6rem 1.6rem;
+}
+
+.wordmark {
+  font-family: "Martian Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-weight: 600;
+  font-size: clamp(1.5rem, 4.2vw, 2.4rem);
+  letter-spacing: 0.14em;
+  margin: 0;
+  line-height: 1;
+}
+
+.masthead .strap {
+  font-family: "Martian Mono", ui-monospace, monospace;
+  font-size: 0.66rem;
+  font-weight: 300;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-left: auto;
+  text-align: right;
+  line-height: 1.7;
+}
+
+.standfirst {
+  max-width: var(--measure);
+  margin: 2rem 0 0;
+  font-size: 1.14rem;
+  line-height: 1.62;
+}
+.standfirst + .standfirst { margin-top: 1rem; }
+.standfirst em { font-style: italic; color: var(--ink-soft); }
+
+.grain {
+  margin-top: 2rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(215px, 1fr));
+  gap: 1rem 1.6rem;
+  border-top: 1px solid var(--ink);
+  border-bottom: 1px solid var(--ink);
+  padding: 1.1rem 0;
+}
+.grain div { }
+.grain dt {
+  font-family: "Martian Mono", ui-monospace, monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 0 0 0.35rem;
+}
+.grain dd { margin: 0; font-size: 0.93rem; line-height: 1.5; }
+.grain dd b { font-weight: 400; color: var(--ink); font-style: italic; }
+
+.specimen {
+  margin-top: var(--gap);
+  border-top: 1px solid var(--ink);
+  padding-top: 1.1rem;
+}
+
+.spec-head { display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+
+.spec-no {
+  font-family: "Martian Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  color: var(--ink-faint);
+  flex: none;
+}
+
+.spec-title {
+  font-family: "Martian Mono", ui-monospace, monospace;
+  font-size: clamp(0.95rem, 2.1vw, 1.15rem);
+  font-weight: 400;
+  margin: 0;
+  text-wrap: balance;
+}
+
+.spec-body { max-width: var(--measure); margin: 0.85rem 0 1.4rem; }
+.spec-body p { margin: 0 0 0.8rem; }
+.spec-body p:last-child { margin-bottom: 0; }
+
+.plate {
+  background: var(--plate);
+  border: 1px solid var(--rule);
+  padding: 0.9rem;
+  overflow-x: auto;
+}
+
+.plate canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+  background: #0E120B;
+  touch-action: none;
+}
+.plate canvas.grab { cursor: ew-resize; }
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1.5rem;
+  margin-top: 0.85rem;
+  font-family: "Martian Mono", ui-monospace, monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.controls label { display: flex; align-items: center; gap: 0.55rem; }
+.controls input[type="range"] { width: 140px; accent-color: var(--sap); }
+.controls input[type="checkbox"] { accent-color: var(--sap); }
+
+.readout {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  padding: 0.15rem 0.45rem;
+}
+
+:where(a, button, input, canvas, [tabindex]):focus-visible {
+  outline: 2px solid var(--sap);
+  outline-offset: 2px;
+}
+
+.verdict {
+  margin-top: 1rem;
+  border-left: 3px solid var(--sap);
+  padding: 0.25rem 0 0.25rem 0.9rem;
+  max-width: var(--measure);
+  font-size: 0.97rem;
+  color: var(--ink-soft);
+}
+.verdict b {
+  font-family: "Martian Mono", ui-monospace, monospace;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink);
+  display: block;
+  margin-bottom: 0.25rem;
+}
+.verdict.open  { border-left-color: var(--straw); }
+.verdict.break { border-left-color: var(--clay); }
+
+.close {
+  margin-top: var(--gap);
+  border-top: 3px solid var(--ink);
+  padding-top: 1.2rem;
+  max-width: var(--measure);
+}
+.close h3 {
+  font-family: "Martian Mono", ui-monospace, monospace;
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  margin: 0 0 0.8rem;
+}
+.close ol { padding-left: 1.1rem; margin: 0; }
+.close li { margin-bottom: 0.75rem; }
+
+.colophon {
+  margin-top: 2.5rem;
+  font-family: "Martian Mono", ui-monospace, monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  border-top: 1px solid var(--rule);
+  padding-top: 0.8rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+</style>
+
+<div class="sheet">
+
+  <header class="masthead">
+    <h1 class="wordmark">PHYLLOTAXIS</h1>
+    <div class="strap">
+      Specimen sheet 01<br>
+      What the platform is for
+    </div>
+  </header>
+
+  <p class="standfirst">
+    This is not an audit of whether the house rules survive a change of
+    technology. The 1-bit laws were never taste — they were what egui's grain
+    made worth doing: immediate mode with no previous frame to read, a CPU
+    raster, and a widget system that charges for every pixel of state. Design
+    <em>with</em> that machine and you arrive at dither, hard rectangles and no
+    antialiasing, because those are the things it is good at.
+  </p>
+
+  <p class="standfirst">
+    WebGL's grain is the opposite on every one of those axes. So the honest move
+    is not to re-adopt the old constraints — it is to find out what this machine
+    is good at by running it past where it is comfortable, and let the rules fall
+    out of that. Several specimens below deliberately break house law. That is
+    the point of them. <strong>Drag anything that moves.</strong>
+  </p>
+
+  <dl class="grain">
+    <div>
+      <dt>egui gives you</dt>
+      <dd>A rectangle and a CPU. Every pixel costs, so <b>scarcity is the
+        material</b> — and scarcity is what dither, hard edges and 1-bit are
+        answers to.</dd>
+    </div>
+    <div>
+      <dt>WebGL gives you</dt>
+      <dd>A per-pixel program running a hundred thousand times in parallel, a
+        previous frame you can read, and float precision. <b>Abundance is the
+        material.</b></dd>
+    </div>
+    <div>
+      <dt>So the question changes</dt>
+      <dd>Not "how little can this be drawn with" but <b>"what is worth
+        computing per pixel, per frame, that a value could not have carried."</b></dd>
+    </div>
+  </dl>
+
+  <!-- ── 01 ───────────────────────────────────────────────────────── -->
+  <section class="specimen">
+    <div class="spec-head">
+      <span class="spec-no">01</span>
+      <h2 class="spec-title">Four tone regimes, one field — the constraint made choosable</h2>
+    </div>
+    <div class="spec-body">
+      <p>
+        The same golden-angle interference field, rendered four ways across one
+        canvas. Left to right: <strong>1-bit ordered dither</strong>, the house
+        answer. <strong>Four-level</strong>. <strong>Full continuous tone</strong>,
+        which egui can do but never cheaply. And <strong>accumulated bloom</strong>,
+        which it cannot do at all.
+      </p>
+      <p>
+        Nothing here argues for one. It makes the choice a choice — the 1-bit
+        band should have to win against the others on this screen rather than by
+        inheritance.
+      </p>
+    </div>
+    <div class="plate">
+      <canvas id="cv-tone" class="grab" width="1120" height="420" aria-label="One field rendered in four tone regimes: dithered 1-bit, four-level, continuous, and bloomed"></canvas>
+    </div>
+    <div class="controls">
+      <label>Field <input type="range" id="tone-freq" min="4" max="120" value="42"></label>
+      <label>Bias <input type="range" id="tone-bias" min="10" max="100" value="62"></label>
+      <label>Bloom <input type="range" id="tone-bloom" min="0" max="100" value="55"></label>
+      <label><input type="checkbox" id="tone-paper"> Paper ground</label>
+    </div>
+    <div class="verdict open">
+      <b>What to look for</b>
+      Whether the dithered band still reads as the most <em>alive</em> of the
+      four. On a CPU raster it was the one that could move; here all four can.
+      If it wins anyway, it has earned the law back on this platform.
+    </div>
+  </section>
+
+  <!-- ── 02 ───────────────────────────────────────────────────────── -->
+  <section class="specimen">
+    <div class="spec-head">
+      <span class="spec-no">02</span>
+      <h2 class="spec-title">Feedback as a medium, not an effect</h2>
+    </div>
+    <div class="spec-body">
+      <p>
+        The previous frame is a texture. Fade it, <em>warp</em> the coordinates
+        you sample it at, and draw the new beam on top — and the buffer stops
+        being a trail and becomes a fluid the instrument is drawing into. Rotate,
+        scale and advect at once and it never resolves to a shape, because every
+        frame is the last one seen through a small distortion.
+      </p>
+      <p>
+        This is the single largest capability gap. Immediate mode has no previous
+        frame by definition, so nothing in this family has ever been able to
+        accumulate. Push <strong>warp</strong> past the middle and it stops being
+        a scope and starts being weather.
+      </p>
+    </div>
+    <div class="plate">
+      <canvas id="cv-feedback" width="1120" height="460" aria-label="A beam drawn into a warped feedback buffer, accumulating into a fluid field"></canvas>
+    </div>
+    <div class="controls">
+      <label>Decay <input type="range" id="fb-decay" min="70" max="100" value="96"></label>
+      <label>Warp <input type="range" id="fb-warp" min="0" max="100" value="30"></label>
+      <label>Spin <input type="range" id="fb-spin" min="0" max="100" value="22"></label>
+      <label>Ratio <input type="range" id="fb-ratio" min="100" max="500" value="162"></label>
+      <label><input type="checkbox" id="fb-dither"> Resolve to 1-bit</label>
+      <span class="readout" id="fb-read">φ 1.62</span>
+    </div>
+    <div class="verdict break">
+      <b>Breaks house law deliberately</b>
+      Continuous tone, additive blending, no hard edge anywhere. Ask whether the
+      1-bit resolve (the checkbox) <em>improves</em> it or just makes it look
+      like the other instruments. That answer is a design decision, not a
+      compliance check.
+    </div>
+  </section>
+
+  <!-- ── 03 ───────────────────────────────────────────────────────── -->
+  <section class="specimen">
+    <div class="spec-head">
+      <span class="spec-no">03</span>
+      <h2 class="spec-title">Population — where the count stops being a number</h2>
+    </div>
+    <div class="spec-body">
+      <p>
+        Seeds placed at the golden angle, positions computed on the GPU from
+        nothing but an index. Take the count up. Somewhere past twenty thousand
+        the individual seed stops being visible and the <em>parastichies</em> —
+        the counter-rotating spiral arms, which are always consecutive Fibonacci
+        numbers — take over as the thing you see.
+      </p>
+      <p>
+        That transition is the instrument's whole subject rendering itself, and
+        it is only reachable at a scale a CPU raster cannot draw. The count
+        slider goes to 250,000. Nothing is stored; every position is
+        <code>n</code> put through two trig calls.
+      </p>
+    </div>
+    <div class="plate">
+      <canvas id="cv-population" width="1120" height="460" aria-label="Up to 250,000 seeds placed at the golden angle, forming visible Fibonacci spiral arms"></canvas>
+    </div>
+    <div class="controls">
+      <label>Count <input type="range" id="pop-count" min="500" max="250000" value="40000" step="500"></label>
+      <label>Angle <input type="range" id="pop-angle" min="-60" max="60" value="0"></label>
+      <label>Size <input type="range" id="pop-size" min="10" max="100" value="34"></label>
+      <label><input type="checkbox" id="pop-tone" checked> Continuous tone</label>
+      <span class="readout" id="pop-read">40,000 · φ exact</span>
+    </div>
+    <div class="verdict">
+      <b>What it earns</b>
+      Detune the angle a fraction of a degree off φ and the arms reorganise into
+      a different Fibonacci pair, then collapse. That is a <em>visualisation of
+      irrationality</em> — and it is the same quantity the tuning engine uses to
+      decide how inharmonic a voice is. One control, two senses.
+    </div>
+  </section>
+
+  <!-- ── 04 ───────────────────────────────────────────────────────── -->
+  <section class="specimen">
+    <div class="spec-head">
+      <span class="spec-no">04</span>
+      <h2 class="spec-title">Colour as a continuous quantity</h2>
+    </div>
+    <div class="spec-body">
+      <p>
+        House law rations colour to state. That law was written where colour was
+        expensive and a palette was a handful of chosen values. Here hue is a
+        float, computed per pixel, and it can carry a continuous quantity that no
+        number on a panel could show at once.
+      </p>
+      <p>
+        This band maps the <strong>dissonance curve</strong> — the real one, the
+        Plomp–Levelt sum the tuning crate minimises — across an octave. Valleys
+        are where the spectrum wants to be played. The scale degrees are read
+        straight off the minima, and they are drawn where they fall.
+      </p>
+    </div>
+    <div class="plate">
+      <canvas id="cv-spectral" class="grab" width="1120" height="380" aria-label="A dissonance curve across an octave rendered as a continuous colour field with scale degrees marked at its minima"></canvas>
+    </div>
+    <div class="controls">
+      <label>Inharmonicity <input type="range" id="sp-inh" min="0" max="100" value="0"></label>
+      <label>Partials <input type="range" id="sp-parts" min="2" max="12" value="8"></label>
+      <label><input type="checkbox" id="sp-mono"> Rationed (mono)</label>
+      <span class="readout" id="sp-read">harmonic · 7 degrees</span>
+    </div>
+    <div class="verdict break">
+      <b>Breaks house law deliberately</b>
+      Colour here is not state, it is <em>magnitude</em> — and a magnitude that
+      changes shape as you drag. Slide inharmonicity from 0 to 100 and watch the
+      valleys migrate off the 12-TET grid. Toggle "rationed" to see the same
+      information in the house's monochrome and judge what was lost.
+    </div>
+  </section>
+
+  <!-- ── 05 ───────────────────────────────────────────────────────── -->
+  <section class="specimen">
+    <div class="spec-head">
+      <span class="spec-no">05</span>
+      <h2 class="spec-title">The control — discrete value, continuous travel</h2>
+    </div>
+    <div class="spec-body">
+      <p>
+        The thing you liked about the effort selector, isolated. The value snaps
+        to real stops; the drawing never does. <strong>Drag it.</strong> The
+        readout shows what the instrument holds and, separately, where the thumb
+        has got to — so the disagreement is visible rather than felt.
+      </p>
+      <p>
+        Turn on <em>show the lie</em>: the hairline marks the true value during
+        flight. For a quantised parameter the gap is honest — the sound is at one
+        stop or the other and the travel is the eye catching up. Switch to a
+        continuous parameter and the same gap becomes a lie about the sound.
+        That distinction is the only thing here that has to become a rule.
+      </p>
+    </div>
+    <div class="plate">
+      <canvas id="cv-slider" class="grab" width="1120" height="260" aria-label="A slider whose value snaps to discrete stops while its thumb travels continuously between them"></canvas>
+    </div>
+    <div class="controls">
+      <label>Stops <input type="range" id="sl-stops" min="2" max="13" value="8"></label>
+      <label>Chase <input type="range" id="sl-chase" min="4" max="60" value="18"></label>
+      <label><input type="checkbox" id="sl-lie"> Show the lie</label>
+      <label><input type="checkbox" id="sl-cont"> Continuous parameter</label>
+      <span class="readout" id="sl-read">VALUE 4/8 · THUMB 4.00</span>
+    </div>
+    <div class="verdict">
+      <b>Proposed, at LEANING</b>
+      Travel may lag a value only where the value is quantised. Failure it
+      prevents: an eight-position algorithm selector that jumps reads as a mode
+      switch, and the player stops hearing the eight as one axis. Confidence:
+      high on the shape, low on the chase constant — that one wants your hand
+      on it, not an argument.
+    </div>
+  </section>
+
+  <section class="close">
+    <h3>What this sheet is actually for</h3>
+    <ol>
+      <li><strong>Find the ceiling before picking a style.</strong> 03 goes to a
+        quarter of a million points because the interesting thing was not
+        visible until it did. None of the numbers here are settings — they are
+        the range the platform turned out to have.</li>
+      <li><strong>Let 02 and 04 stay illegal for a while.</strong> Feedback and
+        continuous colour are the two things this machine does that the others
+        cannot. Deciding against them early would be inheritance wearing the
+        clothes of a decision.</li>
+      <li><strong>Only 05 is proposing a rule</strong>, and only at LEANING,
+        because it is the only one with a named failure behind it.</li>
+    </ol>
+  </section>
+
+  <p class="colophon">
+    Rendered live in WebGL · no images, no libraries · Martian Mono &amp;
+    Newsreader · wraithsys/akindoflikeness-site
+  </p>
+</div>
+
+<script>
+"use strict";
+
+const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
+const PHI = 1.6180339887498949;
+
+/* Only animate what is on screen — six live contexts otherwise cost more
+   than the page is worth. */
+const visible = new WeakSet();
+const watcher = new IntersectionObserver((entries) => {
+  for (const e of entries) {
+    if (e.isIntersecting) visible.add(e.target); else visible.delete(e.target);
+  }
+}, { rootMargin: "120px" });
+
+function compile(gl, type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) { console.error(gl.getShaderInfoLog(s)); return null; }
+  return s;
+}
+function program(gl, v, f) {
+  const p = gl.createProgram();
+  const vs = compile(gl, gl.VERTEX_SHADER, v), fs = compile(gl, gl.FRAGMENT_SHADER, f);
+  if (!vs || !fs) return null;
+  gl.attachShader(p, vs); gl.attachShader(p, fs); gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) { console.error(gl.getProgramInfoLog(p)); return null; }
+  return p;
+}
+function quadBuffer(gl) {
+  const b = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, b);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+  return b;
+}
+function drawQuad(gl, prog, buf) {
+  gl.useProgram(prog);
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  const ap = gl.getAttribLocation(prog, "a_pos");
+  gl.enableVertexAttribArray(ap);
+  gl.vertexAttribPointer(ap, 2, gl.FLOAT, false, 0, 0);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
+
+const DITHER = `
+  float bayer2(vec2 a){ a = floor(a); return fract(a.x / 2.0 + a.y * a.y * 0.75); }
+  float bayer4(vec2 a){ return bayer2(0.5 * a) * 0.25 + bayer2(a); }
+`;
+
+const FIELD = `
+  float field(vec2 p, float k, float t) {
+    float r = length(p);
+    float a = atan(p.y, p.x);
+    float f = 0.0;
+    f += cos(a * 8.0  + r * k * ${PHI.toFixed(6)} - t * 0.35);
+    f += cos(a * 13.0 - r * k + t * 0.21);
+    f += cos(r * k * 0.5 + t * 0.13);
+    return f / 3.0 * 0.5 + 0.5;
+  }
+`;
+
+const VQUAD = `attribute vec2 a_pos; void main(){ gl_Position = vec4(a_pos,0.,1.); }`;
+
+/* ── 01 · four tone regimes ────────────────────────────────────────── */
+(function tone() {
+  const cv = document.getElementById("cv-tone");
+  const gl = cv.getContext("webgl", { antialias: false });
+  if (!gl) return;
+  watcher.observe(cv);
+
+  const prog = program(gl, VQUAD, `
+    precision highp float;
+    uniform vec2 u_res; uniform float u_k, u_bias, u_bloom, u_time, u_paper;
+    ${DITHER}
+    ${FIELD}
+    void main() {
+      vec2 uv = gl_FragCoord.xy / u_res;
+      vec2 p = (uv - 0.5) * vec2(u_res.x / u_res.y, 1.0) * 2.2;
+      float v = field(p, u_k, u_time);
+      v = clamp(v * u_bias * 1.7 - length(p) * 0.22, 0.0, 1.0);
+
+      int band = int(floor(uv.x * 4.0));
+      float out_;
+      if (band == 0) {
+        out_ = step(bayer4(gl_FragCoord.xy), v);                  // 1-bit
+      } else if (band == 1) {
+        float q = 3.0;                                            // four levels
+        out_ = floor(v * q + bayer4(gl_FragCoord.xy)) / q;
+      } else if (band == 2) {
+        out_ = v;                                                 // continuous
+      } else {
+        // A cheap separable-ish bloom: sample the field around this pixel.
+        float acc = v;
+        for (int i = 1; i <= 6; i++) {
+          float o = float(i) * 0.02 * u_bloom;
+          acc += field(p + vec2(o, 0.0), u_k, u_time) * 0.5 / float(i);
+          acc += field(p - vec2(o, 0.0), u_k, u_time) * 0.5 / float(i);
+          acc += field(p + vec2(0.0, o), u_k, u_time) * 0.5 / float(i);
+          acc += field(p - vec2(0.0, o), u_k, u_time) * 0.5 / float(i);
+        }
+        out_ = clamp(acc * 0.14 * u_bias, 0.0, 1.4);
+      }
+
+      vec3 paper = vec3(0.925, 0.937, 0.914);
+      vec3 inkc  = vec3(0.055, 0.067, 0.043);
+      vec3 col = u_paper > 0.5 ? mix(paper, inkc, clamp(out_,0.,1.))
+                               : mix(inkc, paper, clamp(out_,0.,1.)) * (out_ > 1.0 ? out_ : 1.0);
+      // hairline rules between the bands
+      float edge = fract(uv.x * 4.0);
+      if (edge < 0.0015 || edge > 0.9985) col = vec3(0.42, 0.45, 0.40);
+      gl_FragColor = vec4(col, 1.0);
+    }
+  `);
+  if (!prog) return;
+  const quad = quadBuffer(gl);
+  const k = document.getElementById("tone-freq"),
+        bias = document.getElementById("tone-bias"),
+        bloom = document.getElementById("tone-bloom"),
+        paper = document.getElementById("tone-paper");
+  const t0 = performance.now();
+  (function frame() {
+    requestAnimationFrame(frame);
+    if (!visible.has(cv)) return;
+    const t = REDUCED ? 0 : (performance.now() - t0) / 1000;
+    gl.viewport(0, 0, cv.width, cv.height);
+    gl.useProgram(prog);
+    gl.uniform2f(gl.getUniformLocation(prog, "u_res"), cv.width, cv.height);
+    gl.uniform1f(gl.getUniformLocation(prog, "u_k"), +k.value);
+    gl.uniform1f(gl.getUniformLocation(prog, "u_bias"), +bias.value / 100);
+    gl.uniform1f(gl.getUniformLocation(prog, "u_bloom"), +bloom.value / 100);
+    gl.uniform1f(gl.getUniformLocation(prog, "u_time"), t);
+    gl.uniform1f(gl.getUniformLocation(prog, "u_paper"), paper.checked ? 1 : 0);
+    drawQuad(gl, prog, quad);
+  })();
+})();
+
+/* ── 02 · warped feedback ──────────────────────────────────────────── */
+(function feedback() {
+  const cv = document.getElementById("cv-feedback");
+  const gl = cv.getContext("webgl", { antialias: false });
+  if (!gl) return;
+  watcher.observe(cv);
+  const W = cv.width, H = cv.height;
+
+  function target() {
+    const tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, W, H, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    const fbo = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    return { tex, fbo };
+  }
+  let a = target(), b = target();
+
+  // The warp is the whole idea: the previous frame is not merely faded, it is
+  // resampled through a small rotation, scale and drift before being kept.
+  const warp = program(gl, VQUAD + "", `
+    precision highp float;
+    uniform sampler2D u_prev;
+    uniform vec2 u_res;
+    uniform float u_decay, u_warp, u_spin, u_time;
+    void main() {
+      vec2 uv = gl_FragCoord.xy / u_res;
+      vec2 c = uv - 0.5;
+      float ang = u_spin * 0.02 + sin(u_time * 0.11) * u_warp * 0.03;
+      float s = 1.0 - u_warp * 0.006;
+      mat2 m = mat2(cos(ang), -sin(ang), sin(ang), cos(ang));
+      vec2 src = m * c * s + 0.5;
+      src += vec2(sin(u_time * 0.23), cos(u_time * 0.19)) * u_warp * 0.0006;
+      vec3 prev = texture2D(u_prev, src).rgb * u_decay;
+      gl_FragColor = vec4(prev, 1.0);
+    }
+  `);
+
+  const beam = program(gl, `
+    attribute float a_t;
+    uniform float u_time, u_ratio;
+    varying float v_age;
+    void main() {
+      float t = u_time - a_t * 0.010;
+      float x = sin(t * 1.7);
+      float y = sin(t * 1.7 * u_ratio + 1.2);
+      gl_Position = vec4(x * 0.86, y * 0.80, 0.0, 1.0);
+      gl_PointSize = 3.0;
+      v_age = a_t / 340.0;
+    }
+  `, `
+    precision mediump float;
+    varying float v_age;
+    void main() {
+      vec2 d = gl_PointCoord - 0.5;
+      if (length(d) > 0.5) discard;
+      float e = 1.0 - v_age;
+      gl_FragColor = vec4(vec3(0.55, 0.78, 0.60) * e, 1.0);
+    }
+  `);
+
+  const show = program(gl, VQUAD, `
+    precision mediump float;
+    uniform sampler2D u_src; uniform vec2 u_res; uniform float u_dither;
+    ${DITHER}
+    void main() {
+      vec2 uv = gl_FragCoord.xy / u_res;
+      vec3 c = texture2D(u_src, uv).rgb;
+      if (u_dither > 0.5) {
+        float lum = dot(c, vec3(0.3, 0.6, 0.1));
+        float ink = step(bayer4(gl_FragCoord.xy), lum);
+        c = mix(vec3(0.055, 0.067, 0.043), vec3(0.925, 0.937, 0.914), ink);
+      }
+      gl_FragColor = vec4(c, 1.0);
+    }
+  `);
+  if (!warp || !beam || !show) return;
+
+  const quad = quadBuffer(gl);
+  const TAIL = 340, tailBuf = gl.createBuffer();
+  { const arr = new Float32Array(TAIL); for (let i = 0; i < TAIL; i++) arr[i] = i;
+    gl.bindBuffer(gl.ARRAY_BUFFER, tailBuf); gl.bufferData(gl.ARRAY_BUFFER, arr, gl.STATIC_DRAW); }
+
+  const dEl = document.getElementById("fb-decay"), wEl = document.getElementById("fb-warp"),
+        sEl = document.getElementById("fb-spin"), rEl = document.getElementById("fb-ratio"),
+        dith = document.getElementById("fb-dither"), read = document.getElementById("fb-read");
+
+  const t0 = performance.now();
+  (function frame() {
+    requestAnimationFrame(frame);
+    if (!visible.has(cv)) return;
+    const t = (performance.now() - t0) / 1000;
+    const ratio = +rEl.value / 100;
+    read.textContent = (Math.abs(ratio - PHI) < 0.015 ? "φ " : "  ") + ratio.toFixed(2);
+    gl.viewport(0, 0, W, H);
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, b.fbo);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, a.tex);
+    gl.useProgram(warp);
+    gl.uniform1i(gl.getUniformLocation(warp, "u_prev"), 0);
+    gl.uniform2f(gl.getUniformLocation(warp, "u_res"), W, H);
+    gl.uniform1f(gl.getUniformLocation(warp, "u_decay"), REDUCED ? 0 : +dEl.value / 100);
+    gl.uniform1f(gl.getUniformLocation(warp, "u_warp"), +wEl.value / 100);
+    gl.uniform1f(gl.getUniformLocation(warp, "u_spin"), +sEl.value / 100);
+    gl.uniform1f(gl.getUniformLocation(warp, "u_time"), t);
+    drawQuad(gl, warp, quad);
+
+    gl.useProgram(beam);
+    gl.bindBuffer(gl.ARRAY_BUFFER, tailBuf);
+    const tp = gl.getAttribLocation(beam, "a_t");
+    gl.enableVertexAttribArray(tp);
+    gl.vertexAttribPointer(tp, 1, gl.FLOAT, false, 0, 0);
+    gl.uniform1f(gl.getUniformLocation(beam, "u_time"), t);
+    gl.uniform1f(gl.getUniformLocation(beam, "u_ratio"), ratio);
+    gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE);
+    gl.drawArrays(gl.POINTS, 0, TAIL);
+    gl.disable(gl.BLEND);
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, b.tex);
+    gl.useProgram(show);
+    gl.uniform1i(gl.getUniformLocation(show, "u_src"), 0);
+    gl.uniform2f(gl.getUniformLocation(show, "u_res"), W, H);
+    gl.uniform1f(gl.getUniformLocation(show, "u_dither"), dith.checked ? 1 : 0);
+    drawQuad(gl, show, quad);
+
+    const s = a; a = b; b = s;
+  })();
+})();
+
+/* ── 03 · population ───────────────────────────────────────────────── */
+(function population() {
+  const cv = document.getElementById("cv-population");
+  const gl = cv.getContext("webgl", { antialias: false });
+  if (!gl) return;
+  watcher.observe(cv);
+
+  const prog = program(gl, `
+    attribute float a_i;
+    uniform float u_count, u_angle, u_size, u_time;
+    uniform vec2 u_res;
+    varying float v_r;
+    void main() {
+      float n = a_i;
+      float ang = n * (${GOLDEN_ANGLE.toFixed(10)} + u_angle);
+      float rad = sqrt(n / u_count);
+      float scale = 0.94 * min(u_res.x, u_res.y) * 0.5;
+      vec2 p = vec2(cos(ang), sin(ang)) * rad * scale;
+      gl_Position = vec4(p / (u_res * 0.5), 0.0, 1.0);
+      gl_PointSize = max(1.0, u_size * (0.35 + 0.65 * rad));
+      v_r = rad;
+    }
+  `, `
+    precision mediump float;
+    uniform float u_tone;
+    varying float v_r;
+    ${DITHER}
+    void main() {
+      vec2 d = gl_PointCoord - 0.5;
+      float l = length(d);
+      if (l > 0.5) discard;
+      float cov = (1.0 - l * 2.0) * (1.0 - 0.45 * v_r);
+      if (u_tone < 0.5) { if (bayer4(gl_FragCoord.xy) > cov) discard; cov = 1.0; }
+      vec3 c = mix(vec3(0.36, 0.55, 0.42), vec3(0.93, 0.95, 0.90), v_r);
+      gl_FragColor = vec4(c * cov, 1.0);
+    }
+  `);
+  if (!prog) return;
+
+  let buf = gl.createBuffer(), have = 0;
+  function ensure(n) {
+    if (n <= have) return;
+    const arr = new Float32Array(n);
+    for (let i = 0; i < n; i++) arr[i] = i + 0.5;
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, arr, gl.STATIC_DRAW);
+    have = n;
+  }
+  ensure(250000);
+
+  const cEl = document.getElementById("pop-count"), aEl = document.getElementById("pop-angle"),
+        sEl = document.getElementById("pop-size"), tEl = document.getElementById("pop-tone"),
+        read = document.getElementById("pop-read");
+
+  const t0 = performance.now();
+  (function frame() {
+    requestAnimationFrame(frame);
+    if (!visible.has(cv)) return;
+    const t = REDUCED ? 0 : (performance.now() - t0) / 1000;
+    const n = +cEl.value, off = (+aEl.value) / 10000;
+    read.textContent = n.toLocaleString() + (off === 0 ? " · φ exact" : " · φ " + (off > 0 ? "+" : "") + (off * 1000).toFixed(2) + "m°");
+
+    gl.viewport(0, 0, cv.width, cv.height);
+    gl.clearColor(0.055, 0.067, 0.043, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE);
+    gl.useProgram(prog);
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    const ip = gl.getAttribLocation(prog, "a_i");
+    gl.enableVertexAttribArray(ip);
+    gl.vertexAttribPointer(ip, 1, gl.FLOAT, false, 0, 0);
+    gl.uniform1f(gl.getUniformLocation(prog, "u_count"), n);
+    gl.uniform1f(gl.getUniformLocation(prog, "u_angle"), off);
+    gl.uniform1f(gl.getUniformLocation(prog, "u_size"), +sEl.value / 10);
+    gl.uniform1f(gl.getUniformLocation(prog, "u_time"), t);
+    gl.uniform1f(gl.getUniformLocation(prog, "u_tone"), tEl.checked ? 1 : 0);
+    gl.uniform2f(gl.getUniformLocation(prog, "u_res"), cv.width, cv.height);
+    gl.drawArrays(gl.POINTS, 0, n);
+    gl.disable(gl.BLEND);
+  })();
+})();
+
+/* ── 04 · the dissonance curve, in colour ──────────────────────────── */
+(function spectral() {
+  const cv = document.getElementById("cv-spectral");
+  const gl = cv.getContext("webgl", { antialias: false });
+  if (!gl) return;
+  watcher.observe(cv);
+
+  // Plomp–Levelt, the same fit the Rust crate uses. Partials are built in the
+  // shader: harmonic at inharmonicity 0, walking toward a golden series at 1.
+  const prog = program(gl, VQUAD, `
+    precision highp float;
+    uniform vec2 u_res;
+    uniform float u_inh, u_parts, u_mono;
+    ${DITHER}
+
+    float pl(float f1, float f2, float a1, float a2) {
+      float lo = min(f1, f2), hi = max(f1, f2);
+      if (lo <= 0.0) return 0.0;
+      float s = 0.24 / (0.0207 * lo + 18.96);
+      float d = hi - lo;
+      return min(a1, a2) * (exp(-3.5 * s * d) - exp(-5.75 * s * d));
+    }
+
+    float partialRatio(float n) {
+      float harmonic = n;
+      float golden = pow(${PHI.toFixed(8)}, n - 1.0);
+      return mix(harmonic, golden, u_inh);
+    }
+
+    float dissonance(float alpha) {
+      float total = 0.0;
+      for (int i = 1; i <= 12; i++) {
+        float fi = float(i);
+        if (fi > u_parts) break;
+        float ri = partialRatio(fi), ai = 1.0 / fi;
+        for (int j = 1; j <= 12; j++) {
+          float fj = float(j);
+          if (fj > u_parts) break;
+          float rj = partialRatio(fj) * alpha, aj = 1.0 / fj;
+          total += pl(ri * 220.0, rj * 220.0, ai, aj);
+        }
+      }
+      return total;
+    }
+
+    void main() {
+      vec2 uv = gl_FragCoord.xy / u_res;
+      float cents = uv.x * 1200.0;
+      float alpha = pow(2.0, cents / 1200.0);
+      float d = dissonance(alpha);
+      float norm = clamp(d / 2.2, 0.0, 1.0);
+
+      // the curve itself, drawn as a line
+      float curveY = 1.0 - norm * 0.82 - 0.06;
+      float line = 1.0 - smoothstep(0.0, 0.010, abs(uv.y - curveY));
+
+      // smoother is cooler, rougher is warmer — colour carrying magnitude
+      vec3 cool = vec3(0.42, 0.60, 0.66);
+      vec3 warm = vec3(0.80, 0.44, 0.34);
+      vec3 col = mix(cool, warm, norm);
+
+      // fill under the curve, at a density that is the value
+      float under = step(uv.y, curveY);
+      float dens = 0.18 + 0.55 * (1.0 - norm);
+      float fill = under * step(bayer4(gl_FragCoord.xy), dens);
+
+      vec3 ground = vec3(0.055, 0.067, 0.043);
+      vec3 outc = ground;
+      outc = mix(outc, col * 0.55, fill);
+      outc = mix(outc, col, line);
+
+      // 12-TET grid, for reference only
+      float semis = uv.x * 12.0;
+      float grid = 1.0 - smoothstep(0.0, 0.035, abs(fract(semis) - 0.5) - 0.465);
+      outc = mix(outc, vec3(0.30, 0.33, 0.28), grid * 0.55 * (1.0 - line));
+
+      if (u_mono > 0.5) {
+        float lum = dot(outc, vec3(0.3, 0.6, 0.1));
+        float ink = step(bayer4(gl_FragCoord.xy), lum * 1.6);
+        outc = mix(ground, vec3(0.925, 0.937, 0.914), ink);
+      }
+      gl_FragColor = vec4(outc, 1.0);
+    }
+  `);
+  if (!prog) return;
+
+  const quad = quadBuffer(gl);
+  const inh = document.getElementById("sp-inh"), parts = document.getElementById("sp-parts"),
+        mono = document.getElementById("sp-mono"), read = document.getElementById("sp-read");
+
+  function label() {
+    const v = +inh.value;
+    read.textContent = (v === 0 ? "harmonic" : v === 100 ? "golden" : "blend " + v + "%") +
+      " · " + parts.value + " partials";
+  }
+  inh.addEventListener("input", label);
+  parts.addEventListener("input", label);
+  label();
+
+  (function frame() {
+    requestAnimationFrame(frame);
+    if (!visible.has(cv)) return;
+    gl.viewport(0, 0, cv.width, cv.height);
+    gl.useProgram(prog);
+    gl.uniform2f(gl.getUniformLocation(prog, "u_res"), cv.width, cv.height);
+    gl.uniform1f(gl.getUniformLocation(prog, "u_inh"), +inh.value / 100);
+    gl.uniform1f(gl.getUniformLocation(prog, "u_parts"), +parts.value);
+    gl.uniform1f(gl.getUniformLocation(prog, "u_mono"), mono.checked ? 1 : 0);
+    drawQuad(gl, prog, quad);
+  })();
+})();
+
+/* ── 05 · the control ──────────────────────────────────────────────── */
+(function control() {
+  const cv = document.getElementById("cv-slider");
+  const ctx = cv.getContext("2d");
+  if (!ctx) return;
+  watcher.observe(cv);
+
+  const stopsEl = document.getElementById("sl-stops"), chaseEl = document.getElementById("sl-chase"),
+        lieEl = document.getElementById("sl-lie"), contEl = document.getElementById("sl-cont"),
+        readEl = document.getElementById("sl-read");
+
+  const PAD = 90;
+  let value = 3, thumb = 3, dragging = false;
+  const stops = () => +stopsEl.value;
+
+  function fromEvent(e) {
+    const r = cv.getBoundingClientRect();
+    const x = ((e.clientX - r.left) / r.width) * cv.width;
+    const f = (x - PAD) / (cv.width - PAD * 2);
+    const raw = Math.min(1, Math.max(0, f)) * (stops() - 1);
+    value = contEl.checked ? raw : Math.round(raw);
+  }
+  cv.addEventListener("pointerdown", (e) => { dragging = true; cv.setPointerCapture(e.pointerId); fromEvent(e); });
+  cv.addEventListener("pointermove", (e) => { if (dragging) fromEvent(e); });
+  cv.addEventListener("pointerup", () => { dragging = false; });
+  cv.tabIndex = 0;
+  cv.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowRight") { value = Math.min(stops() - 1, Math.round(value) + 1); e.preventDefault(); }
+    if (e.key === "ArrowLeft") { value = Math.max(0, Math.round(value) - 1); e.preventDefault(); }
+  });
+  stopsEl.addEventListener("input", () => { value = Math.min(value, stops() - 1); thumb = Math.min(thumb, stops() - 1); });
+
+  const INK = "#14180F", PAPER = "#ECEFE9", FAINT = "#8B9182", SAP = "#6E9B72", STRAW = "#C4A24C";
+  const BAYER = [[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]];
+
+  function ditherRect(x, y, w, h, density, colour) {
+    ctx.fillStyle = colour;
+    const x0 = Math.floor(x), y0 = Math.floor(y);
+    for (let py = 0; py < h; py++)
+      for (let px = 0; px < w; px++)
+        if (density > (BAYER[(y0 + py) & 3][(x0 + px) & 3] + 0.5) / 16)
+          ctx.fillRect(x0 + px, y0 + py, 1, 1);
+  }
+  const xOf = (v) => PAD + (v / (stops() - 1)) * (cv.width - PAD * 2);
+
+  let last = performance.now();
+  (function frame(now) {
+    requestAnimationFrame(frame);
+    const dt = Math.min(0.05, (now - last) / 1000 || 0);
+    last = now;
+    if (!visible.has(cv)) return;
+
+    thumb += (value - thumb) * (REDUCED ? 1 : Math.min(1, (+chaseEl.value) * dt));
+
+    ctx.fillStyle = PAPER; ctx.fillRect(0, 0, cv.width, cv.height);
+    const midY = cv.height * 0.52;
+
+    ctx.fillStyle = FAINT; ctx.fillRect(PAD, midY - 1, cv.width - PAD * 2, 2);
+
+    for (let i = 0; i < stops(); i++) {
+      const x = Math.round(xOf(i));
+      const isValue = !contEl.checked && Math.round(value) === i;
+      ctx.fillStyle = isValue ? INK : FAINT;
+      const h = isValue ? 26 : 14;
+      ctx.fillRect(x - 1, midY - h / 2, 2, h);
+      ctx.font = "300 15px 'Martian Mono', monospace";
+      ctx.textAlign = "center";
+      ctx.fillText(String(i + 1), x, midY + 48);
+    }
+
+    const fx = Math.round(xOf(0)), fw = Math.max(0, Math.round(xOf(thumb)) - fx);
+    if (fw > 0) ditherRect(fx, midY - 7, fw, 14, 0.55, SAP);
+
+    if (lieEl.checked && Math.abs(thumb - value) > 0.004) {
+      const vx = Math.round(xOf(value));
+      ctx.fillStyle = STRAW;
+      for (let y = midY - 42; y < midY + 42; y += 4) ctx.fillRect(vx, y, 1, 2);
+    }
+
+    const tx = Math.round(xOf(thumb));
+    const settle = 1 - Math.min(1, Math.abs(value - thumb) * 2.2);
+    ditherRect(tx - 7, midY - 22, 14, 44, 0.35 + 0.65 * settle, INK);
+    ctx.fillStyle = INK;
+    ctx.fillRect(tx - 7, midY - 22, 14, 1);
+    ctx.fillRect(tx - 7, midY + 21, 14, 1);
+
+    ctx.font = "300 13px 'Martian Mono', monospace";
+    ctx.fillStyle = FAINT; ctx.textAlign = "left";
+    ctx.fillText(contEl.checked
+      ? "CONTINUOUS PARAMETER — the thumb must be where the sound is"
+      : "QUANTISED PARAMETER — travel may lag the value", PAD, 34);
+
+    readEl.textContent = contEl.checked
+      ? "VALUE " + value.toFixed(2) + " · THUMB " + thumb.toFixed(2)
+      : "VALUE " + (Math.round(value) + 1) + "/" + stops() + " · THUMB " + (thumb + 1).toFixed(2);
+  })(performance.now());
+})();
+</script>
