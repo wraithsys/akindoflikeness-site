@@ -18,6 +18,26 @@ import subprocess
 import sys
 import tempfile
 import time
+from urllib.parse import parse_qs, urlparse
+
+
+def run_text(run):
+    """The text a run actually carries — a pasted link's most of all.
+
+    YouTube truncates a link's display text ("…/instrumen...") and points the
+    run at a youtube.com/redirect wrapper, with the original URL in the
+    wrapper's `q` parameter. The share URL's patch lives past the truncation
+    point, so the display text is useless and the `q` parameter is the
+    message.
+    """
+    url = run.get("navigationEndpoint", {}).get("urlEndpoint", {}).get("url", "")
+    if url:
+        if "youtube.com/redirect" in url:
+            q = parse_qs(urlparse(url).query).get("q", [""])[0]
+            if q:
+                return q
+        return url
+    return run.get("text", "")
 
 
 def emit(line):
@@ -40,7 +60,7 @@ def emit(line):
             continue
         name = r.get("authorName", {}).get("simpleText", "chat").lstrip("@")
         text = "".join(
-            run.get("text", "") for run in r.get("message", {}).get("runs", [])
+            run_text(run) for run in r.get("message", {}).get("runs", [])
         )
         if text:
             print(f"{name}: {text}", flush=True)
