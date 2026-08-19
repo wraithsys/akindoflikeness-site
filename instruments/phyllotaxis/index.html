@@ -9,6 +9,12 @@
 <meta name="theme-color" content="#0a0d08">
 <link rel="icon" href="/favicon.ico" sizes="32x32">
 
+<!-- The two faces that set text above the fold. Same-origin, so they need no
+     CORP header of their own: under require-corp a missing CORP is read as
+     same-origin, which a same-origin request satisfies. -->
+<link rel="preload" href="/assets/fonts/pixeloid-mono.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="preload" href="/assets/fonts/modern-dos-8x16.ttf" as="font" type="font/ttf" crossorigin>
+
 <style>
 /* ──────────────────────────────────────────────────────────────────────
    Dark ground, continuous tone.
@@ -28,7 +34,35 @@
    Single theme on purpose: an instrument is a device, not a document.
    ────────────────────────────────────────────────────────────────────── */
 
+/* The house faces, already on this origin. The system monospace stack that was
+   here is the look every generated page has; these are Billy's, and
+   Pixeloid Mono in particular was being downloaded by the landing page and
+   used by nothing — its only rule referenced an h1 that did not exist. */
+
+@font-face {
+  font-family: "Pixeloid Mono";
+  src: url("/assets/fonts/pixeloid-mono.ttf") format("truetype");
+  font-display: block;
+}
+@font-face {
+  font-family: "Modern DOS";
+  src: url("/assets/fonts/modern-dos-8x16.ttf") format("truetype");
+  font-display: block;
+}
+@font-face {
+  font-family: "European Teletext";
+  src: url("/assets/fonts/european-teletext.ttf") format("truetype");
+  font-display: block;
+}
+
 :root {
+  /* Pixel faces have one true size and its multiples. Anything between them
+     resamples and goes soft, which on an 8x16 face is the whole character
+     gone — so every size below is a whole multiple, never a rem fraction. */
+  --face-display: "Pixeloid Mono", ui-monospace, monospace;
+  --face-ui:      "Modern DOS", ui-monospace, monospace;
+  --face-data:    "European Teletext", ui-monospace, monospace;
+
   --ground:  #0a0d08;
   --plate:   #11150e;
   --ink:     #dfe6d8;
@@ -48,10 +82,13 @@ body {
   margin: 0;
   background: var(--ground);
   color: var(--ink);
-  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-  font-size: 13px;
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
+  font-family: var(--face-ui);
+  font-size: 16px;
+  line-height: 1.6;
+  /* Pixel faces must not be smoothed: the whole point is the grid. */
+  -webkit-font-smoothing: none;
+  font-smooth: never;
+  text-rendering: geometricPrecision;
   overflow-x: hidden;
 }
 
@@ -75,15 +112,17 @@ header {
 
 h1 {
   margin: 0;
-  font-size: clamp(1.1rem, 3vw, 1.5rem);
-  font-weight: 600;
-  letter-spacing: 0.22em;
+  font-family: var(--face-display);
+  font-size: 32px;         /* 2x the face's native 16 */
+  font-weight: 400;
+  letter-spacing: 0.18em;
 }
 
 header .state {
   margin-left: auto;
   color: var(--dim);
-  font-size: 0.72rem;
+  font-family: var(--face-data);
+  font-size: 16px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   font-variant-numeric: tabular-nums;
@@ -122,7 +161,8 @@ header .state {
 .gate strong { color: var(--ink); font-weight: 600; }
 
 button.play {
-  font: inherit;
+  font-family: var(--face-display);
+  font-size: 16px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   padding: 0.7rem 2rem;
@@ -150,7 +190,8 @@ fieldset {
 }
 
 legend {
-  font-size: 0.62rem;
+  font-family: var(--face-data);
+  font-size: 16px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--dim);
@@ -159,9 +200,9 @@ legend {
 
 .ctl { display: grid; grid-template-columns: 1fr auto; gap: 0.15rem 0.5rem; align-items: center; margin-top: 0.4rem; }
 
-.ctl label { font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); }
+.ctl label { font-size: 16px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); }
 
-.ctl output { font-size: 0.7rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+.ctl output { font-family: var(--face-data); font-size: 16px; color: var(--ink); font-variant-numeric: tabular-nums; }
 
 .ctl input[type="range"] {
   grid-column: 1 / -1;
@@ -189,17 +230,18 @@ legend {
   text-align: center;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  font-size: 0.78rem;
+  font-family: var(--face-display);
+  font-size: 16px;
   color: var(--sap);
 }
 
-.stepper .kind { font-size: 0.62rem; color: var(--dim); letter-spacing: 0.14em; }
+.stepper .kind { font-size: 16px; color: var(--dim); letter-spacing: 0.14em; }
 
 :where(button, input, a):focus-visible { outline: 2px solid var(--sap); outline-offset: 2px; }
 
 /* ── notes ───────────────────────────────────────────────────────── */
 
-.notes { max-width: var(--measure); color: var(--dim); font-size: 0.78rem; line-height: 1.7; }
+.notes { max-width: var(--measure); color: var(--dim); font-size: 16px; line-height: 1.75; }
 .notes p { margin: 0 0 0.7rem; }
 .notes b { color: var(--ink); font-weight: 600; }
 .notes a { color: var(--sap); }
@@ -207,7 +249,8 @@ legend {
 footer {
   border-top: 1px solid var(--rule);
   padding-top: 0.7rem;
-  font-size: 0.66rem;
+  font-family: var(--face-data);
+  font-size: 16px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--faint);
