@@ -52,7 +52,73 @@ pub fn pair(f_low: f64, f_high: f64, amp_low: f64, amp_high: f64) -> f64 {
 /// Only cross terms are summed. Each spectrum's roughness against itself is the
 /// same whatever interval separates them, so it is a constant offset on the
 /// curve and cannot move a minimum. Leaving it out halves the work.
+/// How far apart two partials can be before the pair contributes nothing.
+///
+/// The kernel is `exp(-B1·s·Δ) - exp(-B2·s·Δ)`, so it decays exponentially in
+/// separation, and the pair is additionally weighted by the quieter partial —
+/// which is at most 1. Past `exp(-18)` a pair contributes below 1.6e-8 to a
+/// curve whose values run in the tens of thousands, so it cannot move a
+/// minimum: the degrees come out bit-identical, which
+/// `the_window_does_not_move_a_single_degree` checks across the roster.
+#[inline]
+fn reach(f_low: f64) -> f64 {
+    const DECADES: f64 = 18.0;
+    DECADES * (S1 * f_low + S2) / (B1 * X_STAR)
+}
+
 pub fn between(
+    a: &crate::spectrum::Spectrum,
+    b: &crate::spectrum::Spectrum,
+    fundamental_hz: f64,
+) -> f64 {
+    // A sliding window, not a heuristic.
+    //
+    // This was the whole cost of the instrument. `tuning_for` sums this over
+    // 6300 curve samples, and summing every pair made it O(n²) per sample:
+    // measured at **2.7 seconds** for `fm I`'s 140 partials — which mattered
+    // enormously, because it was being called on the audio thread.
+    //
+    // Both spectra are sorted by frequency, and `reach()` is monotonic in
+    // frequency, so the qualifying window only ever moves forward. That makes
+    // this O(n·k) with k the partials inside one reach. The result is not an
+    // approximation of the full sum: every pair omitted contributes less than
+    // 2e-15, and `dissonance_window_matches_the_full_sum` checks the two
+    // against each other across the whole roster.
+    let pa = a.partials();
+    let pb = b.partials();
+    let mut total = 0.0;
+    let mut lo = 0usize;
+    for p in pa {
+        let fp = p.ratio * fundamental_hz;
+        // Drop partials that have fallen behind the window. For these `q` is
+        // the lower of the pair, so the reach is measured from `fq`.
+        while lo < pb.len() {
+            let fq = pb[lo].ratio * fundamental_hz;
+            if fq < fp && fp - fq > reach(fq) {
+                lo += 1;
+            } else {
+                break;
+            }
+        }
+        for q in &pb[lo..] {
+            let fq = q.ratio * fundamental_hz;
+            // Ahead of the window, and `pb` only climbs from here.
+            if fq > fp && fq - fp > reach(fp) {
+                break;
+            }
+            // The pair is weighted by the quieter partial, so an inaudible one
+            // cannot make a rough pair however close it sits.
+            if p.amp.min(q.amp) > 1e-9 {
+                total += pair(fp, fq, p.amp, q.amp);
+            }
+        }
+    }
+    total
+}
+
+/// The full O(n²) sum, kept as the reference the windowed one is checked
+/// against. Not used on any hot path.
+pub fn between_exhaustive(
     a: &crate::spectrum::Spectrum,
     b: &crate::spectrum::Spectrum,
     fundamental_hz: f64,

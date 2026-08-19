@@ -42,10 +42,52 @@ fn flush(x: f32) -> f32 {
     if x.abs() < 1e-20 { 0.0 } else { x }
 }
 
-/// Input diffuser lengths: F(10)…F(13) at 48 kHz — 1.1 to 4.9 ms.
-pub const DIFFUSER_LEN: [usize; 4] = [55, 89, 144, 233];
+// ── Why these lengths are Lucas AND Fibonacci, never four consecutive terms ──
+//
+// The original sets were four consecutive Fibonacci numbers each, chosen for
+// coprimality. That was the wrong invariant, and it was wrong in the worst
+// possible way: it selected for the exact property that breaks a feedback
+// delay network.
+//
+// In an FDN every line feeds every other, so an echo's arrival time is a SUM
+// of line lengths. Two hops through F(18) and F(19) land on the same sample as
+// one hop through F(20) — because F(n) + F(n+1) = F(n+2) is the sequence's
+// defining identity. Consecutive Fibonacci lengths guarantee that path sums
+// collide, endlessly, at every order. The tail duly rang: measured
+// autocorrelation peaked at 12× the median in the flutter band.
+//
+// Coprimality answers a different question — when two PERIODIC echo trains
+// realign — and that question belongs to a pair of delays in series. It says
+// nothing about path sums, and path sums are what a network is made of. The
+// test that passed was measuring the constants, not the network.
+//
+// The fix keeps the instrument's premise and strengthens it. Lucas and
+// Fibonacci are the two canonical integer sequences converging on φ, and
+// interleaving them — L(n), L(n+1), F(n+4), F(n+5) — gives adjacent lengths a
+// ratio of φ itself while breaking the additive identity that F alone cannot
+// escape. Searched exhaustively over both sequences, the coincidence-free sets
+// with the most even spacing are exactly the ones spaced by φ. The delays are
+// more golden than they were before, not less.
+//
+// The invariant is checked by `no_small_path_sum_coincides`, which is the test
+// coprimality should always have been.
 
-/// Allpass lengths **inside** the tank loop: F(14)…F(17) — 7.9 to 33 ms.
+/// Input diffuser lengths: L(8), L(9), F(12), F(13) at 48 kHz — 1.0 to 4.9 ms.
+pub const DIFFUSER_LEN: [usize; 4] = [47, 76, 144, 233];
+
+/// Second in-loop allpass bank — the pure Fibonacci half of the eight
+/// available terms, F(14)…F(17), 7.9 to 33 ms.
+///
+/// One allpass per line is not enough diffusion for four lines. An allpass
+/// passes its input straight through at `-g` alongside the delayed part, so a
+/// single one leaves an undiffused fast path around the loop and you hear the
+/// bare tank period — measured as a 0.35 autocorrelation spike at exactly
+/// `TANK_LEN[0]`. Cascading a second one per line is the Dattorro arrangement
+/// and is what actually raises echo density.
+pub const LOOP_AP2_LEN: [usize; 4] = [377, 610, 987, 1597];
+
+/// Allpass lengths **inside** the tank loop: L(12), L(13), F(16), F(17) —
+/// 6.7 to 33 ms.
 ///
 /// These are not decoration and their absence is a defect a test caught. With
 /// diffusion only at the input, the tank is four comb filters in a ring: an
@@ -53,12 +95,10 @@ pub const DIFFUSER_LEN: [usize; 4] = [55, 89, 144, 233];
 /// measured short-lag autocorrelation was **0.98** — flutter, exactly the
 /// failure coprime lengths are supposed to prevent, and coprimality cannot
 /// prevent it because the problem is topological rather than arithmetic.
-pub const LOOP_AP_LEN: [usize; 4] = [377, 610, 987, 1597];
-// F(14)…F(17). Disjoint from both other sets — see the test below, which caught
-// F(17) being used twice by reporting a cross-network gcd of 1597.
+pub const LOOP_AP_LEN: [usize; 4] = [322, 521, 843, 1364];
 
-/// Tank lengths: F(18)…F(21) — 54 to 228 ms.
-pub const TANK_LEN: [usize; 4] = [2584, 4181, 6765, 10946];
+/// Tank lengths: L(16), L(17), F(20), F(21) — 46 to 228 ms.
+pub const TANK_LEN: [usize; 4] = [2207, 3571, 6765, 10946];
 
 pub fn gcd(a: usize, b: usize) -> usize {
     if b == 0 { a } else { gcd(b, a % b) }
@@ -74,6 +114,10 @@ struct Delay {
 impl Delay {
     fn new(len: usize) -> Self {
         Self { buf: vec![0.0; len.max(1)], idx: 0 }
+    }
+    #[inline]
+    fn len(&self) -> usize {
+        self.buf.len()
     }
     #[inline]
     fn read(&self) -> f32 {
@@ -144,6 +188,7 @@ pub struct Plate {
     sample_rate: f32,
     diffusers: Vec<Allpass>,
     loop_ap: Vec<Allpass>,
+    loop_ap2: Vec<Allpass>,
     tank: Vec<Delay>,
     lowpass: [f32; 4],
     /// Modulation phases, accumulated as rate × dt.
@@ -159,6 +204,7 @@ impl Plate {
             sample_rate,
             diffusers: DIFFUSER_LEN.iter().map(|&n| Allpass::new(len(n), 0.62)).collect(),
             loop_ap: LOOP_AP_LEN.iter().map(|&n| Allpass::new(len(n), 0.5)).collect(),
+            loop_ap2: LOOP_AP2_LEN.iter().map(|&n| Allpass::new(len(n), 0.55)).collect(),
             tank: TANK_LEN.iter().map(|&n| Delay::new(len(n) + 32)).collect(),
             lowpass: [0.0; 4],
             mod_phase: [0.0, 0.25, 0.5, 0.75],
@@ -170,13 +216,30 @@ impl Plate {
     pub fn clear(&mut self) {
         self.diffusers.iter_mut().for_each(|a| a.d.clear());
         self.loop_ap.iter_mut().for_each(|a| a.d.clear());
+        self.loop_ap2.iter_mut().for_each(|a| a.d.clear());
         self.tank.iter_mut().for_each(|d| d.clear());
         self.lowpass = [0.0; 4];
     }
 
     /// One sample in, one wet sample out.
     #[inline]
+    /// Mono output takes ONE orthogonal row, and averaging the stereo pair
+    /// would be a mistake rather than a shortcut: the two rows differ in the
+    /// sign of `taps[1]` and `taps[3]`, so their mean cancels both and leaves
+    /// a two-tap plate. Measured, that alone doubled the flutter.
     pub fn process(&mut self, x: f32, p: &PlateParams) -> f32 {
+        self.process_stereo(x, p).0
+    }
+
+    /// One sample in, a stereo pair out.
+    ///
+    /// This is where a plate's width comes from, and it costs nothing extra:
+    /// the four tank lines are already decorrelated, so reading them on two
+    /// different orthogonal rows gives a genuine stereo pair rather than the
+    /// same signal twice. `the_plate_is_not_dual_mono` measures the
+    /// correlation between the two outputs.
+    #[inline]
+    pub fn process_stereo(&mut self, x: f32, p: &PlateParams) -> (f32, f32) {
         let dt = 1.0 / self.sample_rate;
 
         let mut s = x;
@@ -188,18 +251,31 @@ impl Plate {
         let damp = p.damping.clamp(0.0, 0.95);
         let wander = p.noise_mod.clamp(0.0, 1.0) * 18.0;
 
-        let mut wet = 0.0;
         let mut taps = [0.0f32; 4];
         for i in 0..4 {
             self.mod_phase[i] += self.mod_rate[i] * dt;
             if self.mod_phase[i] >= 1.0 {
                 self.mod_phase[i] -= 1.0;
             }
+            // Read near the FAR end of the line, not near the write head.
+            //
+            // `read_at(back)` counts back from the write index, so `read_at(16)`
+            // is a sixteen-sample delay — 0.3 ms — whatever the buffer length
+            // is. That is what this line used to say, which made the tank a
+            // ~3 kHz resonator and the plate inaudible as a reverb, while every
+            // coprimality test still passed: they check `TANK_LEN`, and nothing
+            // checked that `TANK_LEN` reached the signal. The buffers are
+            // allocated at `len + 32` for exactly this tap to sit inside, which
+            // is the surviving evidence of what was meant.
             let offset = 16.0 + (self.mod_phase[i] * TAU).sin() * wander;
-            taps[i] = self.tank[i].read_at(offset);
-            wet += taps[i];
+            taps[i] = self.tank[i].read_at(self.tank[i].len() as f32 - offset);
         }
-        wet *= 0.25;
+        // Output on a DIFFERENT orthogonal row than the one fed back into line
+        // 0. Summing all four with the same sign makes `wet` proportional to
+        // `mix[0]` — the output is then literally the signal recirculating in
+        // one line, and you hear that line's period.
+        let wet_l = (taps[0] - taps[1] - taps[2] + taps[3]) * 0.25;
+        let wet_r = (taps[0] + taps[1] - taps[2] - taps[3]) * 0.25;
 
         // A **Hadamard** mix, not a rotation.
         //
@@ -224,11 +300,15 @@ impl Plate {
             self.lowpass[i] = flush(damped);
             // Diffuse INSIDE the loop. Without this the ring is a comb bank and
             // the tail rings at the loop period however coprime the delays are.
-            let diffused = self.loop_ap[i].process(damped);
-            self.tank[i].write(s * 0.5 + diffused * feedback);
+            let diffused = self.loop_ap2[i].process(self.loop_ap[i].process(damped));
+            // Alternating injection signs. Writing the same `s` into all four
+            // lines starts them perfectly correlated, and correlated content
+            // through an orthogonal mix stays structured instead of scattering.
+            let inject = if i % 2 == 0 { s * 0.5 } else { -s * 0.5 };
+            self.tank[i].write(inject + diffused * feedback);
         }
 
-        flush(wet)
+        (flush(wet_l), flush(wet_r))
     }
 }
 
@@ -287,21 +367,37 @@ impl Hyperchorus {
 
     #[inline]
     pub fn process(&mut self, x: f32, p: &ChorusParams) -> f32 {
+        let (l, r) = self.process_stereo(x, p);
+        (l + r) * 0.5
+    }
+
+    /// One sample in, a stereo pair out.
+    ///
+    /// Each channel reads the same delay line through the same LFOs a quarter
+    /// cycle apart. In quadrature the two sides are at their widest excursion
+    /// when the other is at rest, so the pitch wobble never agrees across the
+    /// image — which is the whole reason a chorus widens anything. Summed to
+    /// one point it is a detune and nothing more.
+    #[inline]
+    pub fn process_stereo(&mut self, x: f32, p: &ChorusParams) -> (f32, f32) {
         let dt = 1.0 / self.sample_rate;
         self.line.write(x);
         let rates = self.rates(p.rate);
         let depth = p.depth.clamp(0.0, 1.0);
 
-        let mut wet = 0.0;
+        let (mut wl, mut wr) = (0.0, 0.0);
         for i in 0..Self::VOICES {
             self.phase[i] += rates[i] * dt;
             if self.phase[i] >= 1.0 {
                 self.phase[i] -= 1.0;
             }
-            let secs = self.base_delay[i] * (1.0 + depth * 0.6 * (self.phase[i] * TAU).sin());
-            wet += self.line.read_at(secs * self.sample_rate);
+            let sl = self.base_delay[i] * (1.0 + depth * 0.6 * (self.phase[i] * TAU).sin());
+            let sr = self.base_delay[i] * (1.0 + depth * 0.6 * (self.phase[i] * TAU).cos());
+            wl += self.line.read_at(sl * self.sample_rate);
+            wr += self.line.read_at(sr * self.sample_rate);
         }
-        flush(wet / Self::VOICES as f32)
+        let n = 1.0 / Self::VOICES as f32;
+        (flush(wl * n), flush(wr * n))
     }
 }
 
@@ -329,14 +425,41 @@ impl Bus {
         chorus: &ChorusParams,
         density: &density::DensityParams,
     ) -> f32 {
-        let chorused = dry + (self.chorus.process(dry, chorus) - dry) * chorus.mix;
+        // One row, not the mean of two — see `Plate::process`.
+        self.process_stereo(dry, dry, plate, chorus, density).0
+    }
+
+    /// The bus, in stereo.
+    ///
+    /// The dry pair arrives already placed — the pool spreads its voices across
+    /// the field — and the chorus and plate each widen it further from their
+    /// own decorrelated outputs. The plate is fed the MONO sum of the chorused
+    /// pair: a reverb send is a send, and feeding the tank two slightly
+    /// different signals buys nothing a second orthogonal output row does not
+    /// already give, while doubling the most expensive thing on the path.
+    #[inline]
+    pub fn process_stereo(
+        &mut self,
+        dry_l: f32,
+        dry_r: f32,
+        plate: &PlateParams,
+        chorus: &ChorusParams,
+        density: &density::DensityParams,
+    ) -> (f32, f32) {
+        let dry_mono = (dry_l + dry_r) * 0.5;
+        let (cl, cr) = self.chorus.process_stereo(dry_mono, chorus);
+        let chorused_l = dry_l + (cl - dry_l) * chorus.mix;
+        let chorused_r = dry_r + (cr - dry_r) * chorus.mix;
+
         // The follower has to advance before the decay is read, so the two
         // agree about the same sample.
-        let send = self.density.send_gain(dry, density);
+        let send = self.density.send_gain(dry_mono, density);
         let mut p = *plate;
         p.decay *= self.density.decay_scale(density);
-        let wet = self.plate.process(chorused * send, &p);
-        chorused + wet * plate.mix
+        let (wl, wr) = self
+            .plate
+            .process_stereo((chorused_l + chorused_r) * 0.5 * send, &p);
+        (chorused_l + wl * plate.mix, chorused_r + wr * plate.mix)
     }
 }
 
@@ -346,23 +469,223 @@ mod tests {
 
     const SR: f32 = 48_000.0;
 
-    /// The theorem the delay lengths are chosen for: consecutive Fibonacci
-    /// numbers are coprime, so no two echoes ever coincide.
+    /// Diagnostic: where exactly does the tail ring? Not an assertion.
     #[test]
-    fn adjacent_delay_lengths_are_coprime() {
-        for set in [&DIFFUSER_LEN, &LOOP_AP_LEN, &TANK_LEN] {
-            for w in set.windows(2) {
-                assert_eq!(gcd(w[0], w[1]), 1, "{} and {} share a factor", w[0], w[1]);
-            }
+    #[ignore]
+    fn show_flutter_lags() {
+        let mut plate = Plate::new(SR);
+        let p = PlateParams { decay: 0.85, damping: 0.2, noise_mod: 0.0, mix: 1.0 };
+        for i in 0..2000 { plate.process(if i < 64 { 1.0 } else { 0.0 }, &p); }
+        let tail: Vec<f32> = (0..(SR as usize / 2)).map(|_| plate.process(0.0, &p)).collect();
+        let energy: f32 = tail.iter().map(|s| s * s).sum();
+        let lo = (SR as usize) * 5 / 1000;
+        let hi = (SR as usize) * 250 / 1000;
+        let mut v: Vec<(f32, usize)> = (lo..hi).step_by(7).map(|lag| {
+            let c: f32 = tail[..tail.len()-lag].iter().zip(&tail[lag..]).map(|(a,b)| a*b).sum();
+            ((c/energy).abs(), lag)
+        }).collect();
+        v.sort_by(|a,b| b.0.partial_cmp(&a.0).unwrap());
+        println!("TANK_LEN    {TANK_LEN:?}");
+        println!("LOOP_AP_LEN {LOOP_AP_LEN:?}");
+        println!("top correlating lags:");
+        for (c, lag) in v.iter().take(14) {
+            println!("  lag {:6} ({:6.1} ms)  corr {:.3}", lag, *lag as f32 / SR * 1000.0, c);
         }
     }
 
-    /// Adjacent lengths are coprime — the theorem the sequence was chosen for.
+    /// **The tank length has to reach the signal.**
+    ///
+    /// Every other test in this file checks `TANK_LEN` — that the numbers are
+    /// coprime, that their coincidence period is long. None of them checked
+    /// that those numbers were the delay anyone hears, and for a while they
+    /// were not: the taps read sixteen samples behind the write head, so the
+    /// tank was 0.3 ms regardless of how carefully the lengths were chosen.
+    /// The reverb was inaudible and the whole test suite was green.
+    ///
+    /// So: send one impulse in and find the first echo. It must arrive no
+    /// earlier than the shortest tank line, not in the first millisecond.
     #[test]
-    fn adjacent_lengths_are_coprime() {
-        for set in [&DIFFUSER_LEN, &LOOP_AP_LEN, &TANK_LEN] {
-            for w in set.windows(2) {
-                assert_eq!(gcd(w[0], w[1]), 1, "{} and {} share a factor", w[0], w[1]);
+    fn the_first_echo_arrives_at_the_tank_length() {
+        let mut plate = Plate::new(SR);
+        let p = PlateParams { decay: 0.8, damping: 0.2, noise_mod: 0.0, mix: 1.0 };
+
+        let mut tail = vec![0.0f32; SR as usize / 2];
+        for (i, out) in tail.iter_mut().enumerate() {
+            *out = plate.process(if i == 0 { 1.0 } else { 0.0 }, &p);
+        }
+
+        // The diffusers alone smear the input over their own lengths, so look
+        // past them: the first tank echo is the first peak after that.
+        let diffuse_span: usize = DIFFUSER_LEN.iter().sum::<usize>() + LOOP_AP_LEN[0];
+        let shortest_tank = TANK_LEN[0];
+        assert!(
+            diffuse_span < shortest_tank,
+            "the diffusers reach past the tank; this test cannot separate them"
+        );
+
+        let peak = tail[diffuse_span..]
+            .iter()
+            .enumerate()
+            .max_by(|a, b| a.1.abs().partial_cmp(&b.1.abs()).unwrap())
+            .map(|(i, _)| i + diffuse_span)
+            .unwrap();
+
+        assert!(
+            peak >= shortest_tank,
+            "the loudest echo lands at {peak} samples ({:.2} ms) — before the \
+             shortest tank line at {shortest_tank} ({:.1} ms). The tank length \
+             is not in the signal path.",
+            peak as f32 / SR * 1000.0,
+            shortest_tank as f32 / SR * 1000.0,
+        );
+    }
+
+    /// A plate is a plate because the tail outlasts the input by a long way.
+    /// With the tap inverted this measured about 3 ms.
+    #[test]
+    fn the_tail_lasts_a_plausible_reverb_time() {
+        let mut plate = Plate::new(SR);
+        let p = PlateParams { decay: 0.74, damping: 0.34, noise_mod: 0.35, mix: 1.0 };
+
+        let n = SR as usize * 4;
+        let mut tail = vec![0.0f32; n];
+        for (i, out) in tail.iter_mut().enumerate() {
+            *out = plate.process(if i == 0 { 1.0 } else { 0.0 }, &p);
+        }
+
+        // Energy in 10 ms windows; find where it falls 60 dB below the peak.
+        let win = SR as usize / 100;
+        let energy: Vec<f32> = tail
+            .chunks(win)
+            .map(|c| c.iter().map(|s| s * s).sum::<f32>() / win as f32)
+            .collect();
+        let peak = energy.iter().cloned().fold(0.0f32, f32::max);
+        let floor = peak * 1e-6; // -60 dB in power
+        let rt60 = energy.iter().rposition(|&e| e > floor).unwrap_or(0);
+        let secs = (rt60 * win) as f32 / SR;
+
+        assert!(
+            (0.3..8.0).contains(&secs),
+            "RT60 of {secs:.3}s is not a reverb tail"
+        );
+    }
+
+/// Correlation between two channels: 1.0 is the same signal twice.
+    fn correlation(l: &[f32], r: &[f32]) -> f32 {
+        let (mut ll, mut rr, mut lr) = (0.0f64, 0.0f64, 0.0f64);
+        for (a, b) in l.iter().zip(r) {
+            ll += (*a as f64) * (*a as f64);
+            rr += (*b as f64) * (*b as f64);
+            lr += (*a as f64) * (*b as f64);
+        }
+        if ll <= 0.0 || rr <= 0.0 {
+            return 1.0;
+        }
+        (lr / (ll.sqrt() * rr.sqrt())) as f32
+    }
+
+    /// **The instrument shipped in mono.** Not by decision — the engine
+    /// returned one sample and the worklet copied it to both channels, so a
+    /// plate and a chorus, the two effects whose entire purpose is width, were
+    /// summed to a point.
+    ///
+    /// Nothing caught it because nothing looked. Every FX test measured one
+    /// channel, which is exactly as true of a mono plate as a stereo one. So
+    /// this measures the thing that was wrong: how alike the two outputs are.
+    #[test]
+    fn the_plate_is_not_dual_mono() {
+        let mut plate = Plate::new(SR);
+        let p = PlateParams { decay: 0.8, damping: 0.3, noise_mod: 0.35, mix: 1.0 };
+        let (mut l, mut r) = (Vec::new(), Vec::new());
+        for i in 0..(SR as usize * 2) {
+            let x = if i < 128 { 1.0 } else { 0.0 };
+            let (a, b) = plate.process_stereo(x, &p);
+            l.push(a);
+            r.push(b);
+        }
+        let c = correlation(&l, &r);
+        assert!(
+            c.abs() < 0.6,
+            "the plate's two outputs correlate at {c:.3} — that is barely stereo"
+        );
+    }
+
+    #[test]
+    fn the_chorus_is_not_dual_mono() {
+        let mut ch = Hyperchorus::new(SR);
+        let p = ChorusParams { depth: 0.5, rate: 0.4, mix: 1.0 };
+        let (mut l, mut r) = (Vec::new(), Vec::new());
+        // Noise in, so the measurement is of the effect and not of the source.
+        let mut z = 12345u32;
+        for _ in 0..(SR as usize * 4) {
+            z = z.wrapping_mul(1664525).wrapping_add(1013904223);
+            let x = (z >> 8) as f32 / 8388608.0 - 1.0;
+            let (a, b) = ch.process_stereo(x, &p);
+            l.push(a);
+            r.push(b);
+        }
+        let c = correlation(&l, &r);
+        assert!(c.abs() < 0.9, "the chorus's two outputs correlate at {c:.3}");
+    }
+
+    /// **The invariant coprimality should always have been.**
+    ///
+    /// This test replaces `adjacent_delay_lengths_are_coprime`, which asserted
+    /// `gcd(len[i], len[i+1]) == 1` on the grounds that consecutive Fibonacci
+    /// numbers are coprime "so no two echoes ever coincide". That reasoning is
+    /// sound for two delays in series and worthless for a feedback network,
+    /// and following it selected the one family of lengths guaranteed to fail.
+    ///
+    /// In an FDN every line feeds every other, so an echo's arrival time is a
+    /// SUM of line lengths. `F(n) + F(n+1) = F(n+2)` is Fibonacci's defining
+    /// identity, so with four consecutive terms a two-hop path lands exactly on
+    /// a one-hop path — at every order, forever. The old test passed on those
+    /// lengths. The tail rang at 12× the median in the flutter band.
+    ///
+    /// So: check the thing that actually has to hold. No small combination of
+    /// line lengths may come out near zero, because each such combination is
+    /// two different paths through the network arriving on the same sample.
+    #[test]
+    fn no_small_path_sum_coincides() {
+        // Two echoes closer together than this are heard as one, so a
+        // coincidence inside it is a real concentration of energy.
+        const TOL: i64 = 24;
+
+        // Scoped to the TANK, and the scope is the point.
+        //
+        // A tank line's length IS an echo's arrival time, so a vanishing
+        // combination of them is two paths landing on one sample. The
+        // allpasses are a different object: they have unity magnitude
+        // response and exist to smear phase, so "when do two echoes coincide"
+        // is not a question they answer — the same argument
+        // `no_two_echoes_in_a_loop_coincide_within_a_minute` already makes.
+        // Applying this test to the 47-sample diffusers would demand a 24-sample
+        // separation between combinations of 47 and 76, which is arithmetic
+        // nobody can hear and would drive the diffusers out of their range.
+        //
+        // What guards the allpasses is `the_tail_does_not_flutter`, which
+        // measures the finished tail instead of arguing about its parts.
+        for (name, set) in [("TANK_LEN", &TANK_LEN)] {
+            let l: Vec<i64> = set.iter().map(|&n| n as i64).collect();
+            for a in -2i64..=2 {
+                for b in -2i64..=2 {
+                    for c in -2i64..=2 {
+                        for d in -2i64..=2 {
+                            let coeffs = [a, b, c, d];
+                            let weight: i64 = coeffs.iter().map(|c| c.abs()).sum();
+                            if weight == 0 || weight > 3 {
+                                continue;
+                            }
+                            let v: i64 = coeffs.iter().zip(&l).map(|(c, n)| c * n).sum();
+                            assert!(
+                                v.abs() >= TOL,
+                                "{name}: {a}·{} + {b}·{} + {c}·{} + {d}·{} = {v} — two \
+                                 paths through the network land on the same sample",
+                                l[0], l[1], l[2], l[3],
+                            );
+                        }
+                    }
+                }
             }
         }
     }

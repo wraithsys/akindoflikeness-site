@@ -972,3 +972,145 @@ intervals music already uses, without being told about them.
 - Whether STEP walks the whole state or only the Cadence seed.
 - Where the instrument's real name comes from. `phyllotaxis` is the workspace,
   the way `fibonacci-synth` is the workspace for Blow Your Phase Off.
+
+
+## 12. What shipping it found
+
+The instrument went live and Billy played it. Everything below was wrong in the
+build that shipped, and all of it was wrong in a way that produced no error —
+no exception, no console warning, no failing test. The suite was green
+throughout. It is written down because the *pattern* is the lesson: every one
+of these was a test measuring the intent rather than the behaviour.
+
+### The plate was reading its tank sixteen samples behind the write head
+
+`read_at(back)` counts back from the write index, so `read_at(16)` is a 0.3 ms
+delay whatever the buffer length is. The tank buffers are 46–228 ms and were
+allocated at `len + 32` precisely so a modulated tap could sit at the far end —
+that headroom is the surviving evidence of what was meant. The plate was a
+~3 kHz resonator. It sounded like nothing, which is exactly how Billy
+described it.
+
+Every coprimality test passed, because they check `TANK_LEN`. Nothing checked
+that `TANK_LEN` reached the signal. `the_first_echo_arrives_at_the_tank_length`
+now sends one impulse and finds the first echo.
+
+### Consecutive Fibonacci lengths are the worst possible choice for an FDN
+
+Fixing the tap exposed flutter the broken tap had been hiding: autocorrelation
+peaked at 12× the median. The delay lengths were four consecutive Fibonacci
+terms each, chosen for coprimality — and coprimality is the wrong invariant,
+wrong in the most damaging way available, because it selects for the property
+that breaks a feedback network.
+
+In an FDN every line feeds every other, so an echo's arrival time is a **sum**
+of line lengths. `F(n) + F(n+1) = F(n+2)` is the sequence's defining identity,
+so a two-hop path lands exactly on a one-hop path, at every order, forever.
+Coprimality answers when two *periodic echo trains* realign, which is a
+question about two delays in series. It says nothing about path sums, and path
+sums are what a network is made of.
+
+The fix keeps the premise and strengthens it. Lucas and Fibonacci are the two
+canonical integer sequences converging on φ; interleaving them breaks the
+additive identity, and searched exhaustively, the coincidence-free sets with
+the most even spacing turn out to be spaced by **φ exactly**. The delays are
+more golden than they were, not less.
+
+That alone was not enough — the residual ring was at `TANK_LEN[0]`, the
+shortest loop. Two further things were needed and both were structural: the
+output took the same orthogonal row that feeds back into line 0 (so `wet` was
+literally one line's recirculating content), and the input was injected into
+all four lines with the same sign (so they began perfectly correlated). With
+decorrelated input/output vectors and a second in-loop allpass per line, the
+peak went 0.323 → 0.099.
+
+### Half the roster was harmonically frozen
+
+The four chord entries took `cents[0..k]` with no reference to `self.step`, so
+rm I, rm II, am I and am II each sounded one chord and never moved — and since
+a common tone is never restruck, they never re-attacked either. **A chord being
+voiced whole is not the same as it standing still.** A scale walks its root; a
+chord is now transposed bodily by a degree of its own tuning, which keeps its
+internal intervals exactly as the dissonance curve computed them.
+
+The mirror was also skipped for chords, and that guard cannot ever have been
+right: `Mirror::reflect_chord` exempts the lowest voice as a pedal — logic that
+exists *for* chords — and under that guard it was never once called on one.
+Dead by construction, on half the roster.
+
+Billy reported this twice from two directions ("several of the chord types seem
+bugged", "cadence has no utility in chord modes") before it was found.
+
+### Deriving a tuning ran on the audio thread
+
+`apply()` called `tuning_for`, and `apply()` runs from `phy_set` and `phy_step`.
+Reading a scale off a spectrum means sweeping a 6300-sample dissonance curve
+summing every pair of partials: measured at **2.7 seconds** for `fm I`. A render
+quantum is 2.67 ms. Stepping the roster onto that entry blocked the audio thread
+for a thousand quanta, which presents as the instrument freezing and refusing to
+change entry — reported as "going beyond the range crashes the instance".
+
+The engine's wrapping was never wrong; `step_by` uses `rem_euclid` and both the
+shipped and rebuilt binaries wrap correctly when driven directly. The wrap was
+invisible because nothing could answer during it.
+
+Derivation now happens in a worker, is cached per `(entry, index)`, and arrives
+at the engine as a short list of cents. The instrument keeps sounding in its old
+tuning until the new one lands. The sum was also given a sliding window — the
+kernel decays exponentially, so pairs beyond `exp(-18)` are absent rather than
+approximated — which is checked against the exhaustive sum.
+
+The same change fixed something nobody had reported: **Index never retuned
+anything.** The tuning was only recomputed when the *entry* changed, so moving
+the one control that reshapes the spectrum left the instrument playing a scale
+computed for a different one.
+
+### It shipped in mono
+
+`Engine::tick` returned one `f32`, `phy_render` filled one block, and the
+worklet did `for (c) out[c].set(block)`. A plate and a chorus — the two effects
+here whose entire purpose is width — were summed to a point.
+
+Nothing caught it because every FX test measured one channel, which is as true
+of a mono plate as a stereo one. Stereo now comes from three places, none of
+which cost anything: the pool places its five voices across the field on the
+golden rotation, the chorus reads its delay line in quadrature per channel, and
+the plate emits two different orthogonal rows. Measured correlation at the
+browser's own output is 0.74 — wide, and still coherent in mono.
+
+A mono sum takes ONE row rather than the mean of two: the rows differ in the
+sign of `taps[1]` and `taps[3]`, so averaging them cancels both and doubles the
+flutter.
+
+### The visualiser lost its colour
+
+An additive feedback buffer that multiplies by `DECAY` and adds seeds converges
+to `seed/(1 - DECAY)`. At 0.965 that is a gain of 28.6, against seeds added at
+up to 1.55 a frame. The field was not over-exposed by taste; it was a divergent
+sum, and once it ran past 1.0 the 8-bit target clamped all three channels
+together.
+
+The first correction was to the wrong quantity. Billy's read was sharper than
+the measurement: *"worry less about brightness and more about it losing its
+greenness."* Clipping is a **loss of hue**, not an excess of light, and dimming
+does not bring the colour back because the colour is already gone in the buffer.
+
+So the loop gain is written down instead of discovered, brightness moved to the
+output as a luminance tone map that preserves the channel ratio, and the
+palette's bright end — which was `(0.90, 0.97, 0.88)`, near-white — stays green.
+Mean saturation went 0.114 → 0.517 while ending up *brighter* than what shipped,
+with nothing clipped.
+
+### There was no way to tune the instrument
+
+`root_cents` was fixed at 110 Hz in the constructor. An instrument whose entire
+subject is tuning had no frequency control. `ROOT_HZ` is appended as parameter
+18 rather than inserted, because a preset is a list of `id:value` pairs in a URL
+and renumbering would silently re-point every preset already shared.
+
+### The engine could not be rebuilt
+
+There was no build script. The deployed `.wasm` carries a hash of its own bytes
+so `_headers` can cache it for a year, and that guarantee only holds if the hash
+and the file are produced together. `build-wasm.sh` now does both and updates
+the surface's `WASM_URL` to match.

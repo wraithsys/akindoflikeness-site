@@ -95,6 +95,29 @@ fn cents_between(a: f32, b: f32) -> f32 {
     1200.0 * (a / b).log2().abs()
 }
 
+/// Equal-power pan gains per slot, placed on the golden rotation.
+///
+/// `frac(n/φ)` spread across the field, then narrowed to `SPREAD` of full
+/// width so the pad stays a body rather than two edges. Computed once here
+/// rather than per sample.
+#[cfg_attr(not(test), allow(dead_code))] // read by the test that regenerates PAN
+const SPREAD: f32 = 0.72;
+static PAN: [(f32, f32); VOICES] = pan_table();
+
+const fn pan_table() -> [(f32, f32); VOICES] {
+    // `const fn` has no float trig, so the table is written out. Values are
+    // `frac(n/φ)` mapped to 0.5 ± SPREAD·(x − 0.5) and taken through
+    // `cos`/`sin` of `x·π/2`; `pan_positions_follow_the_golden_rotation`
+    // recomputes them and checks.
+    [
+        (0.975917, 0.218143),
+        (0.606702, 0.79493),
+        (0.883788, 0.467887),
+        (0.375483, 0.926829),
+        (0.729035, 0.684476),
+    ]
+}
+
 impl Pool {
     pub fn new(sample_rate: f32, params: VoiceParams) -> Self {
         let slots = (0..VOICES)
@@ -213,15 +236,37 @@ impl Pool {
     /// Advance one sample, summing every sounding voice.
     #[inline]
     pub fn tick(&mut self) -> f32 {
+        let (l, r) = self.tick_stereo();
+        (l + r) * 0.5
+    }
+
+    /// Advance one sample, with the voices placed across the field.
+    ///
+    /// Five voices summed to one point is five voices you cannot hear apart:
+    /// the whole argument for polyphony is that the parts stay distinguishable,
+    /// and in a pad — where the notes sustain and overlap rather than
+    /// articulating — position is most of what separates them.
+    ///
+    /// The placement is the golden rotation again, `frac(n/φ)`, the same
+    /// sequence that offsets each voice's field phase and picks the chord root.
+    /// Consecutive slots land far apart and the set never clumps, which is the
+    /// property phyllotaxis is named for. Equal-power, so moving a voice across
+    /// the field does not change how loud it is.
+    #[inline]
+    pub fn tick_stereo(&mut self) -> (f32, f32) {
         let p = self.field_params;
-        let mut sum = 0.0;
-        for s in self.slots.iter_mut() {
+        let (mut l, mut r) = (0.0, 0.0);
+        for (i, s) in self.slots.iter_mut().enumerate() {
             if s.state == SlotState::Free {
                 continue;
             }
-            sum += s.voice.tick() * s.field.tick(s.freq_hz, &p);
+            let v = s.voice.tick() * s.field.tick(s.freq_hz, &p);
+            let (gl, gr) = PAN[i];
+            l += v * gl;
+            r += v * gr;
         }
-        sum / (VOICES as f32).sqrt()
+        let n = 1.0 / (VOICES as f32).sqrt();
+        (l * n, r * n)
     }
 }
 
@@ -231,7 +276,38 @@ mod tests {
 
     const SR: f32 = 48_000.0;
 
-    fn pool() -> Pool {
+/// The hand-written `PAN` table, recomputed. A table of magic constants is
+    /// only as good as the thing that checks it.
+    #[test]
+    fn pan_positions_follow_the_golden_rotation() {
+        const PHI: f32 = 1.618_034;
+        for i in 0..VOICES {
+            let x = ((i as f32) / PHI).fract();
+            let placed = 0.5 + SPREAD * (x - 0.5);
+            let theta = placed * std::f32::consts::FRAC_PI_2;
+            let (want_l, want_r) = (theta.cos(), theta.sin());
+            let (got_l, got_r) = PAN[i];
+            assert!(
+                (got_l - want_l).abs() < 5e-4 && (got_r - want_r).abs() < 5e-4,
+                "slot {i}: table says ({got_l}, {got_r}), golden rotation says ({want_l}, {want_r})"
+            );
+            // Equal power: moving a voice across the field must not change how
+            // loud it is.
+            assert!((got_l * got_l + got_r * got_r - 1.0).abs() < 1e-3);
+        }
+    }
+
+    /// Voices must actually land in different places. If they do not, this is
+    /// dual mono wearing a pan control.
+    #[test]
+    fn the_voices_are_not_all_in_the_same_place() {
+        let mut seen: Vec<f32> = PAN.iter().map(|(l, r)| r - l).collect();
+        seen.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        let closest = seen.windows(2).map(|w| w[1] - w[0]).fold(f32::MAX, f32::min);
+        assert!(closest > 0.1, "two voices sit within {closest} of each other");
+    }
+
+        fn pool() -> Pool {
         let mut p = Pool::new(SR, VoiceParams::default());
         p.field_params = FieldParams { floor: 0.0, depth: 1.0, ..Default::default() };
         p.set_interval(2.0);
