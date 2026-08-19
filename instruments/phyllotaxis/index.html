@@ -95,7 +95,7 @@ body {
 .shell {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 1.25rem 1rem 4rem;
+  padding: 0.9rem 1rem 2.5rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -130,11 +130,18 @@ header .state {
 
 /* ── the centrepiece ─────────────────────────────────────────────── */
 
+/* The instrument has to fit one screen without zooming out.
+   `aspect-ratio` alone sets the stage's height from its WIDTH, so on a wide
+   window it grew to 620px and pushed the controls off the bottom — the racks
+   are the part you play, and they were the part you had to scroll to. Height
+   is capped against the viewport instead, and the aspect ratio gives way when
+   the two disagree. */
 .stage {
   position: relative;
   border: 1px solid var(--rule);
   background: #000;
   aspect-ratio: 16 / 9;
+  max-height: 46dvh;
   overflow: hidden;
 }
 
@@ -178,8 +185,8 @@ button.play:hover, button.play:focus-visible { background: var(--sap); color: va
 
 .racks {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0.6rem;
 }
 
 fieldset {
@@ -398,7 +405,7 @@ footer a:hover { color: var(--sap); }
 // be a new URL, or a returning browser pairs a fresh engine with a stale
 // worklet and the instrument quietly degrades for twelve months. worklet.js
 // went a whole release unhashed under that rule.
-const WASM_URL = "./build/engine-dd6034ec.wasm";
+const WASM_URL = "./build/engine-40fc4606.wasm";
 const WORKLET_URL = "./build/worklet-0607611d.js";
 const TUNER_URL = "./build/tuner-989ed7e4.js";
 const PARAMS = 20; // mirrors param::COUNT
@@ -699,12 +706,21 @@ function initGL() {
 
   const warp = prog(VQ, `
     precision highp float;
-    uniform sampler2D u_prev; uniform vec2 u_res; uniform float u_decay, u_spin, u_t, u_zoom;
+    uniform sampler2D u_prev; uniform vec2 u_res; uniform float u_decay, u_spin, u_t, u_zoom, u_sink;
     void main(){
       vec2 uv = gl_FragCoord.xy / u_res, c = uv - 0.5;
       float ang = u_spin + sin(u_t * 0.13) * 0.004;
       mat2 m = mat2(cos(ang), -sin(ang), sin(ang), cos(ang));
-      vec3 prev = texture2D(u_prev, m * c * u_zoom + 0.5).rgb * u_decay;
+      // Multiply AND subtract. Multiplying alone cannot reach black in an
+      // 8-bit buffer: 1/255 times 0.965 rounds back to 1/255 and stays there
+      // forever, so the whole pane settles on a stuck one-LSB residue. The
+      // tone map then multiplies that by the exposure and it reads as a
+      // pinkish grey wash instead of black — the channels are stuck at
+      // slightly different values, which is where the tint comes from.
+      //
+      // A subtractive sink larger than one LSB guarantees the buffer actually
+      // reaches zero and stays there.
+      vec3 prev = max(texture2D(u_prev, m * c * u_zoom + 0.5).rgb * u_decay - u_sink, 0.0);
       gl_FragColor = vec4(prev, 1.0);
     }`, "warp");
 
@@ -761,8 +777,11 @@ function initGL() {
     void main(){
       vec3 c = texture2D(u_src, gl_FragCoord.xy / u_res).rgb * u_exposure;
       float L = dot(c, vec3(0.2126, 0.7152, 0.0722));
+      // Below this there is no colour to preserve, only quantisation residue,
+      // and dividing by a near-zero luminance turns that residue into a cast.
+      if (L < 1e-3) { gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0); return; }
       float mapped = L / (1.0 + L);
-      gl_FragColor = vec4(c * (mapped / max(L, 1e-4)), 1.0);
+      gl_FragColor = vec4(c * (mapped / L), 1.0);
     }`, "show");
 
   if (!warp || !seeds || !show) {
@@ -812,6 +831,9 @@ function initGL() {
   /* The clean pass is one frame, not a converging sum, so it needs its own
      level rather than SEED_GAIN's per-frame contribution. */
   const CLEAN_GAIN = 0.85;
+  /* Two LSB of an 8-bit channel. Enough to guarantee true black, small enough
+     not to eat the tail of the trail. */
+  const SINK = 2.0 / 255.0;
   const TARGET_PEAK = 0.62;
   const SEED_GAIN = TARGET_PEAK * (1.0 - DECAY);
   /* Applied at the output, after the buffer, where it cannot clip anything. */
@@ -863,6 +885,7 @@ function initGL() {
     gl.uniform1f(gl.getUniformLocation(warp, "u_decay"), DECAY);
     gl.uniform1f(gl.getUniformLocation(warp, "u_spin"), SPIN);
     gl.uniform1f(gl.getUniformLocation(warp, "u_zoom"), ZOOM);
+    gl.uniform1f(gl.getUniformLocation(warp, "u_sink"), SINK);
     gl.uniform1f(gl.getUniformLocation(warp, "u_t"), t);
     drawQuad(warp);
 

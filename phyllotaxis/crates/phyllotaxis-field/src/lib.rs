@@ -62,6 +62,30 @@
 /// from wanting the curve to pass through that point.
 #[inline]
 pub fn envelope(since: f32, gesture_s: f32, p: &FieldParams) -> f32 {
+    envelope_from(since, gesture_s, p, 0.0, 1.0, 1.0)
+}
+
+/// The envelope, continued from wherever the voice already was.
+///
+/// **`resume` and `peak` are what stop it clicking.** A strike used to set
+/// `since = 0`, which drops the envelope from whatever the tail was sitting at
+/// straight to zero and then rises — a step discontinuity in the amplitude of
+/// a sounding voice, which is precisely a click. The old model hid this,
+/// because between events amplitude parked at a constant and every strike
+/// started from the same place. With a tail that is still audible when the
+/// next event lands, the seam is exposed on every note.
+///
+/// So a strike rises FROM the level it found (`resume`) TO `peak`, and a
+/// release begins its decay FROM the level it found. Nothing jumps.
+#[inline]
+pub fn envelope_from(
+    since: f32,
+    gesture_s: f32,
+    p: &FieldParams,
+    resume: f32,
+    peak: f32,
+    tau_scale: f32,
+) -> f32 {
     let attack_s = (gesture_s * p.attack.clamp(0.0, 1.0)).max(1e-4);
 
     if since < attack_s {
@@ -70,7 +94,8 @@ pub fn envelope(since: f32, gesture_s: f32, p: &FieldParams) -> f32 {
         // exponential rise reads as a swell arriving late.
         const K: f32 = 9.0;
         let x = (since / attack_s).clamp(0.0, 1.0);
-        return (1.0 + K * x).ln() / (1.0 + K).ln();
+        let rise = (1.0 + K * x).ln() / (1.0 + K).ln();
+        return resume + (peak - resume) * rise;
     }
 
     let knee = p.knee.clamp(0.02, 0.95);
@@ -78,9 +103,11 @@ pub fn envelope(since: f32, gesture_s: f32, p: &FieldParams) -> f32 {
     let decay = p.decay.max(0.02);
 
     // Put the curve through (decay, knee): knee = 1/(1 + decay/τ)^tail.
-    let tau = decay / (knee.powf(-1.0 / tail) - 1.0).max(1e-6);
+    let tau = (decay / (knee.powf(-1.0 / tail) - 1.0).max(1e-6)) * tau_scale.max(1e-3);
     let t = since - attack_s;
-    1.0 / (1.0 + t / tau).powf(tail)
+    // Starts at `peak`, which is the level the attack just handed over, so the
+    // two halves meet exactly.
+    peak / (1.0 + t / tau).powf(tail)
 }
 
 pub mod signature;
@@ -163,7 +190,13 @@ pub struct Field {
     interval_s: f32,
     since: f32,
     boost_level: f32,
+    /// The level a strike rises from and a release falls from. Continuity.
+    resume: f32,
+    peak: f32,
+    tau_scale: f32,
+    last_env: f32,
     active: bool,
+    released: bool,
 }
 
 impl Field {
@@ -178,7 +211,12 @@ impl Field {
             interval_s: LONE_NOTE_S / GESTURE_FRACTION,
             since: LONE_NOTE_S,
             boost_level: 0.0,
+            resume: 0.0,
+            peak: 1.0,
+            tau_scale: 1.0,
+            last_env: 0.0,
             active: false,
+            released: false,
         }
     }
 
@@ -223,18 +261,42 @@ impl Field {
 
     /// A note begins. Not an attack — the movement simply deepens.
     pub fn strike(&mut self) {
+        // Rise from where the voice already is, not from zero. See
+        // `envelope_from`.
+        self.resume = self.last_env;
+        self.peak = 1.0;
+        self.tau_scale = 1.0;
         self.since = 0.0;
         self.boost_level = 1.0;
         self.active = true;
+        self.released = false;
     }
 
     /// A note ends: the same gesture at `1/φ`, and it does not restart the
     /// movement. The note letting go is a change in what is already happening.
     pub fn release(&mut self) {
-        if self.boost(self.since) < RELEASE_BOOST {
-            self.since = 0.0;
-            self.boost_level = RELEASE_BOOST;
-        }
+        // Fall from the present level, straight into the decay — no attack, no
+        // jump. Shortening tau is what makes a release shorter than a tail.
+        self.peak = self.last_env.max(1e-6);
+        self.resume = self.peak;
+        self.tau_scale = RELEASE_BOOST;
+        self.since = 0.0;
+        self.released = true;
+    }
+
+    /// This voice's envelope `t` seconds after its last event.
+    ///
+    /// A released voice has no attack left to play, so its clock starts at the
+    /// decay rather than at zero.
+    #[inline]
+    fn env(&self, t: f32, p: &FieldParams) -> f32 {
+        let g = self.gesture_s();
+        let t = if self.released {
+            t + (g * p.attack.clamp(0.0, 1.0)).max(1e-4)
+        } else {
+            t
+        };
+        envelope_from(t, g, p, self.resume, self.peak, self.tau_scale)
     }
 
     fn curve_exponent(curve: f32) -> f32 {
@@ -278,7 +340,7 @@ impl Field {
         // The SAME envelope the audio path uses. Prediction that disagrees
         // with reality is worse than no prediction: the allocator would steal
         // at a trough that is not there.
-        let shaped = self.boost_level * envelope(self.since + ahead, self.gesture_s(), p);
+        let shaped = self.env(self.since + ahead, p);
         let d = p.depth.clamp(0.0, 1.0);
         shaped * (1.0 - d + d * movement01)
     }
@@ -342,7 +404,10 @@ impl Field {
         let movement01 = movement * 0.5 + 0.5;
 
         self.since += dt;
-        let shaped = self.boost_level * envelope(self.since, self.gesture_s(), p);
+        let shaped = self.env(self.since, p);
+        // Remembered so the next strike or release can continue from it
+        // rather than jumping. This is the click fix.
+        self.last_env = shaped;
 
         // The field MODULATES the event; it no longer sets a resting level.
         // `depth` at 0 leaves the envelope untouched, at 1 the five components
