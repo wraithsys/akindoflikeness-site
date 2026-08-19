@@ -2,8 +2,9 @@
 User-agent: *
 Allow: /
 
-# Source directories are not pages. They are excluded from indexing here as
-# well as being kept off main; see README.
+# Source directories are not pages. `phyllotaxis/` is on main and therefore
+# served, deliberately (see README); this keeps it out of the index, not out of
+# reach.
 Disallow: /phyllotaxis/
 
 Sitemap: https://akindoflikeness.net/sitemap.xml

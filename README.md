@@ -21,8 +21,9 @@ functions/api/        Pages Functions (the opt-in mailing list endpoint)
 _headers              cache policy + the COOP/COEP scope
 _routes.json          keeps static assets off the Functions runtime
 phyllotaxis/          Rust workspace for the next instrument (source, not a page)
-                      NOTE: this repo is PUBLIC. See "phyllotaxis is in the
-                      wrong repo" below before pushing anything else here.
+                      NOTE: this repo is PUBLIC and this directory is
+                      inside the deploy root. See "phyllotaxis/ is source,
+                      and it is here on purpose" below before adding to it.
 ```
 
 ## index.html is a build artefact
@@ -98,10 +99,6 @@ form returns ok and stores nothing.
 
 ## Open
 
-- `phyllotaxis/` is inside the deploy root, so its source and `DESIGN.md` are
-  publicly readable at `akindoflikeness.net/phyllotaxis/…`. If that is not
-  wanted, the workspace needs to move out of the published directory, or the
-  Pages project needs a build step with an output directory.
 - Horizon (the wordmark) still has unconfirmed terms — see the note in
   `index.html` and `assets/fonts/NOTICE.md`.
 - The `--field` grey (`#424242`) on black is 2.1:1. It sets the footer, the
