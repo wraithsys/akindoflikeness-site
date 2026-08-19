@@ -8,3 +8,9 @@ description = "The harmony engine: when chords change, what they become, and how
 
 [dependencies]
 phyllotaxis-tuning = { path = "../phyllotaxis-tuning" }
+
+[dev-dependencies]
+phyllotaxis-voice = { path = "../phyllotaxis-voice" }
+phyllotaxis-field = { path = "../phyllotaxis-field" }
+phyllotaxis-pool  = { path = "../phyllotaxis-pool" }
+phyllotaxis-fx    = { path = "../phyllotaxis-fx" }

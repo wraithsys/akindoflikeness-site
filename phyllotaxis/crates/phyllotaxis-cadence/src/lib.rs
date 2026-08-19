@@ -14,6 +14,7 @@
 //! At `m = 1/φ² ≈ 0.382` that schedule *is* the Fibonacci word. Asking for
 //! both was asking for one thing at a particular density.
 
+pub mod leading;
 pub mod mirror;
 pub mod strum;
 pub mod word;
