@@ -61,7 +61,9 @@ pub mod param {
     pub const ROOT_HZ: u32 = 18;
     /// Seconds from the peak down to KNEE.
     pub const DECAY: u32 = 19;
-    pub const COUNT: u32 = 20;
+    /// How hard each voice follows its own tendency. 0 is no bias at all.
+    pub const BIAS: u32 = 20;
+    pub const COUNT: u32 = 21;
 }
 
 /// A note waiting for its strum offset to elapse.
@@ -84,6 +86,9 @@ pub struct Engine {
     cents: [f64; MAX_DEGREES],
     n_cents: usize,
     is_chord: bool,
+    /// What each voice is currently holding, as a degree of the tuning.
+    /// `usize::MAX` means "has not chosen yet".
+    voice_degree: [usize; VOICES],
     mirror: Mirror,
     root_cents: f64,
 
@@ -136,6 +141,7 @@ fn defaults() -> [f32; param::COUNT as usize] {
     p[param::MASTER as usize] = 0.8;
     p[param::ROOT_HZ as usize] = 110.0; // A2, where the instrument was built
     p[param::DECAY as usize] = 2.5;
+    p[param::BIAS as usize] = 0.75;
     p
 }
 
@@ -143,19 +149,20 @@ impl Engine {
     pub fn new(sample_rate: f32) -> Self {
         let params = defaults();
         let entry = params[param::ENTRY as usize] as usize;
-        let (a, v) = ROSTER[entry.min(ROSTER.len() - 1)];
-        let vp = VoiceParams { algorithm: a, variant: v, index: params[param::INDEX as usize], free_ratio: 1.0 };
-        let tuning = tuning_for(a, v, params[param::INDEX as usize] as f64, DEGREES_PER_SCALE);
+        let e0 = ROSTER[entry.min(ROSTER.len() - 1)];
+        let vp = VoiceParams { algorithm: e0.algorithm, ratio: e0.ratio as f32, index: params[param::INDEX as usize], free_ratio: 1.0 };
+        let tuning = tuning_for(e0.algorithm, e0.ratio, params[param::INDEX as usize] as f64, DEGREES_PER_SCALE);
         let mirror = Mirror::new(&tuning.cents());
 
         let mut e = Self {
             sample_rate,
-            pool: Pool::new(sample_rate, vp),
+            pool: Pool::new(sample_rate, entry, vp),
             bus: Bus::new(sample_rate),
             entry,
             cents: [0.0; MAX_DEGREES],
             n_cents: 0,
             is_chord: false,
+            voice_degree: [usize::MAX; VOICES],
             mirror,
             root_cents: 0.0, // set by the first apply()
             step: 0,
@@ -197,8 +204,8 @@ impl Engine {
     /// paraphrase of it.
     pub fn install_for_entry(&mut self, entry: u32) {
         let e = (entry as usize).min(ROSTER.len() - 1);
-        let (a, v) = ROSTER[e];
-        let t = tuning_for(a, v, self.params[param::INDEX as usize] as f64, DEGREES_PER_SCALE);
+        let r = ROSTER[e];
+        let t = tuning_for(r.algorithm, r.ratio, self.params[param::INDEX as usize] as f64, DEGREES_PER_SCALE);
         self.install_tuning(&t.cents(), t.kind() == Kind::Chord);
     }
 
@@ -233,12 +240,12 @@ impl Engine {
     fn apply(&mut self) {
         let entry = (self.params[param::ENTRY as usize] as usize).min(ROSTER.len() - 1);
         let index = self.params[param::INDEX as usize];
-        let (a, v) = ROSTER[entry];
-        let vp = VoiceParams { algorithm: a, variant: v, index, free_ratio: 1.0 };
+        let e = ROSTER[entry];
+        let vp = VoiceParams { algorithm: e.algorithm, ratio: e.ratio as f32, index, free_ratio: 1.0 };
 
         // Note what changed; do NOT derive a tuning here. See `install_tuning`.
         self.entry = entry;
-        self.pool.set_entry(a, v, vp);
+        self.pool.set_entry(entry, vp);
         self.pool.field_params = self.field_params();
 
         // Where the instrument sits. There was no control for this at all: the
@@ -269,49 +276,118 @@ impl Engine {
         }
         let k = k.max(1);
 
-        // Where the golden rotation has walked to, as a degree of this entry's
-        // own tuning. Both kinds use it; they spend it differently.
-        let r = (((self.step as f64) * word::INV_PHI).fract() * k as f64) as usize;
-
-        // Which degrees sound. A chord tuning is voiced whole; a scale is
-        // stacked, rooted where the golden rotation puts it.
+        // ── Cadence: a tendency, not an arrangement ─────────────────────
         //
-        // **A chord being voiced whole is not the same as it standing still.**
-        // It used to be: the chord kinds took `cents[0..k]` with no reference
-        // to `self.step`, so rm I, rm II, am I and am II each sounded one chord
-        // and then never moved for as long as you left them running — and since
-        // a common tone is never restruck, they never re-attacked either. Half
-        // the roster was a held drone. A scale walks its root; the answer for a
-        // chord is the same move made whole, so the chord is transposed bodily
-        // by a degree of its own tuning. That keeps the chord's internal
-        // intervals exactly as the dissonance curve computed them — which is
-        // the entire point of a chord kind — while letting it modulate.
+        // What was here built a CHORD each tick — pick a root, stack degrees
+        // 0/2/4/6, hand the result to the voices — and that is an
+        // orchestration. Every voice moved at once because one decision was
+        // being distributed to five players, which is why it read as a
+        // sequence of shapes rather than something alive.
+        //
+        // Nothing here decides a chord. Each voice carries its own tendency
+        // and its own clock, and the harmony is whatever they happen to be
+        // holding together. The parts are what is real; the chord is an
+        // effect. That is what makes it a dance rather than a performance.
+        //
+        // Three things do the work:
+        //
+        // **A root that barely moves.** It changes once every ROOT_EVERY
+        // ticks, so the voices are moving *over* something rather than being
+        // relocated with it. A root that changes as often as the notes is not
+        // a key centre, it is just more notes.
+        //
+        // **Periods that never line up.** 2, 3, 5, 8, 13 ticks — consecutive
+        // Fibonacci, which is exactly the wrong choice for a delay network
+        // and exactly the right one here: pairwise coprime, so the five voices
+        // realign only every 2·3·5·8·13 = 3120 ticks, which is hours. Voices
+        // that share a period are one voice wearing a costume.
+        //
+        // **Bias, not selection.** Each voice weights the degrees it prefers
+        // and picks from that distribution — it does not get told a note. The
+        // weights favour the seconds, fourths, sixths and sevenths over the
+        // thirds and fifths, so extensions and suspensions are where the parts
+        // *tend*, and a plain triad is something that happens occasionally by
+        // coincidence rather than the thing being decorated.
+        //
+        // Deterministic throughout: a preset is a coordinate, so there is no
+        // RNG anywhere here (DESIGN.md §10).
+
+        /// Ticks between root moves. The root is scenery, not a part.
+        const ROOT_EVERY: u64 = 13;
+        /// Per-voice clocks. Pairwise coprime; see above.
+        const PERIOD: [u64; VOICES] = [13, 5, 3, 8, 2];
+        /// Register per voice, in cents. The slowest voice sits lowest and
+        /// becomes a pedal by behaviour rather than by being labelled one.
+        const REGISTER: [f64; VOICES] = [-1200.0, 0.0, 0.0, 1200.0, 1200.0];
+
+        // Weight per scale degree, per voice. Index is a degree step from the
+        // root, so 1 is the second, 3 the fourth, 5 the sixth, 6 the seventh —
+        // the sus and extension tones — and 2 and 4 are the third and fifth.
+        const BIAS: [[f32; 8]; VOICES] = [
+            // Pedal: the root, and the fifth when it moves at all.
+            [8.0, 0.0, 0.0, 0.5, 3.0, 0.0, 0.0, 0.0],
+            // Suspensions: seconds and fourths, never the third.
+            [1.0, 5.0, 0.0, 5.0, 1.0, 1.0, 2.0, 1.0],
+            // Extensions: sixths, sevenths, ninths.
+            [0.5, 1.0, 0.5, 1.0, 0.5, 4.0, 4.0, 3.0],
+            // A wanderer, with a slight lean upward.
+            [1.0, 2.0, 1.0, 2.0, 1.0, 2.0, 2.0, 2.0],
+            // The uncommon one: whatever the others are least likely to take.
+            [0.5, 2.0, 0.5, 2.0, 0.5, 3.0, 3.0, 4.0],
+        ];
+
+        // How far the bias is allowed to pull. At 0 every degree is equally
+        // likely and the parts wander plainly; at 1 the tendencies above are
+        // followed as written. A control, not a constant.
+        let bias_amount = self.params[param::BIAS as usize].clamp(0.0, 1.0);
+
+        // The root walks its own tuning on the golden rotation, slowly.
+        let root_tick = self.step / ROOT_EVERY;
+        let root_deg = (((root_tick as f64) * word::INV_PHI).fract() * k as f64) as usize;
+        let root_offset = cents[root_deg.min(MAX_DEGREES - 1)];
+
         let mut targets = [0.0f64; VOICES];
-        let mut n_targets = 0usize;
-        if self.is_chord {
-            let shift = cents[r.min(MAX_DEGREES - 1)];
-            for i in 0..k.min(VOICES) {
-                targets[n_targets] = (cents[i] + shift).rem_euclid(1200.0);
-                n_targets += 1;
-            }
-        } else {
-            for &s in &[0usize, 2, 4, 6] {
-                if n_targets < VOICES {
-                    targets[n_targets] = cents[(r + s) % k];
-                    n_targets += 1;
+        let n_targets = VOICES;
+        for v in 0..VOICES {
+            // Has this voice's own clock come round? If not it holds, and a
+            // held note is never restruck downstream — which is how parts end
+            // up sustaining across each other's changes.
+            let moves = self.step % PERIOD[v] == 0;
+            let my_tick = self.step / PERIOD[v];
+
+            let deg = if moves || self.voice_degree[v] == usize::MAX {
+                // A deterministic draw in [0, 1): the golden rotation again,
+                // offset per voice so no two read the same point of it.
+                let u = (((my_tick as f64) * word::INV_PHI)
+                    + (v as f64) * word::INV_PHI2)
+                    .fract() as f32;
+
+                // Flatten the weights toward uniform by `1 - bias_amount`.
+                let mut total = 0.0f32;
+                for d in 0..k.min(8) {
+                    total += 1.0 + (BIAS[v][d] - 1.0) * bias_amount;
                 }
-            }
+                let mut acc = 0.0f32;
+                let mut chosen = 0usize;
+                for d in 0..k.min(8) {
+                    acc += 1.0 + (BIAS[v][d] - 1.0) * bias_amount;
+                    if u * total <= acc {
+                        chosen = d;
+                        break;
+                    }
+                }
+                chosen
+            } else {
+                self.voice_degree[v]
+            };
+            self.voice_degree[v] = deg;
+
+            targets[v] = root_offset + cents[deg.min(MAX_DEGREES - 1)] + REGISTER[v];
         }
 
-        // Mirror, on the golden schedule.
-        //
-        // This used to carry `kind() != Kind::Chord`, which excluded the four
-        // chord entries from the mirror entirely. That guard cannot have been
-        // right: `Mirror::reflect_chord` exempts the lowest voice as a pedal —
-        // logic that exists *for* chords — and under that guard it was never
-        // once called on one. The reflection was dead by construction on half
-        // the roster, and negative harmony on a whole voiced chord is the
-        // plainest use the technique has.
+        // Mirror, on the golden schedule. A reflection is a tendency too: it
+        // arrives on its own clock and turns the whole set inside out around
+        // the axis, pedal exempt.
         let amount = self.params[param::MIRROR as usize] as f64;
         if mirror_this_chord(self.step, 0.0, amount) {
             let flipped = self.mirror.reflect_chord(&targets[..n_targets]);
@@ -593,8 +669,8 @@ pub extern "C" fn phy_tuning_cap() -> u32 {
 #[no_mangle]
 pub extern "C" fn phy_compute_tuning(entry: u32, index: f32) -> u32 {
     let e = (entry as usize).min(ROSTER.len() - 1);
-    let (a, v) = ROSTER[e];
-    let t = tuning_for(a, v, index as f64, DEGREES_PER_SCALE);
+    let r = ROSTER[e];
+    let t = tuning_for(r.algorithm, r.ratio, index as f64, DEGREES_PER_SCALE);
     let cents = t.cents();
     let n = cents.len().min(SCRATCH);
     unsafe {
@@ -653,8 +729,8 @@ mod tests {
             let mut e = Engine::new(SR);
             e.set(param::ENTRY, entry as f32);
             // What the main thread does on STEP: derive, then install.
-            let (a, v) = ROSTER[entry as usize];
-            let t = tuning_for(a, v, e.get(param::INDEX) as f64, DEGREES_PER_SCALE);
+            let re = ROSTER[entry as usize];
+            let t = tuning_for(re.algorithm, re.ratio, e.get(param::INDEX) as f64, DEGREES_PER_SCALE);
             e.install_tuning(&t.cents(), t.kind() == Kind::Chord);
             let mut buf = [0.0f32; QUANTUM];
             let mut seen: Vec<Vec<i64>> = Vec::new();
@@ -929,7 +1005,8 @@ mod tests {
         assert_eq!(param::MASTER, 17);
         assert_eq!(param::ROOT_HZ, 18);
         assert_eq!(param::DECAY, 19);
-        assert_eq!(param::COUNT, 20);
+        assert_eq!(param::COUNT, 21);
+        assert_eq!(param::BIAS, 20);
         assert_eq!(phy_param_count(), param::COUNT);
         assert_eq!(phy_scope_len(), SCOPE_LEN as u32);
     }

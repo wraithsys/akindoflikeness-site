@@ -113,7 +113,6 @@ pub fn envelope_from(
 pub mod signature;
 
 use core::f32::consts::TAU;
-use phyllotaxis_tuning::{Algorithm, Variant};
 use signature::{signature_for, Signature, RATE_RUNGS};
 
 const PHI: f32 = 1.618_033_9;
@@ -200,8 +199,8 @@ pub struct Field {
 }
 
 impl Field {
-    pub fn new(sample_rate: f32, algorithm: Algorithm, variant: Variant) -> Self {
-        let signature = signature_for(algorithm, variant);
+    pub fn new(sample_rate: f32, entry: usize) -> Self {
+        let signature = signature_for(entry);
         Self {
             sample_rate,
             signature,
@@ -224,8 +223,8 @@ impl Field {
         self.signature
     }
 
-    pub fn set_entry(&mut self, algorithm: Algorithm, variant: Variant) {
-        self.signature = signature_for(algorithm, variant);
+    pub fn set_entry(&mut self, entry: usize) {
+        self.signature = signature_for(entry);
         self.rates = self.signature.rates();
         self.amps = self.signature.amps();
     }
@@ -425,7 +424,7 @@ mod tests {
     const SR: f32 = 48_000.0;
 
     fn field() -> Field {
-        Field::new(SR, Algorithm::Fm2, Variant::Golden)
+        Field::new(SR, 1)
     }
 
     /// **Between events, amplitude tends to nothing.**
@@ -436,8 +435,7 @@ mod tests {
     /// events, and it was a constant (`1/φ²` of depth) rather than a decision.
     #[test]
     fn a_voice_left_alone_falls_towards_silence() {
-        let (a, v) = ROSTER[0];
-        let mut f = Field::new(SR, a, v);
+        let mut f = Field::new(SR, 0);
         f.set_interval(2.0);
         f.strike();
         let p = FieldParams { depth: 0.0, ..Default::default() };
@@ -618,13 +616,13 @@ mod tests {
     #[test]
     fn every_entry_is_well_behaved() {
         let p = FieldParams::default();
-        for &(a, v) in ROSTER.iter() {
-            let mut f = Field::new(SR, a, v);
+        for i in 0..ROSTER.len() {
+            let mut f = Field::new(SR, i);
             f.set_interval(1.5);
             f.strike();
             for _ in 0..(SR as usize) {
                 let x = f.tick(330.0, &p);
-                assert!(x.is_finite() && (0.0..=1.0).contains(&x), "{a:?} {v:?} produced {x}");
+                assert!(x.is_finite() && (0.0..=1.0).contains(&x), "entry {i} produced {x}");
             }
         }
     }

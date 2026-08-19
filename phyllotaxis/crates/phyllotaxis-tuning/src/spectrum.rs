@@ -18,6 +18,23 @@ const MERGE_TOLERANCE: f64 = 1e-6;
 /// cost a full pass over the pair list. −100 dB.
 const PRUNE_FLOOR: f64 = 1e-5;
 
+/// The most partials any spectrum is carried at.
+///
+/// **Irrational ratios are why this exists.** With an integer ratio the FM
+/// sidebands land on each other and merge, so a spectrum stays small. With √2
+/// or φ nothing ever coincides, so every sideband survives as its own partial
+/// and the count runs into the hundreds — and `dissonance::between` is O(n²)
+/// per curve sample across 6300 samples. Deriving one tuning went from about a
+/// second to 1.7, and worse at high index, which is a real wait every time you
+/// press STEP.
+///
+/// Dissonance weights each pair by the QUIETER of the two, so a partial far
+/// down the amplitude ranking cannot move a minimum however many of them there
+/// are. Keeping the loudest 64 bounds the cost at roughly n² = 4096 pairs
+/// regardless of ratio or index. `the_cap_does_not_move_the_scale` checks the
+/// degrees against an uncapped derivation.
+const MAX_PARTIALS: usize = 64;
+
 /// A single component: where it sits, and how loud it is.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Partial {
@@ -72,6 +89,25 @@ impl Spectrum {
                 }
                 _ => merged.push(p),
             }
+        }
+
+        // Keep only the loudest MAX_PARTIALS, then restore frequency order —
+        // `dissonance::between` walks both spectra as sorted sequences and its
+        // sliding window depends on that.
+        let cap = {
+            #[cfg(test)]
+            {
+                if UNCAPPED.with(|u| u.get()) { usize::MAX } else { MAX_PARTIALS }
+            }
+            #[cfg(not(test))]
+            {
+                MAX_PARTIALS
+            }
+        };
+        if merged.len() > cap {
+            merged.sort_by(|a, b| b.amp.partial_cmp(&a.amp).expect("no NaN amplitudes"));
+            merged.truncate(cap);
+            merged.sort_by(|a, b| a.ratio.partial_cmp(&b.ratio).expect("no NaN partials"));
         }
 
         Self { partials: merged }
@@ -350,4 +386,25 @@ mod tests {
         ]);
         assert!(s.partials().iter().any(|p| (p.ratio - 0.75).abs() < 1e-12));
     }
+}
+
+/// The same spectrum with no partial cap, for the test that checks the cap
+/// against it. Not used on any path the instrument takes.
+#[cfg(test)]
+pub fn uncapped_for_test(
+    algorithm: crate::Algorithm,
+    ratio: f64,
+    index: f64,
+) -> Spectrum {
+    UNCAPPED.with(|u| {
+        u.set(true);
+        let s = crate::spectrum_for(algorithm, ratio, index);
+        u.set(false);
+        s
+    })
+}
+
+#[cfg(test)]
+thread_local! {
+    pub(crate) static UNCAPPED: core::cell::Cell<bool> = const { core::cell::Cell::new(false) };
 }

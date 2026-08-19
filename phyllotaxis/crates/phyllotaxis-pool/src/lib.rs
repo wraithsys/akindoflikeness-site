@@ -25,7 +25,7 @@
 //! magnitude shorter than it would otherwise be. See `DESIGN.md` §6.
 
 use phyllotaxis_field::{Field, FieldParams};
-use phyllotaxis_tuning::{Algorithm, Variant};
+
 use phyllotaxis_voice::{Voice, VoiceParams};
 
 /// A Fibonacci number, and the reason the whole design fits: five voices is
@@ -119,13 +119,13 @@ const fn pan_table() -> [(f32, f32); VOICES] {
 }
 
 impl Pool {
-    pub fn new(sample_rate: f32, params: VoiceParams) -> Self {
+    pub fn new(sample_rate: f32, entry: usize, params: VoiceParams) -> Self {
         let slots = (0..VOICES)
             .map(|n| {
                 let mut voice = Voice::new(sample_rate);
                 voice.set_params(params);
                 voice.set_phase_offset((n as f32 * 0.618_034) % 1.0);
-                let mut field = Field::new(sample_rate, params.algorithm, params.variant);
+                let mut field = Field::new(sample_rate, entry);
                 field.set_voice_index(n);
                 Slot { voice, field, freq_hz: 0.0, state: SlotState::Free, started: 0 }
             })
@@ -133,10 +133,10 @@ impl Pool {
         Self { slots, field_params: FieldParams::default(), counter: 0 }
     }
 
-    pub fn set_entry(&mut self, algorithm: Algorithm, variant: Variant, params: VoiceParams) {
+    pub fn set_entry(&mut self, entry: usize, params: VoiceParams) {
         for s in self.slots.iter_mut() {
             s.voice.set_params(params);
-            s.field.set_entry(algorithm, variant);
+            s.field.set_entry(entry);
         }
     }
 
@@ -308,7 +308,7 @@ mod tests {
     }
 
         fn pool() -> Pool {
-        let mut p = Pool::new(SR, VoiceParams::default());
+        let mut p = Pool::new(SR, 0, VoiceParams::default());
         p.field_params = FieldParams { depth: 1.0, ..Default::default() };
         p.set_interval(2.0);
         p
@@ -427,7 +427,7 @@ mod tests {
     fn waiting_finds_a_quieter_moment_than_stealing_now() {
         let fp = FieldParams { depth: 1.0, ..Default::default() };
         let settled = |freq: f32| {
-            let mut f = phyllotaxis_field::Field::new(SR, Algorithm::Fm2, Variant::Golden);
+            let mut f = phyllotaxis_field::Field::new(SR, 1);
             f.set_interval(3.2);
             f.strike();
             for _ in 0..(SR as usize) { f.tick(freq, &fp); }
@@ -458,7 +458,7 @@ mod tests {
         let mut found = 0;
         for k in 0..40 {
             let freq = 1200.0 + k as f32 * 55.0;
-            let mut f = phyllotaxis_field::Field::new(SR, Algorithm::Fm2, Variant::Golden);
+            let mut f = phyllotaxis_field::Field::new(SR, 1);
             f.set_interval(3.2);
             f.strike();
             for _ in 0..(SR as usize / 3 + k * 311) { f.tick(freq, &fp); }

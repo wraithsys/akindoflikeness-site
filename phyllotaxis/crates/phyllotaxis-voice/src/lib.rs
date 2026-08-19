@@ -18,7 +18,7 @@ pub mod spectral;
 
 use core::f32::consts::TAU;
 use op::{flush, DcBlocker, Operator};
-use phyllotaxis_tuning::{spectrum_for, Algorithm, Variant};
+use phyllotaxis_tuning::{spectrum_for, Algorithm, ROSTER, PHI};
 
 /// Where the sub sits, and how loud — matching `phyllotaxis-tuning`.
 const SUB_RATIO: f32 = 0.5;
@@ -28,7 +28,8 @@ const SUB_AMP: f32 = 0.5;
 #[derive(Clone, Copy, Debug)]
 pub struct VoiceParams {
     pub algorithm: Algorithm,
-    pub variant: Variant,
+    /// The modulator ratio — the entry itself.
+    pub ratio: f32,
     /// Modulation index. Drives sideband count in FM, depth in AM,
     /// self-feedback in FM II.
     pub index: f32,
@@ -42,7 +43,7 @@ impl Default for VoiceParams {
     fn default() -> Self {
         Self {
             algorithm: Algorithm::Fm1,
-            variant: Variant::Golden,
+            ratio: PHI as f32,
             index: 4.0,
             free_ratio: 1.0,
         }
@@ -118,7 +119,7 @@ impl Voice {
     }
 
     fn variant_ratio(&self) -> f32 {
-        self.params.variant.ratio() as f32
+        self.params.ratio
     }
 
     fn retune(&mut self) {
@@ -165,7 +166,7 @@ impl Voice {
     /// drift away from them. This normalises a *fault*; nothing here touches
     /// character.
     fn gain_for(params: VoiceParams) -> f32 {
-        let spectrum = spectrum_for(params.algorithm, params.variant, params.index as f64);
+        let spectrum = spectrum_for(params.algorithm, params.ratio as f64, params.index as f64);
         let energy: f64 = spectrum.partials().iter().map(|p| p.amp * p.amp).sum();
         if energy <= 0.0 {
             return 1.0;
@@ -200,35 +201,6 @@ impl Voice {
                 self.car.tick(fb * depth)
             }
 
-            // Sum and difference only. No carrier survives multiplication —
-            // that absence is the character.
-            Algorithm::Rm => {
-                let c = self.car.tick(0.0);
-                let m = self.m1.tick(0.0);
-                c * m + self.sub.tick(0.0) * SUB_AMP
-            }
-
-            // Ring modulation with the carrier left in.
-            Algorithm::Am => {
-                let d = (p.index / 4.0).min(1.0);
-                let c = self.car.tick(0.0);
-                let m = self.m1.tick(0.0);
-                c * (1.0 + d * m) / (1.0 + d) + self.sub.tick(0.0) * SUB_AMP
-            }
-
-            // Rectify the modulator, then ring-modulate the carrier with it.
-            // Half-wave for I, full-wave for II: two different spectra rather
-            // than one spectrum transposed, which is what makes the pair two
-            // algorithms. See `DESIGN.md` §2.
-            Algorithm::Rect => {
-                let c = self.car.tick(0.0);
-                let m = self.m1.tick(0.0);
-                let r = match p.variant {
-                    Variant::Harmonic => m.max(0.0),
-                    Variant::Golden => m.abs(),
-                };
-                c * r + self.sub.tick(0.0) * SUB_AMP
-            }
         };
 
         // DC is not optional for a rectified source, and costs nothing on the
@@ -276,10 +248,10 @@ mod tests {
         let mut worst = (100.0f64, String::new());
 
         for algorithm in Algorithm::ALL {
-            for variant in Variant::ALL {
-                let params = VoiceParams { algorithm, variant, index: 4.0, free_ratio: 1.0 };
+            for &ratio in &[1.5f32, 2.0, 3.0, PHI as f32] {
+                let params = VoiceParams { algorithm, ratio, index: 4.0, free_ratio: 1.0 };
                 let mag = spectral::magnitude(&render(params));
-                let predicted = spectrum_for(algorithm, variant, 4.0);
+                let predicted = spectrum_for(algorithm, ratio as f64, 4.0);
 
                 let strong: Vec<_> = predicted
                     .partials()
@@ -291,7 +263,7 @@ mod tests {
                     })
                     .collect();
                 assert!(!strong.is_empty(), "{} {} predicted nothing strong",
-                        algorithm.name(), variant.numeral());
+                        algorithm.name(), ratio);
 
                 let found = strong
                     .iter()
@@ -302,12 +274,12 @@ mod tests {
                     .count();
                 let pct = 100.0 * found as f64 / strong.len() as f64;
                 if pct < worst.0 {
-                    worst = (pct, format!("{} {}", algorithm.name(), variant.numeral()));
+                    worst = (pct, format!("{} {}", algorithm.name(), ratio));
                 }
                 assert!(
                     pct >= 80.0,
                     "{} {}: only {found}/{} predicted partials present ({pct:.0}%)",
-                    algorithm.name(), variant.numeral(), strong.len()
+                    algorithm.name(), ratio, strong.len()
                 );
             }
         }
@@ -318,18 +290,21 @@ mod tests {
     /// louder than the bus can take.
     #[test]
     fn output_is_finite_and_bounded_for_every_algorithm() {
-        for algorithm in Algorithm::ALL {
-            for variant in Variant::ALL {
-                for &index in &[0.0f32, 1.0, 4.0, 9.0, 12.0] {
-                    let buf = render(VoiceParams { algorithm, variant, index, free_ratio: 1.0 });
-                    let peak = buf.iter().fold(0.0f32, |m, s| m.max(s.abs()));
-                    assert!(buf.iter().all(|s| s.is_finite()),
-                            "{} {} at index {index} produced a non-finite sample",
-                            algorithm.name(), variant.numeral());
-                    assert!(peak < 4.0,
-                            "{} {} at index {index} peaked at {peak}",
-                            algorithm.name(), variant.numeral());
-                }
+        for e in ROSTER {
+            for &index in &[0.0f32, 1.0, 4.0, 9.0, 12.0] {
+                let buf = render(VoiceParams {
+                    algorithm: e.algorithm,
+                    ratio: e.ratio as f32,
+                    index,
+                    free_ratio: 1.0,
+                });
+                let peak = buf.iter().fold(0.0f32, |m, s| m.max(s.abs()));
+                assert!(
+                    buf.iter().all(|s| s.is_finite()),
+                    "{} at index {index} produced a non-finite sample",
+                    e.name
+                );
+                assert!(peak < 4.0, "{} at index {index} peaked at {peak}", e.name);
             }
         }
     }
@@ -339,12 +314,15 @@ mod tests {
     #[test]
     fn the_roster_is_level_matched() {
         let mut rms = Vec::new();
-        for algorithm in Algorithm::ALL {
-            for variant in Variant::ALL {
-                let buf = render(VoiceParams { algorithm, variant, index: 4.0, free_ratio: 1.0 });
-                let r = (buf.iter().map(|s| (s * s) as f64).sum::<f64>() / buf.len() as f64).sqrt();
-                rms.push((format!("{} {}", algorithm.name(), variant.numeral()), r));
-            }
+        for e in ROSTER {
+            let buf = render(VoiceParams {
+                algorithm: e.algorithm,
+                ratio: e.ratio as f32,
+                index: 4.0,
+                free_ratio: 1.0,
+            });
+            let r = (buf.iter().map(|s| (s * s) as f64).sum::<f64>() / buf.len() as f64).sqrt();
+            rms.push((e.name.to_string(), r));
         }
         let lo = rms.iter().map(|(_, r)| *r).fold(f64::INFINITY, f64::min);
         let hi = rms.iter().map(|(_, r)| *r).fold(0.0f64, f64::max);
@@ -358,7 +336,7 @@ mod tests {
     /// Same settings, same samples, forever.
     #[test]
     fn rendering_is_deterministic() {
-        let p = VoiceParams { algorithm: Algorithm::Fm2, variant: Variant::Golden, index: 7.0, free_ratio: 1.0 };
+        let p = VoiceParams { algorithm: Algorithm::Fm2, ratio: PHI as f32, index: 7.0, free_ratio: 1.0 };
         assert_eq!(render(p), render(p));
     }
 }

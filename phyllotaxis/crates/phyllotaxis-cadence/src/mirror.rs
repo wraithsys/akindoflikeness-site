@@ -204,13 +204,13 @@ mod tests {
     /// The defining property. If this fails the operation is not a mirror.
     #[test]
     fn reflection_is_an_involution_on_every_roster_tuning() {
-        for &(a, v) in ROSTER.iter() {
-            let t = tuning_for(a, v, 4.0, DEGREES_PER_SCALE);
+        for e in ROSTER.iter() {
+            let t = tuning_for(e.algorithm, e.ratio, 4.0, DEGREES_PER_SCALE);
             let m = Mirror::new(&t.cents());
             assert!(
                 m.is_involution(),
                 "{} {} is not an involution (axis {})",
-                a.name(), v.numeral(), m.axis()
+                e.name, "", m.axis()
             );
         }
     }
@@ -253,8 +253,8 @@ mod tests {
     fn leaving_the_lattice_is_normal() {
         let off: Vec<_> = ROSTER
             .iter()
-            .map(|&(a, v)| {
-                let t = tuning_for(a, v, 4.0, DEGREES_PER_SCALE);
+            .map(|e| {
+                let t = tuning_for(e.algorithm, e.ratio, 4.0, DEGREES_PER_SCALE);
                 Mirror::new(&t.cents()).fully_on_lattice()
             })
             .collect();

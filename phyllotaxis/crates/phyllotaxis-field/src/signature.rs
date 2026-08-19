@@ -28,7 +28,6 @@
 //! That makes the property **computable**, so the roster's one deliberately
 //! repeating entry is asserted by a test rather than by a comment.
 
-use phyllotaxis_tuning::{Algorithm, Variant};
 
 /// Rungs of φ between a voice's frequency and its movement. Fibonacci 13, the
 /// same 13 as `breath.rs`.
@@ -102,24 +101,25 @@ fn gcd_all(xs: &[u32]) -> u32 {
 ///
 /// The lesson is worth more than the fix: a number carried across a refactor is
 /// not evidence, it is a memory of evidence.
-pub fn signature_for(algorithm: Algorithm, variant: Variant) -> Signature {
-    match (algorithm, variant) {
-        // Lucas. T = 29. (Was the commensurate one; see the note above.)
-        (Algorithm::Fm1, _) => Signature { terms: [29, 18, 11, 7, 4], family: "lucas" },
-        // Fibonacci. T = 34.
-        (Algorithm::Fm2, _) => Signature { terms: [34, 21, 13, 8, 5], family: "fibonacci" },
-        // Harmonic — the only short period on the roster. T = 5.
-        (Algorithm::Rm, Variant::Harmonic) => Signature { terms: [30, 24, 18, 12, 6], family: "harmonic" },
-        (Algorithm::Rm, Variant::Golden) => Signature { terms: [4, 7, 11, 18, 29], family: "lucas mirrored" },
-        // Fm2 keeps Fibonacci.
-        // Padovan and Perrin — both limit on the plastic number, different
-        // integers, so the pair is related the way the RM pair's ratios are.
-        (Algorithm::Am, Variant::Harmonic) => Signature { terms: [28, 21, 16, 12, 9], family: "padovan" },
-        (Algorithm::Am, Variant::Golden) => Signature { terms: [29, 22, 17, 12, 10], family: "perrin" },
-        // Tribonacci (T = 44, the longest) and Pell, on the silver ratio.
-        (Algorithm::Rect, Variant::Harmonic) => Signature { terms: [44, 24, 13, 7, 4], family: "tribonacci" },
-        (Algorithm::Rect, Variant::Golden) => Signature { terms: [29, 12, 5, 2, 1], family: "pell" },
-    }
+pub fn signature_for(entry: usize) -> Signature {
+    // Keyed by ROSTER INDEX, not by (algorithm, variant).
+    //
+    // The roster is eight FM entries separated only by ratio, so an algorithm
+    // no longer identifies an entry — both topologies appear four times. The
+    // index does. The eight signatures themselves are unchanged: they were
+    // chosen for their periods, which have nothing to do with which spectrum
+    // they end up attached to.
+    const S: [Signature; 8] = [
+        Signature { terms: [29, 18, 11, 7, 4], family: "lucas" },
+        Signature { terms: [34, 21, 13, 8, 5], family: "fibonacci" },
+        Signature { terms: [30, 24, 18, 12, 6], family: "harmonic" },
+        Signature { terms: [4, 7, 11, 18, 29], family: "lucas mirrored" },
+        Signature { terms: [28, 21, 16, 12, 9], family: "padovan" },
+        Signature { terms: [29, 22, 17, 12, 10], family: "perrin" },
+        Signature { terms: [44, 24, 13, 7, 4], family: "tribonacci" },
+        Signature { terms: [29, 12, 5, 2, 1], family: "pell" },
+    ];
+    S[entry.min(S.len() - 1)]
 }
 
 #[cfg(test)]
@@ -127,62 +127,58 @@ mod tests {
     use super::*;
     use phyllotaxis_tuning::ROSTER;
 
-    /// Exactly one entry repeats soon enough to hear, and it is the one whose
-    /// partials reinforce rather than shimmer.
+    /// Exactly one signature repeats soon enough to hear.
     #[test]
-    fn one_signature_is_commensurate_and_it_is_the_reinforcing_one() {
-        let short: Vec<_> = ROSTER
-            .iter()
-            .filter(|&&(a, v)| signature_for(a, v).period() < 10)
-            .collect();
+    fn one_signature_is_commensurate() {
+        let short: Vec<usize> =
+            (0..ROSTER.len()).filter(|&i| signature_for(i).period() < 10).collect();
         assert_eq!(short.len(), 1, "expected exactly one short period, got {short:?}");
-        assert_eq!(short[0], &(Algorithm::Rm, Variant::Harmonic));
-        assert_eq!(signature_for(Algorithm::Rm, Variant::Harmonic).period(), 5);
+        assert_eq!(signature_for(short[0]).period(), 5);
     }
 
     /// Every other signature runs long enough that nobody tracks it.
     #[test]
     fn the_rest_are_long() {
-        for &(a, v) in ROSTER.iter() {
-            if (a, v) == (Algorithm::Rm, Variant::Harmonic) { continue; }
-            let s = signature_for(a, v);
+        for i in 0..ROSTER.len() {
+            let s = signature_for(i);
+            if s.period() < 10 {
+                continue;
+            }
             assert!(s.period() >= 28, "{} has period {}", s.family, s.period());
         }
     }
 
     /// A mirrored signature must not collapse into its original.
     ///
-    /// This is not hypothetical. In `fibonacci-synth` it *does* collapse:
-    /// `golden` and `golden mirrored` normalise to the same rate multiset, and
-    /// `begin()` resets all five phases to one value, so after any note the two
-    /// modes are bit-identical — measured at a mean absolute difference of
-    /// 2.3e-17. Its distinctness test only ever compares the opening state and
-    /// so never fires.
+    /// Not hypothetical. In `fibonacci-synth` it does collapse: `golden` and
+    /// `golden mirrored` normalise to the same rate multiset and `begin()`
+    /// resets all five phases to one value, so after any note the two modes are
+    /// bit-identical — measured at a mean absolute difference of 2.3e-17. Its
+    /// distinctness test only compares the opening state, so it never fires.
     ///
-    /// Two things here prevent it, and both are load-bearing: amplitude falls
-    /// by φ with component *index*, so reversing the terms changes which rate
-    /// is loudest; and `strike()` does not touch phase, so a note does not
-    /// erase the per-voice offset either.
+    /// Two things prevent it here and both are load-bearing: amplitude falls by
+    /// φ with component index, so reversing the terms changes which rate is
+    /// loudest; and `strike()` does not touch phase, so a note does not erase
+    /// the per-voice offset either.
     #[test]
     fn mirroring_changes_the_movement() {
-        let fwd = signature_for(Algorithm::Fm1, Variant::Golden);
-        let rev = signature_for(Algorithm::Rm, Variant::Golden);
+        // Entries 0 and 3 carry lucas and its mirror.
+        let (fwd, rev) = (signature_for(0), signature_for(3));
         assert_eq!(fwd.period(), rev.period());
         let (fr, rr) = (fwd.rates(), rev.rates());
         let amps = fwd.amps();
-        // The amplitude-weighted mean rate differs, which is the audible part.
         let mean = |r: [f32; 5]| r.iter().zip(amps).map(|(a, b)| a * b).sum::<f32>();
         assert!((mean(fr) - mean(rr)).abs() > 0.25, "{} vs {}", mean(fr), mean(rr));
     }
 
-    /// The same collapse, caught at the level it actually happens: identical
-    /// rate multisets must still produce different movement over real time.
+    /// The same collapse, caught where it actually happens: identical rate
+    /// multisets must still render differently over real time.
     #[test]
     fn a_mirrored_pair_does_not_render_identically() {
         use crate::{Field, FieldParams};
         let p = FieldParams::default();
-        let mut a = Field::new(48_000.0, Algorithm::Fm1, Variant::Golden);
-        let mut b = Field::new(48_000.0, Algorithm::Rm, Variant::Golden);
+        let mut a = Field::new(48_000.0, 0);
+        let mut b = Field::new(48_000.0, 3);
         for f in [&mut a, &mut b] {
             f.set_interval(2.0);
             f.strike();
@@ -197,7 +193,7 @@ mod tests {
 
     #[test]
     fn every_roster_entry_has_a_distinct_signature() {
-        let mut seen: Vec<[u32; 5]> = ROSTER.iter().map(|&(a, v)| signature_for(a, v).terms).collect();
+        let mut seen: Vec<[u32; 5]> = (0..ROSTER.len()).map(|i| signature_for(i).terms).collect();
         seen.sort();
         seen.dedup();
         assert_eq!(seen.len(), 8);
@@ -205,7 +201,7 @@ mod tests {
 
     #[test]
     fn amplitudes_sum_to_one() {
-        let s = signature_for(Algorithm::Fm2, Variant::Golden);
+        let s = signature_for(1);
         assert!((s.amps().iter().sum::<f32>() - 1.0).abs() < 1e-6);
     }
 }

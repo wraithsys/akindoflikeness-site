@@ -13,8 +13,8 @@ fn main() {
     println!("index {index:.1}   —   {DEGREES_PER_SCALE} degrees, cents above the root");
     println!("{:-<78}", "");
 
-    for (algorithm, variant, tuning) in tables(index) {
-        let label = format!("{} {}", algorithm.name(), variant.numeral());
+    for (entry, tuning) in tables(index) {
+        let label = format!("{} {}", entry.name, "");
         let degrees: Vec<String> = tuning
             .degrees()
             .iter()

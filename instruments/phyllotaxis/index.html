@@ -321,6 +321,10 @@ footer a:hover { color: var(--sap); }
         <input type="range" id="p2" data-param="2" min="0.4" max="6" step="0.01" value="1.618">
       </div>
       <div class="ctl">
+        <label for="p20">Bias</label><output id="o20"></output>
+        <input type="range" id="p20" data-param="20" min="0" max="1" step="0.01" value="0.75">
+      </div>
+      <div class="ctl">
         <label for="p3">Mirror</label><output id="o3"></output>
         <input type="range" id="p3" data-param="3" min="0" max="1" step="0.01" value="0.382">
       </div>
@@ -403,19 +407,22 @@ footer a:hover { color: var(--sap); }
 // be a new URL, or a returning browser pairs a fresh engine with a stale
 // worklet and the instrument quietly degrades for twelve months. worklet.js
 // went a whole release unhashed under that rule.
-const WASM_URL = "./build/engine-40fc4606.wasm";
+const WASM_URL = "./build/engine-1ad45f8c.wasm";
 const WORKLET_URL = "./build/worklet-0607611d.js";
 const TUNER_URL = "./build/tuner-989ed7e4.js";
-const PARAMS = 20; // mirrors param::COUNT
+const PARAMS = 21; // mirrors param::COUNT
 const PHI = 1.6180339887498949;
 
-// Roster names and kinds, mirroring phyllotaxis-tuning::ROSTER. The order is
-// the ABI: entry N here is entry N there.
+// Roster names, mirroring phyllotaxis-tuning::ROSTER. The order is the ABI:
+// entry N here is entry N there.
+//
+// Eight FM voices at eight IRRATIONAL ratios. Integer ratios were tried and
+// do not work: every one of them gives a spectrum of harmonics of a single
+// fundamental, so they all read the same scale off the dissonance curve. Two
+// of them came out 0.1 cents apart.
 const ROSTER = [
-  ["fm I", "scale"], ["fm II", "scale"],
-  ["rm I", "chord"], ["rm II", "chord"],
-  ["am I", "chord"], ["am II", "chord"],
-  ["rect I", "scale"], ["rect II", "scale"],
+  "FM 1:1", "FM \u221a2", "FM \u03c6", "FM \u221a5",
+  "FB \u221b2", "FB \u03c1", "FB \u221a3", "FB e",
 ];
 
 const el = (id) => document.getElementById(id);
@@ -463,7 +470,7 @@ function showEntry() {
   // Name only. `#kind` is owned by the tuner, which knows whether the derived
   // tuning came out a scale or a chord — the table below is a label, not the
   // authority, and duplicating the answer in two places is how they drift.
-  el("entry").textContent = ROSTER[((entry % ROSTER.length) + ROSTER.length) % ROSTER.length][0];
+  el("entry").textContent = ROSTER[((entry % ROSTER.length) + ROSTER.length) % ROSTER.length];
 }
 
 async function begin() {

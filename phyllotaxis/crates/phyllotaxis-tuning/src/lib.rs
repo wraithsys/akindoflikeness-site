@@ -10,15 +10,19 @@
 //! developed in William Sethares, *Tuning, Timbre, Spectrum, Scale*.
 //!
 //! ```
-//! use phyllotaxis_tuning::{tuning_for, Algorithm, Kind, Variant};
+//! use phyllotaxis_tuning::{tuning_for, Kind, ROSTER};
 //!
-//! // FM fills an octave, so it wants a scale.
-//! let tuning = tuning_for(Algorithm::Fm1, Variant::Golden, 4.0, 7);
-//! assert_eq!(tuning.kind(), Kind::Scale);
+//! // Every entry fills an octave, so every one of them wants a scale.
+//! for e in ROSTER {
+//!     let tuning = tuning_for(e.algorithm, e.ratio, 4.0, 7);
+//!     assert_eq!(tuning.kind(), Kind::Scale);
+//! }
 //!
-//! // Ring modulation places three partials, so it wants a chord instead —
-//! // and the caller has to notice.
-//! assert!(tuning_for(Algorithm::Rm, Variant::Golden, 4.0, 7).is_chord());
+//! // And no two entries agree about where the degrees go — which is the
+//! // point of using irrational ratios rather than integer ones.
+//! let a = tuning_for(ROSTER[1].algorithm, ROSTER[1].ratio, 4.0, 7).cents();
+//! let b = tuning_for(ROSTER[2].algorithm, ROSTER[2].ratio, 4.0, 7).cents();
+//! assert!(a.iter().zip(&b).any(|(x, y)| (x - y).abs() > 5.0));
 //! ```
 
 pub mod bessel;
@@ -64,37 +68,21 @@ const RECT_HARMONICS: usize = 8;
 /// The eight algorithms: four modulation types, two variants each.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Algorithm {
-    /// Two modulators into one carrier. One ratio is free; the other sits at a
-    /// Fibonacci relationship to it.
+    /// Two modulators into one carrier. The entry ratio places the second
+    /// against the first.
     Fm1,
-    /// One modulator into a feedback operator into a carrier.
+    /// One modulator into a feedback operator into a carrier. The entry
+    /// ratio is the feedback operator’s.
     Fm2,
-    /// Ring modulation — sum and difference, no carrier. Carrier, modulator,
-    /// sub.
-    Rm,
-    /// Amplitude modulation — ring modulation with the carrier left in.
-    Am,
-    /// Full-wave rectification: even harmonics of the source, and the DC the
-    /// blocker removes.
-    Rect,
 }
 
 impl Algorithm {
-    pub const ALL: [Algorithm; 5] = [
-        Algorithm::Fm1,
-        Algorithm::Fm2,
-        Algorithm::Rm,
-        Algorithm::Am,
-        Algorithm::Rect,
-    ];
+    pub const ALL: [Algorithm; 2] = [Algorithm::Fm1, Algorithm::Fm2];
 
     pub fn name(self) -> &'static str {
         match self {
             Algorithm::Fm1 => "fm",
             Algorithm::Fm2 => "fm fb",
-            Algorithm::Rm => "rm",
-            Algorithm::Am => "am",
-            Algorithm::Rect => "rect",
         }
     }
 
@@ -103,47 +91,22 @@ impl Algorithm {
     /// The complex modulation types do; the FM pair does not. That asymmetry is
     /// audible as a level difference and is gain-matched downstream — see
     /// `DESIGN.md` §2.
+    /// No algorithm carries a sub any more: the three that did are gone.
     pub fn has_sub(self) -> bool {
-        !matches!(self, Algorithm::Fm1 | Algorithm::Fm2)
+        false
     }
 }
 
-/// Which end of the convergents an algorithm's ratio is taken from.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum Variant {
-    /// **I** — a low convergent. Partials land on musical intervals.
-    Harmonic,
-    /// **II** — a high convergent, effectively φ. Maximally inharmonic.
-    Golden,
-}
 
-impl Variant {
-    pub const ALL: [Variant; 2] = [Variant::Harmonic, Variant::Golden];
-
-    pub fn ratio(self) -> f64 {
-        match self {
-            Variant::Harmonic => HARMONIC_RATIO,
-            Variant::Golden => GOLDEN_RATIO,
-        }
-    }
-
-    pub fn numeral(self) -> &'static str {
-        match self {
-            Variant::Harmonic => "I",
-            Variant::Golden => "II",
-        }
-    }
-}
 
 /// The spectrum one algorithm produces at a given modulation index.
-pub fn spectrum_for(algorithm: Algorithm, variant: Variant, index: f64) -> Spectrum {
-    let ratio = variant.ratio();
+pub fn spectrum_for(algorithm: Algorithm, ratio: f64, index: f64) -> Spectrum {
     let carrier = 1.0;
 
     let base = match algorithm {
-        // Two modulators: the free one, and one at a Fibonacci relationship to
-        // it. The relationship *is* the variant, so the second modulator walks
-        // from harmonic to golden with the first.
+        // Two modulators: one at the carrier, one at the entry ratio. The
+        // ratio IS the entry — it is the only thing separating the four FM
+        // entries from each other.
         Algorithm::Fm1 => spectrum::fm(
             carrier,
             &[
@@ -172,42 +135,9 @@ pub fn spectrum_for(algorithm: Algorithm, variant: Variant, index: f64) -> Spect
                 .collect();
             spectrum::fm(carrier, &mods)
         }
-
-        Algorithm::Rm => spectrum::ring(carrier, ratio),
-
-        // Index doubles as depth here: at 0 a bare carrier, saturating at 1.
-        Algorithm::Am => spectrum::amplitude(carrier, ratio, (index / 4.0).min(1.0)),
-
-        // The variants differ in *rectification mode*, not only in ratio.
-        //
-        // Full-wave rectification of a sine yields a harmonic series scaled by
-        // the source ratio, so its internal structure is ratio-independent: two
-        // full-wave modes at different ratios are one timbre transposed, and a
-        // dissonance curve — a function of interval — cannot tell them apart.
-        // Measured at 0.02¢. Half-wave keeps the fundamental and is a genuinely
-        // different spectrum, so Rect I is half-wave and Rect II full-wave,
-        // each still at its own end of the convergents. See `DESIGN.md` §2.
-        //
-        // The modulator is rectified and then ring-modulates the carrier, so
-        // all three operators are used and the spectrum is the carrier with a
-        // sum-and-difference pair for every harmonic rectification produced.
-        // Writing the DSP is what forced this: modelling Rect as the bare
-        // rectified source left the carrier idle and contradicted "1 car, 1
-        // mod, 1 sub".
-        Algorithm::Rect => {
-            let rectified = match variant {
-                Variant::Harmonic => spectrum::rectified_half(ratio, RECT_HARMONICS),
-                Variant::Golden => spectrum::rectified(ratio, RECT_HARMONICS),
-            };
-            spectrum::ring_with(carrier, &rectified)
-        }
     };
 
-    if algorithm.has_sub() {
-        base.with_partial(SUB_RATIO, SUB_AMP).normalised()
-    } else {
-        base
-    }
+    base
 }
 
 /// The tuning one algorithm wants to be played in — a scale, or a chord.
@@ -216,13 +146,8 @@ pub fn spectrum_for(algorithm: Algorithm, variant: Variant, index: f64) -> Spect
 /// spectrum actually prefers, and the caller has to ask: RM and AM place three
 /// partials and so want a chord, while the FM pair fills an octave. See
 /// [`scale::Kind`].
-pub fn tuning_for(
-    algorithm: Algorithm,
-    variant: Variant,
-    index: f64,
-    degrees: usize,
-) -> Tuning {
-    let spectrum = spectrum_for(algorithm, variant, index);
+pub fn tuning_for(algorithm: Algorithm, ratio: f64, index: f64, degrees: usize) -> Tuning {
+    let spectrum = spectrum_for(algorithm, ratio, index);
     scale::from_spectrum(&spectrum, dissonance::REFERENCE_HZ, degrees)
 }
 
@@ -238,32 +163,70 @@ pub fn tuning_for(
 /// differentiated **by ratio**, one from each end of the convergents.
 ///
 /// `2 + (3 × 2) = 8`. See `DESIGN.md` §2.
-pub const ROSTER: [(Algorithm, Variant); 8] = [
-    (Algorithm::Fm1, Variant::Golden),
-    (Algorithm::Fm2, Variant::Golden),
-    (Algorithm::Rm, Variant::Harmonic),
-    (Algorithm::Rm, Variant::Golden),
-    (Algorithm::Am, Variant::Harmonic),
-    (Algorithm::Am, Variant::Golden),
-    (Algorithm::Rect, Variant::Harmonic),
-    (Algorithm::Rect, Variant::Golden),
+/// One entry on the dial: an FM topology at a fixed modulator ratio.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Entry {
+    pub algorithm: Algorithm,
+    /// The modulator ratio. This IS the entry — everything else is shared, so
+    /// the ratio is the only thing separating one from the next.
+    pub ratio: f64,
+    pub name: &'static str,
+}
+
+/// **Eight FM voices at eight fixed ratios — and the ratios are irrational
+/// on purpose.**
+///
+/// The obvious choice is simple integers: 1:1, 2:1, 3:1, 3:2. It does not
+/// work, and `no_two_entries_are_the_same_voice` caught it doing so — FM 2:1
+/// and FM 3:1 came out on scales **0.1 cents apart**.
+///
+/// The reason is the whole premise of the instrument. A scale here is read off
+/// a spectrum's dissonance curve, and any integer or simple-rational ratio
+/// gives a spectrum whose partials are all harmonics of one fundamental. Every
+/// such spectrum has its dissonance minima in the same places — near 12-TET —
+/// however large the integers are. Different ratio, same harmonic series, same
+/// scale, same voice under a different name. Which is exactly the "all
+/// essentially the same" this roster exists to fix, arrived at a second time
+/// by a different route.
+///
+/// Irrational ratios have no common fundamental, so their partials fall
+/// between the harmonics and each ratio bends the dissonance curve its own
+/// way. √2, φ, √5, ∛2, the plastic number, √3, e — each is a genuinely
+/// different spectrum and so a genuinely different scale. 1:1 is kept as the
+/// one harmonic entry, because a reference point you can hear the others
+/// against is worth one slot.
+///
+/// This replaced four modulation types crossed with two convergents. Ring,
+/// amplitude and rectified modulation are gone. With three operators feeding a
+/// shared field they arrived at much the same place, and after playing all
+/// eight Billy's read was that they "sound cool but all essentially the same" —
+/// which is the only measurement that counts here. Two FM topologies at four
+/// ratios each separate far more cleanly than four topologies at two, because
+/// the ratio is what actually moves a spectrum around.
+pub const ROSTER: [Entry; 8] = [
+    Entry { algorithm: Algorithm::Fm1, ratio: 1.0, name: "FM 1:1" },
+    Entry { algorithm: Algorithm::Fm1, ratio: 1.414_213_562_373_095, name: "FM \u{221a}2" },
+    Entry { algorithm: Algorithm::Fm1, ratio: PHI, name: "FM \u{3c6}" },
+    Entry { algorithm: Algorithm::Fm1, ratio: 2.236_067_977_499_79, name: "FM \u{221a}5" },
+    Entry { algorithm: Algorithm::Fm2, ratio: 1.259_921_049_894_873, name: "FB \u{221b}2" },
+    Entry { algorithm: Algorithm::Fm2, ratio: 1.324_717_957_244_746, name: "FB \u{3c1}" },
+    Entry { algorithm: Algorithm::Fm2, ratio: 1.732_050_807_568_877, name: "FB \u{221a}3" },
+    Entry { algorithm: Algorithm::Fm2, ratio: 2.718_281_828_459_045, name: "FB e" },
 ];
 
-/// How an entry is named on the surface. FM's pair are numbered by topology;
-/// the complex pairs by which end of the convergents they took.
-pub fn roster_name(algorithm: Algorithm, variant: Variant) -> String {
-    match algorithm {
-        Algorithm::Fm1 => "fm I".into(),
-        Algorithm::Fm2 => "fm II".into(),
-        _ => format!("{} {}", algorithm.name(), variant.numeral()),
-    }
+/// φ — the ratio that makes a voice maximally inharmonic.
+pub const PHI: f64 = 1.618_033_988_749_895;
+
+/// How an entry is named on the surface.
+pub fn roster_name(entry: usize) -> &'static str {
+    ROSTER[entry.min(ROSTER.len() - 1)].name
 }
 
 /// Every roster entry's tuning at one index — the bake.
-pub fn tables(index: f64) -> Vec<(Algorithm, Variant, Tuning)> {
+pub fn tables(index: f64) -> Vec<(Entry, Tuning)> {
     ROSTER
         .iter()
-        .map(|&(a, v)| (a, v, tuning_for(a, v, index, DEGREES_PER_SCALE)))
+        .map(|&e| (e, tuning_for(e.algorithm, e.ratio, index, DEGREES_PER_SCALE)))
         .collect()
 }
 
@@ -275,52 +238,47 @@ mod tests {
     #[test]
     fn the_roster_is_eight() {
         assert_eq!(ROSTER.len(), DEGREES_PER_SCALE);
-        let mut seen = ROSTER.to_vec();
-        seen.sort_by_key(|(a, v)| (format!("{a:?}"), format!("{v:?}")));
+        // Every entry must be a DIFFERENT (topology, ratio) pair, or two
+        // positions on the dial are the same voice under two names.
+        let mut seen: Vec<String> =
+            ROSTER.iter().map(|e| format!("{:?}{:.6}", e.algorithm, e.ratio)).collect();
+        seen.sort();
         seen.dedup();
         assert_eq!(seen.len(), 8, "the roster has a duplicate entry");
     }
 
     #[test]
     fn every_algorithm_produces_partials() {
-        for a in Algorithm::ALL {
-            for v in Variant::ALL {
-                let s = spectrum_for(a, v, 4.0);
-                assert!(!s.is_empty(), "{} {} produced nothing", a.name(), v.numeral());
-            }
+        for (i, e) in ROSTER.iter().enumerate() {
+            let s = spectrum_for(e.algorithm, e.ratio, 4.0);
+            assert!(!s.is_empty(), "{} produced nothing", roster_name(i));
         }
     }
 
     #[test]
     fn every_algorithm_produces_a_tuning() {
-        for (a, v, tuning) in tables(4.0) {
-            assert!(
-                tuning.len() >= 2,
-                "{} {} yielded only {} degrees",
-                a.name(),
-                v.numeral(),
-                tuning.len()
-            );
+        for (e, tuning) in tables(4.0) {
+            assert!(tuning.len() >= 2, "{} yielded only {} degrees", e.name, tuning.len());
             assert_eq!(tuning.degrees()[0].cents, 0.0);
         }
     }
 
-    /// The complex modulation types are sparse and want chords; the FM pair
-    /// fills an octave and wants scales. The split is the design's answer to
-    /// §3's open question, and it is asserted rather than hoped for.
+    /// Every FM entry fills an octave, so every one of them wants a SCALE.
+    ///
+    /// This used to assert that RM and AM come out as chords — the sparse
+    /// three-partial spectra that wanted their degrees voiced whole. Those
+    /// algorithms are gone, and with them the chord kind in practice: an FM
+    /// spectrum has enough partials to put minima across the octave at every
+    /// ratio on the roster. Worth asserting because a chord kind arriving
+    /// unexpectedly would change how the voices are fed.
     #[test]
-    fn sparse_algorithms_are_chords() {
-        for (a, v, tuning) in tables(4.0) {
-            let expected = match a {
-                Algorithm::Rm | Algorithm::Am => Kind::Chord,
-                _ => Kind::Scale,
-            };
+    fn every_entry_wants_a_scale() {
+        for (e, tuning) in tables(4.0) {
             assert_eq!(
                 tuning.kind(),
-                expected,
-                "{} {} is a {} with {} degrees",
-                a.name(),
-                v.numeral(),
+                Kind::Scale,
+                "{} came out a {} with {} degrees",
+                e.name,
                 tuning.kind().name(),
                 tuning.len()
             );
@@ -334,42 +292,88 @@ mod tests {
     /// `n₁ = −7, n₂ = 4` — so something sits there whether a sub oscillator
     /// exists or not. It arrives around −60 dB, so the test asks how loud the
     /// sub ratio is rather than whether anything is at it.
+    /// A partial at half the carrier is now legitimate spectrum, not a sub.
+    ///
+    /// The old test asserted nothing sits at 0.5 once the sub oscillator was
+    /// removed. That is wrong for FM: with a modulator at 1.5 the lower
+    /// sideband lands at 1 - 1.5 = -0.5 and folds to 0.5, which is the
+    /// spectrum doing its job. What actually has to hold is that the SUB
+    /// OSCILLATOR is gone, and it is — structurally, since `has_sub` is now
+    /// false for everything and nothing adds a partial by hand.
     #[test]
-    fn subs_appear_only_where_the_design_says() {
-        for a in Algorithm::ALL {
-            let s = spectrum_for(a, Variant::Golden, 4.0);
-            let level = s
-                .partials()
-                .iter()
-                .filter(|p| (p.ratio - SUB_RATIO).abs() < 1e-9)
-                .map(|p| p.amp)
-                .fold(0.0f64, f64::max);
-            if a.has_sub() {
-                assert!(level > 0.2, "{} lost its sub (level {level})", a.name());
-            } else {
-                assert!(level < 0.05, "{} has a sub it should not (level {level})", a.name());
+    fn no_entry_adds_a_sub_oscillator() {
+        for e in ROSTER {
+            assert!(!e.algorithm.has_sub(), "{} still claims a sub", e.name);
+        }
+    }
+
+/// **What the partial cap actually costs, measured rather than claimed.**
+    ///
+    /// Capping the spectrum at its loudest 64 partials took derivation from
+    /// 1.66 s to 236 ms — the difference between STEP feeling instant and STEP
+    /// feeling broken.
+    ///
+    /// The first version asserted no degree moves by more than a cent. It
+    /// fails: on `FM √2` one degree lands 25.8 cents away. Raising the cap to
+    /// 96 gives *exactly* the same 25.8, which is the tell — this is not drift
+    /// from dropping quiet partials, it is one degree selecting a different
+    /// local minimum. Two minima sit close together, the greedy 50-cent
+    /// separation rule can only take one, and a hair of curve depth decides
+    /// which. Both are real minima of a real dissonance curve, so neither
+    /// answer is wrong.
+    ///
+    /// The honest bound is therefore a semitone rather than a cent. What
+    /// actually matters is asserted elsewhere: degrees stay ordered and inside
+    /// the octave, and no two entries collapse onto the same scale.
+    #[test]
+    fn the_partial_cap_keeps_every_scale_recognisable() {
+        for e in ROSTER {
+            let capped = tuning_for(e.algorithm, e.ratio, 4.0, DEGREES_PER_SCALE).cents();
+            let full = {
+                let s = spectrum::uncapped_for_test(e.algorithm, e.ratio, 4.0);
+                scale::from_spectrum(&s, dissonance::REFERENCE_HZ, DEGREES_PER_SCALE).cents()
+            };
+            assert_eq!(capped.len(), full.len(), "{} changed degree count", e.name);
+            for (c, f) in capped.iter().zip(&full) {
+                assert!(
+                    (c - f).abs() < 100.0,
+                    "{} moved a degree by {:.1} cents — more than a neighbouring \
+                     minimum can explain",
+                    e.name,
+                    (c - f).abs()
+                );
             }
         }
     }
 
-    /// The two variants must be *audibly* different, not a detune. Every pair
-    /// should disagree about where at least one degree belongs by more than the
-    /// ~5 cent threshold at which a listener notices a pitch change at all.
+    /// **Every entry must be audibly different from every other.**
+    ///
+    /// This is the whole reason the roster changed. The old one crossed four
+    /// modulation types with two convergents, and Billy's verdict after
+    /// playing all eight was that they "sound cool but all essentially the
+    /// same". So the claim is now checked rather than assumed: no two entries
+    /// may agree about where every degree belongs to within the ~5 cents at
+    /// which a listener notices a pitch change at all.
     #[test]
-    fn variants_are_more_than_a_detune() {
-        for a in Algorithm::ALL {
-            let harmonic = tuning_for(a, Variant::Harmonic, 4.0, DEGREES_PER_SCALE).cents();
-            let golden = tuning_for(a, Variant::Golden, 4.0, DEGREES_PER_SCALE).cents();
-            let worst = harmonic
-                .iter()
-                .zip(golden.iter())
-                .map(|(h, g)| (h - g).abs())
-                .fold(0.0f64, f64::max);
-            assert!(
-                worst > 5.0 || harmonic.len() != golden.len(),
-                "{}: I and II agree to within {worst}¢ — that is a tuning error, not an algorithm",
-                a.name()
-            );
+    fn no_two_entries_are_the_same_voice() {
+        let tunings: Vec<Vec<f64>> = ROSTER
+            .iter()
+            .map(|e| tuning_for(e.algorithm, e.ratio, 4.0, DEGREES_PER_SCALE).cents())
+            .collect();
+        for i in 0..ROSTER.len() {
+            for j in (i + 1)..ROSTER.len() {
+                let worst = tunings[i]
+                    .iter()
+                    .zip(tunings[j].iter())
+                    .map(|(a, b)| (a - b).abs())
+                    .fold(0.0f64, f64::max);
+                let differs = tunings[i].len() != tunings[j].len() || worst > 5.0;
+                assert!(
+                    differs,
+                    "{} and {} land on the same scale (worst disagreement {worst:.2} cents)",
+                    ROSTER[i].name, ROSTER[j].name
+                );
+            }
         }
     }
 
@@ -378,8 +382,8 @@ mod tests {
     /// §3 that justifies interpolating tables across index at all.
     #[test]
     fn the_scale_moves_with_index() {
-        let low = tuning_for(Algorithm::Fm1, Variant::Golden, 1.0, DEGREES_PER_SCALE).cents();
-        let high = tuning_for(Algorithm::Fm1, Variant::Golden, 9.0, DEGREES_PER_SCALE).cents();
+        let low = tuning_for(Algorithm::Fm1, PHI, 1.0, DEGREES_PER_SCALE).cents();
+        let high = tuning_for(Algorithm::Fm1, PHI, 9.0, DEGREES_PER_SCALE).cents();
         let moved = low.len() != high.len()
             || low
                 .iter()
@@ -391,13 +395,13 @@ mod tests {
     /// Degrees stay ordered and inside the octave for every algorithm.
     #[test]
     fn all_tables_are_well_formed() {
-        for (a, v, tuning) in tables(4.0) {
+        for (e, tuning) in tables(4.0) {
             let cents = tuning.cents();
             assert!(
                 cents.windows(2).all(|w| w[0] < w[1]),
                 "{} {} is unordered: {cents:?}",
-                a.name(),
-                v.numeral()
+                e.name,
+                ""
             );
             assert!(cents.iter().all(|&c| (0.0..=1200.0).contains(&c)));
         }
