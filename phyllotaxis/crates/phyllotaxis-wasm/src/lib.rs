@@ -88,6 +88,9 @@ pub struct Engine {
     params: [f32; param::COUNT as usize],
     scope: Box<[f32; SCOPE_LEN]>,
     scope_head: usize,
+    /// The block the worklet copies out of. Owned here so JS never has to
+    /// allocate inside wasm memory, and so there is no pointer to keep in sync.
+    out: Box<[f32; QUANTUM]>,
 }
 
 fn defaults() -> [f32; param::COUNT as usize] {
@@ -142,6 +145,7 @@ impl Engine {
             params,
             scope: Box::new([0.0; SCOPE_LEN]),
             scope_head: 0,
+            out: Box::new([0.0; QUANTUM]),
         };
         e.apply();
         e
@@ -386,6 +390,39 @@ pub unsafe extern "C" fn phy_step(e: *mut Engine, delta: i32) {
     }
 }
 
+/// Render into the engine's own output block, then read it with
+/// [`phy_out_ptr`].
+///
+/// `frames` is clamped to [`QUANTUM`]: the worklet's render quantum is fixed by
+/// the platform, and a larger request would be a bug on the JS side rather than
+/// something to grow a buffer for.
+///
+/// # Safety
+/// `e` must come from [`phy_new`].
+#[no_mangle]
+pub unsafe extern "C" fn phy_render(e: *mut Engine, frames: u32) {
+    if e.is_null() {
+        return;
+    }
+    let engine = &mut *e;
+    let n = (frames as usize).min(QUANTUM);
+    for i in 0..n {
+        engine.out[i] = engine.tick();
+    }
+}
+
+/// # Safety
+/// `e` must come from [`phy_new`]. Valid until `phy_free`.
+#[no_mangle]
+pub unsafe extern "C" fn phy_out_ptr(e: *mut Engine) -> *const f32 {
+    if e.is_null() { core::ptr::null() } else { (*e).out.as_ptr() }
+}
+
+#[no_mangle]
+pub extern "C" fn phy_quantum() -> u32 {
+    QUANTUM as u32
+}
+
 /// Pointer to the scope ring, for the visualiser to read directly out of wasm
 /// memory. Read-only from JS.
 ///
@@ -515,6 +552,24 @@ mod tests {
     }
 
     /// The ABI is a contract: these must not be reordered.
+    /// The worklet path: render into the engine's own block, read it back.
+    #[test]
+    fn the_render_block_round_trips() {
+        let e = phy_new(SR);
+        unsafe {
+            phy_render(e, QUANTUM as u32);
+            let p = phy_out_ptr(e);
+            assert!(!p.is_null());
+            let out = core::slice::from_raw_parts(p, QUANTUM);
+            assert!(out.iter().all(|s| s.is_finite()));
+            // A larger request is clamped rather than overrunning.
+            phy_render(e, 4096);
+            assert!(core::slice::from_raw_parts(phy_out_ptr(e), QUANTUM).iter().all(|s| s.is_finite()));
+            phy_free(e);
+        }
+        assert_eq!(phy_quantum(), QUANTUM as u32);
+    }
+
     #[test]
     fn the_abi_is_stable() {
         assert_eq!(param::ENTRY, 0);

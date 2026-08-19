@@ -41,9 +41,28 @@ These are not deployment details; they change how the DSP is written.
   x86 does not exist here. Every IIR feedback path — the plate's diffusers, the
   SVF's state — needs explicit denormal prevention or its tail costs an order
   of magnitude more CPU than its head.
-- **No `fetch` in `AudioWorkletGlobalScope`.** Compile the `WebAssembly.Module`
-  on the main thread, pass it over `port.postMessage` (it is structured-
-  cloneable), instantiate synchronously inside the worklet.
+- **No `fetch` in `AudioWorkletGlobalScope`** — and the obvious way round it
+  does not work. ~~Compile the `WebAssembly.Module` on the main thread and pass
+  it over `port.postMessage`, since it is structured-cloneable.~~ A
+  `WebAssembly.Module` **is** structured-cloneable and posting one to a *Worker*
+  works. Posting one to an **AudioWorklet's** port does not: the message is
+  silently discarded. No exception on the sender, no error on the receiver, no
+  console warning — and the port keeps working, so every later message arrives
+  normally and it looks exactly like a handler that never ran.
+
+  Measured directly rather than inferred: posting `{plain}`, `{module}`,
+  `{after-module}`, `{bytes}` in that order delivers the first, third and
+  fourth. The fourth compiles and instantiates inside the worklet with 16
+  exports.
+
+  So **send the `ArrayBuffer` and compile in the worklet** with the synchronous
+  `new WebAssembly.Module(bytes)`. The 4 KB ceiling on synchronous compilation
+  applies to the main thread only; 146 KB compiles fine off it. Transfer the
+  buffer rather than copying it.
+
+  This is written at length because the failure has no symptom. It cost an
+  afternoon, and the claim it replaces was stated confidently in this document
+  for a week.
 - **No allocation in `process()`.** Preallocated linear memory, fixed scratch
   buffers, C-ABI entry points. 128 frames a call.
 - **Visualiser data** wants a SharedArrayBuffer ring, which requires COOP/COEP

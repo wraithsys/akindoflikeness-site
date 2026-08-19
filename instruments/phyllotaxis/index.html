@@ -1,0 +1,684 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>PHYLLOTAXIS</title>
+<meta name="description" content="A polyphonic instrument that plays itself. Its scales are computed from each algorithm's own spectrum rather than assumed to be 12-TET.">
+<link rel="canonical" href="https://akindoflikeness.net/instruments/phyllotaxis/">
+<meta name="theme-color" content="#0a0d08">
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+
+<style>
+/* ──────────────────────────────────────────────────────────────────────
+   Dark ground, continuous tone.
+
+   Both are conclusions from specimen sheet 01 rather than inheritance.
+   Billy ranked the four-level band above the 1-bit one, and the two
+   specimens he picked out — the warped feedback buffer and the
+   quarter-million-point seed head — are the two that ignore the scarcity
+   rules entirely. The law that came out of it:
+
+       structure emerges from population, not from strokes
+
+   which is why the centrepiece is a seed field driven by the audio rather
+   than a drawn spiral, and why it accumulates into a feedback buffer
+   instead of being redrawn each frame.
+
+   Single theme on purpose: an instrument is a device, not a document.
+   ────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --ground:  #0a0d08;
+  --plate:   #11150e;
+  --ink:     #dfe6d8;
+  --dim:     #7c8676;
+  --faint:   #3d453a;
+  --sap:     #79c98a;
+  --straw:   #d8bb63;
+  --rule:    #232a1e;
+  --measure: 60ch;
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+.shell {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.25rem 1rem 4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+header {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 0.75rem;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(1.1rem, 3vw, 1.5rem);
+  font-weight: 600;
+  letter-spacing: 0.22em;
+}
+
+header .state {
+  margin-left: auto;
+  color: var(--dim);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── the centrepiece ─────────────────────────────────────────────── */
+
+.stage {
+  position: relative;
+  border: 1px solid var(--rule);
+  background: #000;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+}
+
+.stage canvas { display: block; width: 100%; height: 100%; }
+
+.gate {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(10, 13, 8, 0.94);
+  text-align: center;
+  padding: 1.5rem;
+}
+
+.gate div { max-width: 46ch; }
+
+.gate p {
+  margin: 0 0 1rem;
+  color: var(--dim);
+  line-height: 1.6;
+}
+
+.gate strong { color: var(--ink); font-weight: 600; }
+
+button.play {
+  font: inherit;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  padding: 0.7rem 2rem;
+  background: transparent;
+  color: var(--sap);
+  border: 1px solid var(--sap);
+  cursor: pointer;
+}
+
+button.play:hover, button.play:focus-visible { background: var(--sap); color: var(--ground); }
+
+/* ── controls ────────────────────────────────────────────────────── */
+
+.racks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.75rem;
+}
+
+fieldset {
+  border: 1px solid var(--rule);
+  background: var(--plate);
+  margin: 0;
+  padding: 0.6rem 0.75rem 0.75rem;
+}
+
+legend {
+  font-size: 0.62rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--dim);
+  padding: 0 0.4rem;
+}
+
+.ctl { display: grid; grid-template-columns: 1fr auto; gap: 0.15rem 0.5rem; align-items: center; margin-top: 0.4rem; }
+
+.ctl label { font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); }
+
+.ctl output { font-size: 0.7rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+.ctl input[type="range"] {
+  grid-column: 1 / -1;
+  width: 100%;
+  accent-color: var(--sap);
+  margin: 0;
+}
+
+.stepper { display: flex; gap: 0.4rem; align-items: center; margin-top: 0.4rem; }
+
+.stepper button {
+  font: inherit;
+  width: 2rem;
+  height: 1.8rem;
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--faint);
+  cursor: pointer;
+}
+
+.stepper button:hover, .stepper button:focus-visible { border-color: var(--sap); color: var(--sap); }
+
+.stepper .entry {
+  flex: 1;
+  text-align: center;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  color: var(--sap);
+}
+
+.stepper .kind { font-size: 0.62rem; color: var(--dim); letter-spacing: 0.14em; }
+
+:where(button, input, a):focus-visible { outline: 2px solid var(--sap); outline-offset: 2px; }
+
+/* ── notes ───────────────────────────────────────────────────────── */
+
+.notes { max-width: var(--measure); color: var(--dim); font-size: 0.78rem; line-height: 1.7; }
+.notes p { margin: 0 0 0.7rem; }
+.notes b { color: var(--ink); font-weight: 600; }
+.notes a { color: var(--sap); }
+
+footer {
+  border-top: 1px solid var(--rule);
+  padding-top: 0.7rem;
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+footer a { color: var(--dim); text-decoration: none; }
+footer a:hover { color: var(--sap); }
+
+@media (prefers-reduced-motion: reduce) {
+  .stage canvas { opacity: 0.85; }
+}
+</style>
+
+<div class="shell">
+
+  <header>
+    <h1>PHYLLOTAXIS</h1>
+    <div class="state" id="state">idle</div>
+  </header>
+
+  <div class="stage">
+    <canvas id="gl" width="1280" height="720" aria-label="A seed field at the golden angle, driven by the sound"></canvas>
+    <div class="gate" id="gate">
+      <div>
+        <p><strong>This instrument plays itself, continuously.</strong> There is no
+          note that ends and no envelope anywhere — amplitude moves, and a chord
+          is the field moving more for a while.</p>
+        <p>It will make sound as soon as you start it. Nothing is installed and
+          nothing leaves your machine.</p>
+        <button class="play" id="start">Begin</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="racks">
+    <fieldset>
+      <legend>Engine</legend>
+      <div class="stepper">
+        <button id="prev" title="Step back">◂</button>
+        <div>
+          <div class="entry" id="entry">fm II</div>
+          <div class="kind" id="kind">scale</div>
+        </div>
+        <button id="next" title="Step forward">▸</button>
+      </div>
+      <div class="ctl">
+        <label for="p1">Index</label><output id="o1"></output>
+        <input type="range" id="p1" data-param="1" min="0.2" max="12" step="0.05" value="4">
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Cadence</legend>
+      <div class="ctl">
+        <label for="p2">Interval</label><output id="o2"></output>
+        <input type="range" id="p2" data-param="2" min="0.4" max="6" step="0.01" value="1.618">
+      </div>
+      <div class="ctl">
+        <label for="p3">Mirror</label><output id="o3"></output>
+        <input type="range" id="p3" data-param="3" min="0" max="1" step="0.01" value="0.382">
+      </div>
+      <div class="ctl">
+        <label for="p4">Strum</label><output id="o4"></output>
+        <input type="range" id="p4" data-param="4" min="-1" max="1" step="0.01" value="-0.7">
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Field</legend>
+      <div class="ctl">
+        <label for="p5">Floor</label><output id="o5"></output>
+        <input type="range" id="p5" data-param="5" min="0" max="1" step="0.01" value="0.10">
+      </div>
+      <div class="ctl">
+        <label for="p6">Depth</label><output id="o6"></output>
+        <input type="range" id="p6" data-param="6" min="0" max="1" step="0.01" value="0.85">
+      </div>
+      <div class="ctl">
+        <label for="p7">Curve</label><output id="o7"></output>
+        <input type="range" id="p7" data-param="7" min="0" max="1" step="0.01" value="0.42">
+      </div>
+      <div class="ctl">
+        <label for="p8">Attack</label><output id="o8"></output>
+        <input type="range" id="p8" data-param="8" min="0" max="1" step="0.01" value="0.30">
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Room</legend>
+      <div class="ctl">
+        <label for="p9">Decay</label><output id="o9"></output>
+        <input type="range" id="p9" data-param="9" min="0" max="1" step="0.01" value="0.74">
+      </div>
+      <div class="ctl">
+        <label for="p11">Plate</label><output id="o11"></output>
+        <input type="range" id="p11" data-param="11" min="0" max="1" step="0.01" value="0.30">
+      </div>
+      <div class="ctl">
+        <label for="p14">Chorus</label><output id="o14"></output>
+        <input type="range" id="p14" data-param="14" min="0" max="1" step="0.01" value="0.30">
+      </div>
+      <div class="ctl">
+        <label for="p17">Master</label><output id="o17"></output>
+        <input type="range" id="p17" data-param="17" min="0" max="1" step="0.01" value="0.8">
+      </div>
+    </fieldset>
+  </div>
+
+  <div class="notes">
+    <p><b>There is no randomise button.</b> STEP walks the roster forward and
+      back along a fixed path, so anything you find can be returned to. The whole
+      state reconstructs from its parameters, which is why the address bar is a
+      preset — copy the URL and it carries the patch.</p>
+    <p><b>Each entry brings its own scale.</b> The degrees are computed from that
+      algorithm's own spectrum by minimising sensory dissonance, so the more
+      inharmonic a voice is, the further its scale sits from 12-TET — and the
+      more consonant it sounds. Two entries have so few partials that they prefer
+      a handful of intervals and are sounded whole; those are marked
+      <em>chord</em> rather than <em>scale</em>.</p>
+  </div>
+
+  <footer>
+    <a href="/">akindoflikeness</a>
+    <a href="/bypo">bypo</a>
+    <span id="iso"></span>
+  </footer>
+</div>
+
+<script type="module">
+"use strict";
+
+const WASM_URL = "./build/engine-1a04b51e.wasm";
+const PARAMS = 18;
+const PHI = 1.6180339887498949;
+
+// Roster names and kinds, mirroring phyllotaxis-tuning::ROSTER. The order is
+// the ABI: entry N here is entry N there.
+const ROSTER = [
+  ["fm I", "scale"], ["fm II", "scale"],
+  ["rm I", "chord"], ["rm II", "chord"],
+  ["am I", "chord"], ["am II", "chord"],
+  ["rect I", "scale"], ["rect II", "scale"],
+];
+
+const el = (id) => document.getElementById(id);
+const state = el("state"), gate = el("gate");
+let node = null, ctx = null;
+let scope = new Float32Array(2048);
+
+/* ── presets are coordinates ──────────────────────────────────────
+   The whole state reconstructs from its parameters, so the address bar
+   IS the preset. No server, no accounts, no file format. */
+
+function readHash() {
+  const out = {};
+  const h = location.hash.replace(/^#/, "");
+  for (const pair of h.split(",")) {
+    const [k, v] = pair.split(":");
+    const id = parseInt(k, 10);
+    const val = parseFloat(v);
+    if (Number.isFinite(id) && Number.isFinite(val)) out[id] = val;
+  }
+  return out;
+}
+
+let hashTimer = 0;
+function writeHash() {
+  clearTimeout(hashTimer);
+  hashTimer = setTimeout(() => {
+    const parts = [`0:${entry}`];
+    for (const input of document.querySelectorAll("input[data-param]")) {
+      parts.push(`${input.dataset.param}:${(+input.value).toFixed(3)}`);
+    }
+    history.replaceState(null, "", "#" + parts.join(","));
+  }, 250);
+}
+
+/* ── audio ────────────────────────────────────────────────────────── */
+
+let entry = 1;
+
+function send(msg, transfer) { if (node) node.port.postMessage(msg, transfer || []); }
+
+function setParam(id, value) { send({ type: "set", id, value: +value }); }
+
+function showEntry() {
+  const [name, kind] = ROSTER[entry % ROSTER.length];
+  el("entry").textContent = name;
+  el("kind").textContent = kind;
+}
+
+async function begin() {
+  el("start").disabled = true;
+  state.textContent = "loading";
+  try {
+    await start();
+  } catch (err) {
+    console.error("start failed:", err);
+    state.textContent = "failed: " + (err && err.message ? err.message : err);
+    el("start").disabled = false;
+  }
+}
+
+async function start() {
+
+  ctx = new AudioContext();
+  await ctx.resume();
+
+  // The worklet cannot fetch, so the bytes go across the port and are
+  // compiled there. NOT a compiled WebAssembly.Module: an AudioWorklet port
+  // silently discards one. See build/worklet.js.
+  const [bytes] = await Promise.all([
+    fetch(WASM_URL).then((r) => r.arrayBuffer()),
+    ctx.audioWorklet.addModule("./build/worklet.js"),
+  ]);
+
+  node = new AudioWorkletNode(ctx, "phyllotaxis", { outputChannelCount: [2] });
+  node.port.onmessage = (e) => {
+    const m = e.data;
+    if (m.type === "ready") {
+      state.textContent = "sounding";
+      gate.style.display = "none";
+      applyAll();
+      requestAnimationFrame(pull);
+    } else if (m.type === "scope") {
+      scope = m.samples;
+    } else if (m.type === "error") {
+      console.error("worklet failed at", m.where, m.message);
+      state.textContent = "engine failed";
+    } else if (m.type === "entry") {
+      entry = m.value | 0;
+      showEntry();
+      writeHash();
+    }
+  };
+  node.onprocessorerror = (e) => {
+    console.error("worklet processor error", e);
+    state.textContent = "audio failed";
+  };
+  node.connect(ctx.destination);
+  node.port.postMessage({ type: "init", bytes }, [bytes]);
+}
+
+function applyAll() {
+  setParam(0, entry);
+  for (const input of document.querySelectorAll("input[data-param]")) {
+    setParam(+input.dataset.param, input.value);
+  }
+}
+
+function pull() {
+  send({ type: "scope", count: 2048 });
+  requestAnimationFrame(pull);
+}
+
+/* ── controls ─────────────────────────────────────────────────────── */
+
+const FORMAT = {
+  2: (v) => v.toFixed(2) + "s",
+  4: (v) => (v === 0 ? "block" : (v < 0 ? "▲ " : "▼ ") + Math.abs(v).toFixed(2)),
+};
+
+function wire() {
+  const saved = readHash();
+  if (saved[0] !== undefined) entry = Math.max(0, Math.min(ROSTER.length - 1, saved[0] | 0));
+  showEntry();
+
+  for (const input of document.querySelectorAll("input[data-param]")) {
+    const id = +input.dataset.param;
+    if (saved[id] !== undefined) input.value = saved[id];
+    const out = el("o" + id);
+    const show = () => { out.textContent = (FORMAT[id] || ((v) => v.toFixed(2)))(+input.value); };
+    show();
+    input.addEventListener("input", () => { show(); setParam(id, input.value); writeHash(); });
+  }
+
+  el("next").addEventListener("click", () => { send({ type: "step", delta: 1 }); });
+  el("prev").addEventListener("click", () => { send({ type: "step", delta: -1 }); });
+  el("start").addEventListener("click", begin, { once: true });
+
+  el("iso").textContent = self.crossOriginIsolated ? "isolated" : "not isolated";
+}
+
+/* ── the centrepiece ──────────────────────────────────────────────
+   A seed field at the golden angle, drawn into a feedback buffer that is
+   resampled through a small warp each frame — the two specimens Billy
+   picked out, run through each other. Nobody draws the spiral arms; a
+   population and one irrational angle do. */
+
+const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
+
+function initGL() {
+  const cv = el("gl");
+  const gl = cv.getContext("webgl", { antialias: false, alpha: false });
+  if (!gl) return;
+  const W = cv.width, H = cv.height;
+
+  const sh = (t, src, tag) => {
+    const s = gl.createShader(t);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+      console.error(`shader ${tag} failed:`, gl.getShaderInfoLog(s));
+      return null;
+    }
+    return s;
+  };
+  const prog = (v, f, tag) => {
+    const p = gl.createProgram();
+    const vs = sh(gl.VERTEX_SHADER, v, tag + ":vert");
+    const fs = sh(gl.FRAGMENT_SHADER, f, tag + ":frag");
+    if (!vs || !fs) return null;
+    gl.attachShader(p, vs);
+    gl.attachShader(p, fs);
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
+      console.error(`program ${tag} failed to link:`, gl.getProgramInfoLog(p));
+      return null;
+    }
+    return p;
+  };
+
+  const target = () => {
+    const tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, W, H, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    for (const p of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, p, gl.LINEAR);
+    for (const p of [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T]) gl.texParameteri(gl.TEXTURE_2D, p, gl.CLAMP_TO_EDGE);
+    const fbo = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    return { tex, fbo };
+  };
+  let a = target(), b = target();
+
+  const quad = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+
+  const VQ = "attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}";
+
+  const warp = prog(VQ, `
+    precision highp float;
+    uniform sampler2D u_prev; uniform vec2 u_res; uniform float u_decay, u_spin, u_t;
+    void main(){
+      vec2 uv = gl_FragCoord.xy / u_res, c = uv - 0.5;
+      float ang = u_spin + sin(u_t * 0.13) * 0.004;
+      mat2 m = mat2(cos(ang), -sin(ang), sin(ang), cos(ang));
+      vec3 prev = texture2D(u_prev, m * c * 0.997 + 0.5).rgb * u_decay;
+      gl_FragColor = vec4(prev, 1.0);
+    }`, "warp");
+
+  const seeds = prog(`
+    // A uniform shared across stages must have the SAME precision in both.
+    // The vertex stage defaults float to highp and the fragment stage declared
+    // mediump, so u_level differed and the program refused to link — with the
+    // only symptom being several hundred downstream warnings.
+    precision highp float;
+    attribute float i;
+    uniform float u_count, u_level, u_t; uniform vec2 u_res;
+    varying float v_r;
+    void main(){
+      float ang = i * ${GOLDEN_ANGLE.toFixed(10)} + u_t * 0.02;
+      float rad = sqrt(i / u_count);
+      float s = 0.92 * min(u_res.x, u_res.y) * 0.5 * (0.55 + 0.45 * u_level);
+      vec2 p = vec2(cos(ang), sin(ang)) * rad * s;
+      gl_Position = vec4(p / (u_res * 0.5), 0., 1.);
+      gl_PointSize = max(1.0, (1.2 + 3.0 * u_level) * (0.4 + 0.6 * rad));
+      v_r = rad;
+    }`, `
+    precision highp float;
+    uniform float u_level;
+    varying float v_r;
+    void main(){
+      vec2 d = gl_PointCoord - 0.5;
+      float l = length(d);
+      if (l > 0.5) discard;
+      float cov = (1.0 - l * 2.0) * (1.0 - 0.5 * v_r);
+      vec3 col = mix(vec3(0.34, 0.62, 0.43), vec3(0.90, 0.97, 0.88), v_r * (0.4 + 0.6 * u_level));
+      gl_FragColor = vec4(col * cov * (0.75 + 0.85 * u_level), 1.0);
+    }`, "seeds");
+
+  const show = prog(VQ, `
+    precision mediump float;
+    uniform sampler2D u_src; uniform vec2 u_res;
+    void main(){ gl_FragColor = vec4(texture2D(u_src, gl_FragCoord.xy / u_res).rgb, 1.0); }`, "show");
+
+  if (!warp || !seeds || !show) {
+    console.error("visualiser disabled: a shader did not build");
+    return;
+  }
+
+  const MAX = 60000;
+  const idx = gl.createBuffer();
+  {
+    const arr = new Float32Array(MAX);
+    for (let k = 0; k < MAX; k++) arr[k] = k + 0.5;
+    gl.bindBuffer(gl.ARRAY_BUFFER, idx);
+    gl.bufferData(gl.ARRAY_BUFFER, arr, gl.STATIC_DRAW);
+  }
+
+  const drawQuad = (p) => {
+    gl.useProgram(p);
+    gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+    const loc = gl.getAttribLocation(p, "a");
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  };
+
+  const t0 = performance.now();
+  let smooth = 0;
+
+  (function frame() {
+    requestAnimationFrame(frame);
+    const t = (performance.now() - t0) / 1000;
+
+    let rms = 0;
+    for (let k = 0; k < scope.length; k++) rms += scope[k] * scope[k];
+    rms = Math.sqrt(rms / Math.max(1, scope.length));
+    // The field never falls to silence, so the useful range is narrow and sits
+    // well above zero. Map it with a floor rather than from 0, or the
+    // centrepiece spends its life nearly black.
+    smooth += (Math.min(1, 0.22 + rms * 6.5) - smooth) * 0.12;
+
+    const count = Math.max(600, Math.floor(1500 + 42000 * smooth));
+
+    gl.viewport(0, 0, W, H);
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, b.fbo);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, a.tex);
+    gl.useProgram(warp);
+    gl.uniform1i(gl.getUniformLocation(warp, "u_prev"), 0);
+    gl.uniform2f(gl.getUniformLocation(warp, "u_res"), W, H);
+    gl.uniform1f(gl.getUniformLocation(warp, "u_decay"), 0.965);
+    gl.uniform1f(gl.getUniformLocation(warp, "u_spin"), 0.0016);
+    gl.uniform1f(gl.getUniformLocation(warp, "u_t"), t);
+    drawQuad(warp);
+
+    gl.useProgram(seeds);
+    gl.bindBuffer(gl.ARRAY_BUFFER, idx);
+    const li = gl.getAttribLocation(seeds, "i");
+    gl.enableVertexAttribArray(li);
+    gl.vertexAttribPointer(li, 1, gl.FLOAT, false, 0, 0);
+    gl.uniform1f(gl.getUniformLocation(seeds, "u_count"), count);
+    gl.uniform1f(gl.getUniformLocation(seeds, "u_level"), smooth);
+    gl.uniform1f(gl.getUniformLocation(seeds, "u_t"), t);
+    gl.uniform2f(gl.getUniformLocation(seeds, "u_res"), W, H);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.ONE, gl.ONE);
+    gl.drawArrays(gl.POINTS, 0, count);
+    gl.disable(gl.BLEND);
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, b.tex);
+    gl.useProgram(show);
+    gl.uniform1i(gl.getUniformLocation(show, "u_src"), 0);
+    gl.uniform2f(gl.getUniformLocation(show, "u_res"), W, H);
+    drawQuad(show);
+
+    const s = a; a = b; b = s;
+  })();
+}
+
+wire();
+initGL();
+</script>
+</html>

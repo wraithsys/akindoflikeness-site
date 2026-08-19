@@ -61,11 +61,12 @@
 
 # Built bundles live in /instruments/<name>/build/ and are hashed by the build,
 # so they can be cached forever. One line per instrument: rule 1 above means
-# `/instruments/*/build/*` would match nothing. Uncomment when the bundle lands
-# and the instrument's public name is settled:
+# `/instruments/*/build/*` would match nothing.
 #
-# /instruments/phyllotaxis/build/*
-#   Cache-Control: public, max-age=31536000, immutable
+# The engine is `engine-<hash>.wasm` — the hash is of its own bytes, so a new
+# build is a new URL and the year-long cache can never serve a stale one.
+/instruments/phyllotaxis/build/*
+  Cache-Control: public, max-age=31536000, immutable
 #
 # `.wasm` needs no Content-Type rule here — Pages already serves it as
 # `application/wasm` from its own MIME table (verified), which is what
