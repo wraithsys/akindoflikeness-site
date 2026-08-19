@@ -280,6 +280,14 @@ call themselves. So spectral density becomes a **readout** — drawn, not acted 
 That is not a control at all, so no law governs it, and it turns a hidden
 property of the roster into something the surface says out loud.
 
+**Density control, if it is wanted, is a signal-flow design and gets a toggle.**
+Billy: *"envelope follower on the verb send and reconcile with a sidechain to
+voice output and ride down decay on scheduled voice steal"* — which is a real
+mechanism made of hearable parts, not a lookup keyed to the algorithm. It is
+built with the FX bus (§8), behind a switch, and it stays only if it earns its
+keep with the switch off as the control. Nothing about it is derived from the
+roster; it responds to the signal, which is why it is allowed at all.
+
 **One thing does still want correcting automatically, and it is a fault rather
 than a character:** level. 559 partials against 9 is a large loudness difference,
 and if it is left alone the algorithm selector doubles as a volume control —

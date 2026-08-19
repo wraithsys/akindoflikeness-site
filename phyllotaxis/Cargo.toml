@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/phyllotaxis-tuning"]
+members = ["crates/phyllotaxis-tuning", "crates/phyllotaxis-voice"]
 
 [workspace.package]
 edition = "2021"

@@ -221,9 +221,39 @@ pub fn rectified_half(source: f64, harmonics: usize) -> Spectrum {
     Spectrum::new(fundamental.chain(evens)).normalised()
 }
 
+/// **Ring modulation by a modulator that is not a sine.**
+///
+/// Multiplying a carrier by an arbitrary spectrum puts a sum-and-difference
+/// pair around the carrier for every partial the modulator has: `|c ± pₖ|`, at
+/// half its amplitude. This is what the Rect algorithms actually do — rectify
+/// the modulator, then ring-modulate with the result — so it is what the
+/// tuning tables have to be computed from.
+pub fn ring_with(carrier: f64, modulator: &Spectrum) -> Spectrum {
+    let partials = modulator.partials().iter().flat_map(|p| {
+        [
+            Partial { ratio: carrier - p.ratio * carrier, amp: p.amp / 2.0 },
+            Partial { ratio: carrier + p.ratio * carrier, amp: p.amp / 2.0 },
+        ]
+    });
+    Spectrum::new(partials.collect::<Vec<_>>()).normalised()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Ring modulation by a sine, expressed through `ring_with`, must agree
+    /// with `ring` — the general case containing the special one.
+    #[test]
+    fn ring_with_a_single_partial_is_plain_ring_modulation() {
+        let sine = Spectrum::new([Partial { ratio: 0.5, amp: 1.0 }]);
+        let general = ring_with(1.0, &sine);
+        let special = ring(1.0, 0.5);
+        assert_eq!(general.partials().len(), special.partials().len());
+        for (a, b) in general.partials().iter().zip(special.partials()) {
+            assert!((a.ratio - b.ratio).abs() < 1e-12, "{a:?} vs {b:?}");
+        }
+    }
 
     /// Half-wave keeps the fundamental that full-wave discards. Without this
     /// the two Rect modes are one algorithm.

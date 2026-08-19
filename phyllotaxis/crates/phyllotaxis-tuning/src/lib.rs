@@ -187,10 +187,20 @@ pub fn spectrum_for(algorithm: Algorithm, variant: Variant, index: f64) -> Spect
         // Measured at 0.02¢. Half-wave keeps the fundamental and is a genuinely
         // different spectrum, so Rect I is half-wave and Rect II full-wave,
         // each still at its own end of the convergents. See `DESIGN.md` §2.
-        Algorithm::Rect => match variant {
-            Variant::Harmonic => spectrum::rectified_half(ratio, RECT_HARMONICS),
-            Variant::Golden => spectrum::rectified(ratio, RECT_HARMONICS),
-        },
+        //
+        // The modulator is rectified and then ring-modulates the carrier, so
+        // all three operators are used and the spectrum is the carrier with a
+        // sum-and-difference pair for every harmonic rectification produced.
+        // Writing the DSP is what forced this: modelling Rect as the bare
+        // rectified source left the carrier idle and contradicted "1 car, 1
+        // mod, 1 sub".
+        Algorithm::Rect => {
+            let rectified = match variant {
+                Variant::Harmonic => spectrum::rectified_half(ratio, RECT_HARMONICS),
+                Variant::Golden => spectrum::rectified(ratio, RECT_HARMONICS),
+            };
+            spectrum::ring_with(carrier, &rectified)
+        }
     };
 
     if algorithm.has_sub() {
