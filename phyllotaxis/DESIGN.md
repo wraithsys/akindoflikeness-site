@@ -433,6 +433,32 @@ it is the field moving more for a while.
 2. **The interval is fed, not measured.** Cadence knows the chord-change
    interval exactly, so the derivation stops being an estimate. The measurement
    path in `begin()` stays for hand-played input.
+2b. **The gesture had a ceiling on it, and the derivation was not happening.**
+   Found by the Cadence verification pass, in code already built and passing
+   its own tests. `breath.rs` uses `LONE_NOTE_S` (987 ms) for two different
+   jobs — the fallback when no interval is known, *and* the upper clamp on
+   `gesture_s()` — and copying its clamp brought the conflation across. Any
+   interval above 1.597 s stopped producing `interval/φ`:
+
+   | interval | golden section | what was produced |
+   |---|---|---|
+   | 1.0 s | 0.618 s | 0.618 s |
+   | 2.0 s | 1.236 s | **0.987 s** |
+   | 3.2 s | 1.978 s | **0.987 s** |
+   | 6.0 s | 3.708 s | **0.987 s** |
+
+   3.2 s is the chord rate the renders were made at, so every A/B so far heard a
+   gesture roughly half its specified length. The ceiling is gone: `interval_s`
+   is already bounded to 8 s, so the gesture is bounded by construction at
+   `8/φ ≈ 4.94 s` and a second ceiling protected nothing.
+
+   **The test was shaped around the bug.** It checked exactness only
+   `if interval < LONE_NOTE_S / GESTURE_FRACTION` — a guard whose condition is
+   exactly the region where the ceiling did not bite. It passed, for the wrong
+   reason, in the one place it was supposed to look. A guard that excludes the
+   interesting case is not a guard, and that is worth remembering more than the
+   bug is.
+
 3. **ATTACK is a fraction of the gesture, never a time in milliseconds.**
    `breath.rs` has no rise at all — `begin()` sets `boost_level = 1.0` and
    `curve` shapes only the fall. Adding a rise in absolute time would reintroduce

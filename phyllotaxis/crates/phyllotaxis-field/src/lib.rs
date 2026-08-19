@@ -52,6 +52,13 @@ const RELEASE_BOOST: f32 = 1.0 / PHI;
 const CURVE_RANGE: f32 = 4.0;
 
 /// Gesture length when nothing has established an interval — Fibonacci 987 ms.
+///
+/// A **fallback**, not a ceiling. `breath.rs` uses this value for both, and
+/// copying its clamp brought the conflation across: any interval above 1.597 s
+/// silently stopped producing `interval/φ` and produced 0.987 s instead, so at
+/// a 3.2 s chord rate the gesture was 0.987 s where the design says 1.978 s.
+/// That is the golden-section derivation — the entire reason there is no ADSR
+/// here — quietly not happening at every rate a pad actually plays at.
 const LONE_NOTE_S: f32 = 0.987;
 
 const MIN_INTERVAL_S: f32 = 0.05;
@@ -146,10 +153,15 @@ impl Field {
     }
 
     /// How long the current gesture lasts: the golden section of the interval,
-    /// so it always fits inside the gap.
+    /// so it always fits inside the gap — **at every interval**, which is the
+    /// point of deriving it rather than dialling it.
+    ///
+    /// No upper clamp. `interval_s` is already bounded to `MAX_INTERVAL_S`, so
+    /// the gesture is bounded by construction at `8/φ ≈ 4.94 s`; adding a
+    /// second ceiling on top of that does not protect anything, it just breaks
+    /// the derivation above 1.597 s.
     pub fn gesture_s(&self) -> f32 {
-        (self.interval_s * GESTURE_FRACTION)
-            .clamp(MIN_INTERVAL_S * GESTURE_FRACTION, LONE_NOTE_S)
+        (self.interval_s * GESTURE_FRACTION).max(MIN_INTERVAL_S * GESTURE_FRACTION)
     }
 
     /// A note begins. Not an attack — the movement simply deepens.
@@ -358,18 +370,41 @@ mod tests {
         assert!(swing(1.0) < 1e-4, "at floor 1.0 there is nowhere left to go");
     }
 
-    /// The gesture is the golden section of the interval, at every rate.
+    /// The gesture is the golden section of the interval, at **every** rate.
+    ///
+    /// The first version of this test carried the guard
+    /// `if interval < LONE_NOTE_S / GESTURE_FRACTION` around its exactness
+    /// check — which is precisely the region where the ceiling broke the
+    /// derivation. The test was shaped around the bug and passed for it. A
+    /// guard that excludes the interesting case is not a guard.
     #[test]
-    fn the_gesture_fits_the_interval() {
+    fn the_gesture_is_the_golden_section_at_every_interval() {
         let mut f = field();
-        for &interval in &[0.125f32, 0.5, 2.0, 6.0] {
+        for &interval in &[0.05f32, 0.125, 0.5, 1.0, 1.597, 2.0, 3.2, 6.0, 8.0] {
             f.set_interval(interval);
             let g = f.gesture_s();
-            assert!(g <= interval, "gesture {g} does not fit in {interval}");
-            if interval > MIN_INTERVAL_S && interval < LONE_NOTE_S / GESTURE_FRACTION {
-                assert!((g - interval * GESTURE_FRACTION).abs() < 1e-5);
-            }
+            assert!(g < interval, "gesture {g} does not fit inside {interval}");
+            assert!(
+                (g - interval * GESTURE_FRACTION).abs() < 1e-4,
+                "at interval {interval}s the gesture is {g}s, not {}s",
+                interval * GESTURE_FRACTION
+            );
+            // And the rest of the gap is 1/φ², the other half of the section.
+            assert!(
+                ((interval - g) - interval / (PHI * PHI)).abs() < 1e-4,
+                "rest is not the complementary golden section"
+            );
         }
+    }
+
+    /// The bound comes from the interval, not from a second ceiling.
+    #[test]
+    fn the_gesture_is_bounded_by_the_interval_clamp() {
+        let mut f = field();
+        f.set_interval(1000.0);
+        assert!(f.gesture_s() <= MAX_INTERVAL_S * GESTURE_FRACTION + 1e-4);
+        f.set_interval(0.0);
+        assert!(f.gesture_s() >= MIN_INTERVAL_S * GESTURE_FRACTION - 1e-6);
     }
 
     /// Attack is a fraction, so it cannot outrun the gesture at any rate —
