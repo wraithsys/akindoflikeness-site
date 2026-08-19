@@ -654,7 +654,11 @@ mod tests {
             let mut attacks = 0usize;
             let mut chords = 0usize;
             let mut last: Vec<i64> = Vec::new();
-            for _ in 0..((SR as usize * 120) / QUANTUM) {
+            // 20 s, not 120. At the default 1.618 s chord rate that is a
+            // dozen chords — ample to show an entry moving, which is all this
+            // asserts. At 120 s across eight entries it simulated sixteen
+            // minutes of audio and took two and a half minutes to say so.
+            for _ in 0..((SR as usize * 20) / QUANTUM) {
                 e.process(&mut buf);
                 let cur: Vec<i64> =
                     e.sounding[..e.sounding_len].iter().map(|c| c.round() as i64).collect();
