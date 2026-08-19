@@ -389,7 +389,14 @@ footer a:hover { color: var(--sap); }
 <script type="module">
 "use strict";
 
-const WASM_URL = "./build/engine-17d760a2.wasm";
+// All three are content-hashed by build-wasm.sh and cached for a year by
+// `_headers`. That header is only safe BECAUSE of the hash: a new build has to
+// be a new URL, or a returning browser pairs a fresh engine with a stale
+// worklet and the instrument quietly degrades for twelve months. worklet.js
+// went a whole release unhashed under that rule.
+const WASM_URL = "./build/engine-9bff6041.wasm";
+const WORKLET_URL = "./build/worklet-0607611d.js";
+const TUNER_URL = "./build/tuner-989ed7e4.js";
 const PARAMS = 19; // mirrors param::COUNT
 const PHI = 1.6180339887498949;
 
@@ -472,7 +479,7 @@ async function start() {
   // silently discards one. See build/worklet.js.
   const [bytes] = await Promise.all([
     fetch(WASM_URL).then((r) => r.arrayBuffer()),
-    ctx.audioWorklet.addModule("./build/worklet.js"),
+    ctx.audioWorklet.addModule(WORKLET_URL),
   ]);
   // The worklet's copy is TRANSFERRED, which detaches this buffer, so the
   // tuner's copy has to be taken before that happens.
@@ -521,7 +528,7 @@ let wantTuning = null;
 function tuningKey(entry, index) { return entry + "@" + (+index).toFixed(3); }
 
 function startTuner(wasmBytes) {
-  tuner = new Worker("./build/tuner.js");
+  tuner = new Worker(TUNER_URL);
   tuner.onmessage = (e) => {
     const m = e.data;
     if (m.type === "ready") {

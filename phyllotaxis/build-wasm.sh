@@ -19,9 +19,31 @@ HASH=$(sha256sum "$CRATE" | cut -c1-8)
 rm -f "$OUT"/engine-*.wasm
 cp "$CRATE" "$OUT/engine-$HASH.wasm"
 
-# The surface names the file it loads; keep the two in step.
+# The surface names the files it loads; keep them in step.
 sed -i "s#\./build/engine-[0-9a-f]*\.wasm#./build/engine-$HASH.wasm#" \
   ../instruments/phyllotaxis/index.html
 
+# worklet.js and tuner.js are hashed too, and that is not tidiness.
+# `_headers` caches this whole directory `immutable` for a year on the grounds
+# that build output is content-addressed. worklet.js shipped unhashed under
+# that rule, so a returning browser would have paired its year-old cached
+# worklet with a freshly hashed engine — mono audio and no retuning, silently,
+# with no way to bust it. A hash in the name makes a changed file a different
+# URL, which is the only thing that makes the header true.
+for f in worklet tuner; do
+  # `|| true`: with `set -euo pipefail` a non-matching glob makes `ls` fail and
+  # takes the whole script down before it renames anything — which is exactly
+  # how this loop silently did nothing the first time it ran.
+  SRC=$(ls "$OUT/$f"-*.js 2>/dev/null | head -1 || true)
+  [ -n "$SRC" ] || SRC="$OUT/$f.js"
+  H=$(sha256sum "$SRC" | cut -c1-8)
+  if [ "$SRC" != "$OUT/$f-$H.js" ]; then
+    mv "$SRC" "$OUT/$f-$H.js"
+  fi
+  sed -i "s#\./build/$f\(-[0-9a-f]*\)\?\.js#./build/$f-$H.js#" \
+    ../instruments/phyllotaxis/index.html
+  echo "$f-$H.js"
+done
+
 echo "engine-$HASH.wasm  ($(stat -c%s "$OUT/engine-$HASH.wasm") bytes)"
-grep -n 'WASM_URL' ../instruments/phyllotaxis/index.html
+grep -n '_URL = ' ../instruments/phyllotaxis/index.html

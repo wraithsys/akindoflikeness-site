@@ -63,8 +63,16 @@
 # so they can be cached forever. One line per instrument: rule 1 above means
 # `/instruments/*/build/*` would match nothing.
 #
-# The engine is `engine-<hash>.wasm` — the hash is of its own bytes, so a new
-# build is a new URL and the year-long cache can never serve a stale one.
+# Everything here is `<name>-<hash>.<ext>`, the hash taken of the file's own
+# bytes, so a new build is a new URL and the year-long cache can never serve a
+# stale one.
+#
+# **That is a claim about the build, and this rule is only safe while it holds.**
+# It did not: `worklet.js` and `tuner.js` shipped here unhashed under a rule
+# that assumes otherwise. A returning browser would have kept its year-old
+# worklet and paired it with a freshly hashed engine — silently mono, no
+# retuning, and nothing anyone could do to bust it. `build-wasm.sh` now hashes
+# all three, which is what makes this line true rather than merely intended.
 /instruments/phyllotaxis/build/*
   Cache-Control: public, max-age=31536000, immutable
 #
