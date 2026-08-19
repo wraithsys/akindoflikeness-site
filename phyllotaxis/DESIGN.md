@@ -584,6 +584,45 @@ The caveat matters: in general `gcd(F(m), F(n)) = F(gcd(m, n))`, so F(6)=8
 against F(9)=34 shares a factor of 2. **Use adjacent terms, or terms at coprime
 indices.**
 
+### Built, and coprime delays turned out to be necessary but nowhere near sufficient
+
+Three things the arithmetic could not have told us, all found by measurement:
+
+**Coprimality does not prevent flutter; topology does.** With diffusion only at
+the input, the tank is four comb filters in a ring — an impulse recirculates
+recognisably and the tail rings at the loop period, whatever the delay lengths.
+Measured short-lag autocorrelation: **0.98**. Adding allpasses *inside* the loop
+took it to 0.53; replacing the ring coupling with a **Hadamard** mix — orthogonal,
+so it scatters every line into every other on each pass without changing the
+energy — is what actually made it dense. Coprime lengths stop echoes coinciding;
+they do nothing about a structure that reproduces its input.
+
+**The requirement is a coincidence period, not a gcd.** Four consecutive terms
+`F(n…n+3)` are all-pairs coprime only when `3 ∤ n`, since `gcd(F(n), F(n+3)) =
+F(gcd(n,3))` — the tank at `F(18)…F(21)` shares a factor of 2. But `lcm` for
+that pair is 14.1 million samples, **294 seconds**. Demanding `gcd = 1` would
+have pushed the tank up into 369 ms delays to satisfy arithmetic nobody can
+hear. The rule is: no two echoes *in the same feedback loop* may coincide inside
+a minute. It does not apply to the input diffusers at all — they are allpasses
+in series, they smear phase rather than emitting echoes, and being short, 55 and
+89 have an lcm of a tenth of a second while being perfectly coprime.
+
+**Lengths must be disjoint, which a gcd test catches for free.** The
+cross-network worst gcd came back as 1597 — not a shared factor but the same
+length used twice, `F(17)` sitting in both the loop allpasses and the tank.
+
+Final allocation, all three sets disjoint: diffusers `F(10)…F(13)`, loop
+allpasses `F(14)…F(17)`, tank `F(18)…F(21)`.
+
+**The chorus does not pulse, and "never re-aligns" is not a property any rates
+have.** Six irrational rotations come arbitrarily close eventually — Weyl
+equidistribution guarantees it. What matters is that the first re-alignment
+falls outside any span a pad is held for: **78 seconds**. Two earlier versions
+of that test measured nothing — one asked whether the rate ratios were near
+rationals with small denominators, which is true of every real number once the
+numerator is free (`φ⁵ ≈ 122/11`); the other counted `t = 0`, where the phases
+are aligned by definition.
+
 **Noise modulation** on the plate, which is what keeps a plate from sounding
 static.
 
