@@ -110,22 +110,22 @@ form returns ok and stores nothing.
   and those strings are hard to read.
 
 
-## phyllotaxis is in the wrong repo
+## phyllotaxis/ is source, and it is here on purpose
 
-**This repository is public.** The `phyllotaxis/` workspace was put here because
-repository creation is blocked for the automation account, and that was a
-mistake: its `DESIGN.md` and full source are readable by anyone on GitHub today,
-on the `claude/feedback-request-b0u1rw` branch, regardless of what Cloudflare
-does or does not publish.
+**This repository is public**, so the `phyllotaxis/` workspace — `DESIGN.md` and
+all of its source — is readable by anyone. That was raised as a problem and
+Billy's call is that it is not one: *"keep it where it is, it's not causing any
+problems."* `fibonacci-synth` is public and MIT already, so this is the same
+posture, not a new one.
 
-It needs to move to a private repository of its own. Until it does, do not push
-further phyllotaxis work here. The branch history can be rewritten to drop it
-once it has somewhere to go — nothing depends on that branch.
+Two mechanics that follow from it, both handled:
 
-Separately, and only relevant after the move: Cloudflare Pages publishes the
-repository root, so any source directory left here would also be served at
-`akindoflikeness.net/<dir>/`. `robots.txt` disallows `/phyllotaxis/` as a
-stopgap, which keeps it out of search results but does not make it unreadable.
+- Cloudflare Pages publishes the repository root, so once this branch reaches
+  `main` the workspace is also served at `akindoflikeness.net/phyllotaxis/`.
+  `robots.txt` disallows it — source directories are not pages and should not be
+  in an index — but they remain readable, which is fine.
+- `phyllotaxis/renders/` is gitignored. The WAVs are large, regenerate exactly,
+  and would otherwise be published too.
 
 ## Titles are not search terms, deliberately
 
