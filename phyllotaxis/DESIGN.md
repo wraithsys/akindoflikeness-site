@@ -548,14 +548,32 @@ it is the field moving more for a while.
 
    | entry | family | terms | period |
    |---|---|---|---|
-   | fm I | harmonic | 30 24 18 12 6 | **5** |
+   | fm I | lucas | 29 18 11 7 4 | 29 |
    | fm II | fibonacci | 34 21 13 8 5 | 34 |
-   | rm I | lucas | 29 18 11 7 4 | 29 |
+   | **rm I** | **harmonic** | **30 24 18 12 6** | **5** |
    | rm II | lucas mirrored | 4 7 11 18 29 | 29 |
    | am I | padovan | 28 21 16 12 9 | 28 |
    | am II | perrin | 29 22 17 12 10 | 29 |
    | rect I | tribonacci | 44 24 13 7 4 | 44 |
    | rect II | pell | 29 12 5 2 1 | 29 |
+
+   **The commensurate one was assigned to the wrong entry, on a number that had
+   gone stale.** The first version gave it to `fm I`, citing 27 exact
+   coincidences and zero beating pairs. That measurement was taken *before* the
+   roster was corrected from ten entries to eight, and the labels moved
+   underneath it — what was `fm I` then was `Fm1 × Harmonic`; what is `fm I` now
+   is `Fm1 × Golden`. Re-measured on the roster that exists, `fm I` is the
+   **most** shimmering entry on it: 140 partials and **442** beating pairs
+   across a chord, against `fm II`'s 13. The comment in the file was arguing
+   confidently for exactly the wrong choice.
+
+   It belongs to `rm I` — three partials, zero beating pairs, and
+   `Variant::Harmonic`, whose ratio is the low convergent 2/1. The entry you
+   would expect to repeat is the only one that repeats, which is the property
+   BYPO noticed and nobody chose, restored honestly rather than by coincidence.
+
+   *A number carried across a refactor is not evidence; it is a memory of
+   evidence.*
 
    **A mirrored signature collapses unless two things are true**, and in BYPO
    they are not. Reversed terms normalise to the same rate *multiset*, so with

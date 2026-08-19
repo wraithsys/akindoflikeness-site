@@ -80,23 +80,38 @@ fn gcd_all(xs: &[u32]) -> u32 {
 
 /// The signature for a roster entry.
 ///
-/// Seven sequences with `gcd = 1` and one without. **The commensurate one goes
-/// to fm I**, and not by taste: `phyllotaxis-tuning`'s coincidence count
-/// measures fm I at 27 exactly-coincident partial pairs and *zero* beating
-/// pairs, where every other entry beats. It is the one voice on the roster
-/// whose partials reinforce instead of shimmering — so it is the one whose
-/// movement is allowed to come back around. The entry you would expect to
-/// repeat is the only one that does, and this time that is derived rather than
-/// noticed.
+/// Seven sequences with `gcd = 1` and one without. The commensurate one goes to
+/// the entry whose partials **reinforce** rather than shimmer — the one voice
+/// allowed a movement that comes back around.
+///
+/// ## That is `rm I`, and it was `fm I` for a bad reason
+///
+/// The first assignment gave the repeating signature to `fm I`, citing a
+/// coincidence count of 27 exact pairs and *zero* beating. That measurement was
+/// taken **before the roster was corrected from ten entries to eight**, and the
+/// labels moved underneath it: what was called `fm I` then was
+/// `Fm1 × Harmonic`, and what is called `fm I` now is `Fm1 × Golden`. Measured
+/// again on the roster that actually exists, `fm I` is the *most* shimmering
+/// entry there is — 140 partials and **442** beating pairs across a chord — and
+/// the justification in this file was arguing for precisely the wrong one.
+///
+/// On the current roster the reinforcing entry is `rm I`: three partials, zero
+/// beating pairs, and `Variant::Harmonic`, whose ratio is the low convergent
+/// 2/1. The entry you would expect to repeat is the only one that repeats —
+/// which is the property BYPO noticed and nobody chose, restored honestly.
+///
+/// The lesson is worth more than the fix: a number carried across a refactor is
+/// not evidence, it is a memory of evidence.
 pub fn signature_for(algorithm: Algorithm, variant: Variant) -> Signature {
     match (algorithm, variant) {
-        // Harmonic — the only short period on the roster. T = 5.
-        (Algorithm::Fm1, _) => Signature { terms: [30, 24, 18, 12, 6], family: "harmonic" },
+        // Lucas. T = 29. (Was the commensurate one; see the note above.)
+        (Algorithm::Fm1, _) => Signature { terms: [29, 18, 11, 7, 4], family: "lucas" },
         // Fibonacci. T = 34.
         (Algorithm::Fm2, _) => Signature { terms: [34, 21, 13, 8, 5], family: "fibonacci" },
-        // Lucas, and Lucas reversed — same limit, opposite weighting. T = 29.
-        (Algorithm::Rm, Variant::Harmonic) => Signature { terms: [29, 18, 11, 7, 4], family: "lucas" },
+        // Harmonic — the only short period on the roster. T = 5.
+        (Algorithm::Rm, Variant::Harmonic) => Signature { terms: [30, 24, 18, 12, 6], family: "harmonic" },
         (Algorithm::Rm, Variant::Golden) => Signature { terms: [4, 7, 11, 18, 29], family: "lucas mirrored" },
+        // Fm2 keeps Fibonacci.
         // Padovan and Perrin — both limit on the plastic number, different
         // integers, so the pair is related the way the RM pair's ratios are.
         (Algorithm::Am, Variant::Harmonic) => Signature { terms: [28, 21, 16, 12, 9], family: "padovan" },
@@ -112,7 +127,8 @@ mod tests {
     use super::*;
     use phyllotaxis_tuning::ROSTER;
 
-    /// Exactly one entry repeats soon enough to hear, and it is fm I.
+    /// Exactly one entry repeats soon enough to hear, and it is the one whose
+    /// partials reinforce rather than shimmer.
     #[test]
     fn one_signature_is_commensurate_and_it_is_the_reinforcing_one() {
         let short: Vec<_> = ROSTER
@@ -120,15 +136,15 @@ mod tests {
             .filter(|&&(a, v)| signature_for(a, v).period() < 10)
             .collect();
         assert_eq!(short.len(), 1, "expected exactly one short period, got {short:?}");
-        assert_eq!(short[0].0, Algorithm::Fm1);
-        assert_eq!(signature_for(Algorithm::Fm1, Variant::Golden).period(), 5);
+        assert_eq!(short[0], &(Algorithm::Rm, Variant::Harmonic));
+        assert_eq!(signature_for(Algorithm::Rm, Variant::Harmonic).period(), 5);
     }
 
     /// Every other signature runs long enough that nobody tracks it.
     #[test]
     fn the_rest_are_long() {
         for &(a, v) in ROSTER.iter() {
-            if a == Algorithm::Fm1 { continue; }
+            if (a, v) == (Algorithm::Rm, Variant::Harmonic) { continue; }
             let s = signature_for(a, v);
             assert!(s.period() >= 28, "{} has period {}", s.family, s.period());
         }
@@ -149,7 +165,7 @@ mod tests {
     /// erase the per-voice offset either.
     #[test]
     fn mirroring_changes_the_movement() {
-        let fwd = signature_for(Algorithm::Rm, Variant::Harmonic);
+        let fwd = signature_for(Algorithm::Fm1, Variant::Golden);
         let rev = signature_for(Algorithm::Rm, Variant::Golden);
         assert_eq!(fwd.period(), rev.period());
         let (fr, rr) = (fwd.rates(), rev.rates());
@@ -165,7 +181,7 @@ mod tests {
     fn a_mirrored_pair_does_not_render_identically() {
         use crate::{Field, FieldParams};
         let p = FieldParams::default();
-        let mut a = Field::new(48_000.0, Algorithm::Rm, Variant::Harmonic);
+        let mut a = Field::new(48_000.0, Algorithm::Fm1, Variant::Golden);
         let mut b = Field::new(48_000.0, Algorithm::Rm, Variant::Golden);
         for f in [&mut a, &mut b] {
             f.set_interval(2.0);
