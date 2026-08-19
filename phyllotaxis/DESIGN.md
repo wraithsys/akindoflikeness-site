@@ -252,23 +252,39 @@ II has 119 exact and 354 beating. So "I = harmonic, II = golden" is not only a
 tuning distinction: one variant reinforces and the other shimmers. That was hoped
 for in §2 and is now a number.
 
-### Consequence: the FX chain is designed for a voice that does not exist
+### Consequence: the player is told, never compensated for
 
-§8 assumes it is treating a dry signal. It is not. Adding a hyperchorus to fm II
-is adding chorus to 354 beating pairs, and the plate is adding density to
-something already dense — while rm I, rm II and am I are genuinely bone dry at
-nine partials and would take everything the chain has.
+§8 was written as though it were treating a dry signal, and it is not — `fm II`
+arrives with 354 beating pairs while `rm I` sits at nine partials and is bone dry.
 
-So **FX depth should be derived from the algorithm's partial count**, not dialled
-flat across the roster. That is a coupling derived from something the
-architecture already computes, which is the only kind this house permits — a
-sparse algorithm gets the full plate and chorus, a dense one gets almost none,
-and the control stays an amount scaling a relationship rather than specifying
-one.
+~~**Proposed and withdrawn the same day: derive FX depth from the algorithm's
+partial count**, so a sparse algorithm gets the full plate and a dense one gets
+almost none.~~ Withdrawn by Billy, and the reason is worth more than the idea:
 
-Open: whether the derivation is on partial count, on the chorusing-pair count, or
-on measured spectral flatness. The pair count is the most direct measure of the
-thing being avoided.
+> *"I'd say let people drive that — it's too contextual and perceptual. Like if I
+> want a distorted sound out of a cleaner synth like constellation I use a
+> downsampled tank, increase dampening and ride mix until I find thickening with
+> a hint of that downsample grit. Was it designed for that? Absolutely not."*
+
+The derivation contradicts this instrument's own thesis. §10 exists to make the
+player **discover** rather than accept what was generated for them; an FX chain
+that silently corrects for spectral density is the instrument deciding, and it
+closes the misuse a player would otherwise have found. It also fails the house's
+plainest rule — the player is always allowed everything. A coupling being
+*legal* under Law 7 is not an argument that it should exist.
+
+**What survives is the measurement, as information rather than as automation.**
+A player cannot know by looking that one algorithm sounds 354 beating pairs and
+another sounds none, and that is exactly the fact they need in order to make the
+call themselves. So spectral density becomes a **readout** — drawn, not acted on.
+That is not a control at all, so no law governs it, and it turns a hidden
+property of the roster into something the surface says out loud.
+
+**One thing does still want correcting automatically, and it is a fault rather
+than a character:** level. 559 partials against 9 is a large loudness difference,
+and if it is left alone the algorithm selector doubles as a volume control —
+already named as a defect in §2. **Normalise gain; never normalise effect.** The
+line is that a fault is corrected and a character is only ever reported.
 
 **What was originally written here** — that the ghostliness might be the purity of
 an unfiltered sine path, and needed protecting as a preset — was wrong about the
