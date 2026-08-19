@@ -447,40 +447,63 @@ body {
   <section class="specimen">
     <div class="spec-head">
       <span class="spec-no">05</span>
-      <h2 class="spec-title">The control — discrete value, continuous travel</h2>
+      <h2 class="spec-title">The control — motion rationed to position in the range</h2>
     </div>
     <div class="spec-body">
       <p>
-        The thing you liked about the effort selector, isolated. The value snaps
-        to real stops; the drawing never does. <strong>Drag it.</strong> The
-        readout shows what the instrument holds and, separately, where the thumb
-        has got to — so the disagreement is visible rather than felt.
+        Read the reference before believing anything about it. Its marker
+        <em>teleports</em>: a ▲ whose column comes out of a literal table,
+        nine or ten whole cells in a single frame, no easing anywhere in the
+        widget. What actually animates is a colour field over stationary
+        glyphs — and it is rationed to state the way this house rations colour.
       </p>
       <p>
-        Turn on <em>show the lie</em>: the hairline marks the true value during
-        flight. For a quantised parameter the gap is honest — the sound is at one
-        stop or the other and the travel is the eye catching up. Switch to a
-        continuous parameter and the same gap becomes a lie about the sound.
-        That distinction is the only thing here that has to become a rule.
+        The rationing is the find. The first three stops are <strong>completely
+        frozen</strong>. The fourth grows a one-cell head that walks its label
+        forever. The fifth runs a phase scroll. The sixth floods a wave out past
+        the dialog's own margins. Motion is not decorating the control — the
+        <em>amount</em> of it is telling you where you are in the range, which
+        is the one thing a house slider currently cannot say without being read.
+      </p>
+      <p>
+        And the escalation is a change of <strong>kind</strong>, not degree —
+        four different behaviours replacing each other rather than one wave
+        getting bigger. That is TASTE.md's own method (drive a parameter past
+        where the behaviour changes kind) turning up inside a control.
       </p>
     </div>
     <div class="plate">
-      <canvas id="cv-slider" class="grab" width="1120" height="260" aria-label="A slider whose value snaps to discrete stops while its thumb travels continuously between them"></canvas>
+      <canvas id="cv-slider" width="1120" height="300" aria-label="A five-stop control whose idle motion escalates by kind as the value rises"></canvas>
     </div>
     <div class="controls">
-      <label>Stops <input type="range" id="sl-stops" min="2" max="13" value="8"></label>
-      <label>Chase <input type="range" id="sl-chase" min="4" max="60" value="18"></label>
-      <label><input type="checkbox" id="sl-lie"> Show the lie</label>
-      <label><input type="checkbox" id="sl-cont"> Continuous parameter</label>
-      <span class="readout" id="sl-read">VALUE 4/8 · THUMB 4.00</span>
+      <label>Response
+        <select id="sl-mode">
+          <option value="instant">instant (reference)</option>
+          <option value="chased">chased (hslider)</option>
+        </select>
+      </label>
+      <label>Chase <input type="range" id="sl-chase" min="4" max="40" value="18"></label>
+      <label><input type="checkbox" id="sl-kind" checked> Escalate by kind</label>
+      <span class="readout" id="sl-read">HIGH · frozen</span>
+    </div>
+    <div class="verdict open">
+      <b>One question I can't answer from the binary</b>
+      Three of the six stops animate nothing at all. If you were sitting on
+      <em>high</em> — the default — then the control you called perfect was
+      <strong>completely still</strong>, and what you liked was the keypress:
+      instant, one frame, no settle. That argues for the exact opposite of a
+      follower. Switch <em>Response</em> between the two and say which one you
+      recognise; it decides the whole law.
     </div>
     <div class="verdict">
-      <b>Proposed, at LEANING</b>
-      Travel may lag a value only where the value is quantised. Failure it
-      prevents: an eight-position algorithm selector that jumps reads as a mode
-      switch, and the player stops hearing the eight as one axis. Confidence:
-      high on the shape, low on the chase constant — that one wants your hand
-      on it, not an argument.
+      <b>What the current house slider throws away</b>
+      <code>hslider.rs:249</code> computes its idle amplitude from
+      <code>style.idle</code>, <code>breathe</code> and pointer velocity — and
+      contains no <code>value01</code> at all. It says “a hand is on me” and
+      “the hand is moving fast”. It never says <em>where the value is</em>. So an
+      instrument sitting at a dangerous setting is drawn identically to one at
+      rest, and the only warning is the number you are not looking at while you
+      play. That is information, not appearance.
     </div>
   </section>
 
@@ -495,8 +518,16 @@ body {
         continuous colour are the two things this machine does that the others
         cannot. Deciding against them early would be inheritance wearing the
         clothes of a decision.</li>
-      <li><strong>Only 05 is proposing a rule</strong>, and only at LEANING,
-        because it is the only one with a named failure behind it.</li>
+      <li><strong>05 no longer proposes a follower.</strong> The reference has
+        no tween in it; the house already shipped one, in
+        <code>hslider.rs</code>, and better. What is left to record is the thing
+        neither has: <em>idle motion keyed to position in the range</em>.</li>
+      <li><strong>If that gets built, accumulate <code>rate × dt</code>, never
+        <code>elapsed × rate</code>.</strong> The reference gets away with
+        <code>floor(elapsed / interval)</code> only because its rates never
+        change. Key motion to a value and that snaps the whole field on every
+        change, by an amount that grows all session — which is fibonacci's
+        recorded Rip-slider bug, verbatim.</li>
     </ol>
   </section>
 
@@ -974,42 +1005,74 @@ const VQUAD = `attribute vec2 a_pos; void main(){ gl_Position = vec4(a_pos,0.,1.
   })();
 })();
 
-/* ── 05 · the control ──────────────────────────────────────────────── */
+/* ── 05 · the control ──────────────────────────────────────────────
+   Rebuilt after reading the reference rather than remembering it.
+
+   The marker TELEPORTS — that is what the effort selector actually does,
+   nine or ten cells in one frame off a literal table, with no easing
+   anywhere in the widget. What animates is idle motion, and it is rationed
+   to where the value sits in the range: the low stops are frozen, the top
+   ones come alive by changing KIND rather than degree.
+
+   Phase is accumulated as `rate * dt`. Never `elapsed * rate` — the
+   reference gets away with that only because its rates never change, and
+   keying motion to a value is exactly what breaks it. Fibonacci already
+   paid for this once, when moving Rip snapped the whole shell by an amount
+   that grew all session.
+   ──────────────────────────────────────────────────────────────────── */
 (function control() {
   const cv = document.getElementById("cv-slider");
   const ctx = cv.getContext("2d");
   if (!ctx) return;
   watcher.observe(cv);
 
-  const stopsEl = document.getElementById("sl-stops"), chaseEl = document.getElementById("sl-chase"),
-        lieEl = document.getElementById("sl-lie"), contEl = document.getElementById("sl-cont"),
-        readEl = document.getElementById("sl-read");
+  const modeEl  = document.getElementById("sl-mode");
+  const chaseEl = document.getElementById("sl-chase");
+  const kindEl  = document.getElementById("sl-kind");
+  const readEl  = document.getElementById("sl-read");
 
-  const PAD = 90;
-  let value = 3, thumb = 3, dragging = false;
-  const stops = () => +stopsEl.value;
+  const STOPS = [
+    { name: "LOW",    motion: "frozen" },
+    { name: "MEDIUM", motion: "frozen" },
+    { name: "HIGH",   motion: "frozen" },
+    { name: "XHIGH",  motion: "head"   },
+    { name: "MAX",    motion: "field"  },
+  ];
 
-  function fromEvent(e) {
+  const PAD = 110;
+  let value = 2;      // the integer the instrument holds
+  let shown = 2;      // where the drawing is, when chasing
+  let phase = 0;      // accumulated, never derived from elapsed time
+  let dragging = false;
+
+  const xOf = (v) => PAD + (v / (STOPS.length - 1)) * (cv.width - PAD * 2);
+
+  /* A drag only counts if it began on the thumb. No teleports — a value is
+     a held thing, not a place you tap. (hslider.rs:383) */
+  cv.addEventListener("pointerdown", (e) => {
+    const r = cv.getBoundingClientRect();
+    const x = ((e.clientX - r.left) / r.width) * cv.width;
+    if (Math.abs(x - xOf(shown)) < 26) { dragging = true; cv.setPointerCapture(e.pointerId); }
+  });
+  cv.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
     const r = cv.getBoundingClientRect();
     const x = ((e.clientX - r.left) / r.width) * cv.width;
     const f = (x - PAD) / (cv.width - PAD * 2);
-    const raw = Math.min(1, Math.max(0, f)) * (stops() - 1);
-    value = contEl.checked ? raw : Math.round(raw);
-  }
-  cv.addEventListener("pointerdown", (e) => { dragging = true; cv.setPointerCapture(e.pointerId); fromEvent(e); });
-  cv.addEventListener("pointermove", (e) => { if (dragging) fromEvent(e); });
+    value = Math.max(0, Math.min(STOPS.length - 1, Math.round(f * (STOPS.length - 1))));
+  });
   cv.addEventListener("pointerup", () => { dragging = false; });
   cv.tabIndex = 0;
   cv.addEventListener("keydown", (e) => {
-    if (e.key === "ArrowRight") { value = Math.min(stops() - 1, Math.round(value) + 1); e.preventDefault(); }
-    if (e.key === "ArrowLeft") { value = Math.max(0, Math.round(value) - 1); e.preventDefault(); }
+    if (e.key === "ArrowRight") { value = Math.min(STOPS.length - 1, value + 1); e.preventDefault(); }
+    if (e.key === "ArrowLeft")  { value = Math.max(0, value - 1); e.preventDefault(); }
   });
-  stopsEl.addEventListener("input", () => { value = Math.min(value, stops() - 1); thumb = Math.min(thumb, stops() - 1); });
 
   const INK = "#14180F", PAPER = "#ECEFE9", FAINT = "#8B9182", SAP = "#6E9B72", STRAW = "#C4A24C";
   const BAYER = [[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]];
 
   function ditherRect(x, y, w, h, density, colour) {
+    if (density <= 0) return;
     ctx.fillStyle = colour;
     const x0 = Math.floor(x), y0 = Math.floor(y);
     for (let py = 0; py < h; py++)
@@ -1017,58 +1080,108 @@ const VQUAD = `attribute vec2 a_pos; void main(){ gl_Position = vec4(a_pos,0.,1.
         if (density > (BAYER[(y0 + py) & 3][(x0 + px) & 3] + 0.5) / 16)
           ctx.fillRect(x0 + px, y0 + py, 1, 1);
   }
-  const xOf = (v) => PAD + (v / (stops() - 1)) * (cv.width - PAD * 2);
 
+  const CELL = 8;               // the lattice everything is quantised to
   let last = performance.now();
+
   (function frame(now) {
     requestAnimationFrame(frame);
     const dt = Math.min(0.05, (now - last) / 1000 || 0);
     last = now;
     if (!visible.has(cv)) return;
 
-    thumb += (value - thumb) * (REDUCED ? 1 : Math.min(1, (+chaseEl.value) * dt));
+    const chasing = modeEl.value === "chased";
+    if (chasing && !REDUCED) {
+      // Frame-rate independent, the way hslider does it — not min(1, k*dt).
+      shown += (value - shown) * (1 - Math.exp(-dt * (+chaseEl.value)));
+    } else {
+      shown = value;            // reference behaviour: it simply arrives
+    }
 
-    ctx.fillStyle = PAPER; ctx.fillRect(0, 0, cv.width, cv.height);
-    const midY = cv.height * 0.52;
+    phase += dt;                // rate x dt. Never elapsed x rate.
 
-    ctx.fillStyle = FAINT; ctx.fillRect(PAD, midY - 1, cv.width - PAD * 2, 2);
+    ctx.fillStyle = PAPER;
+    ctx.fillRect(0, 0, cv.width, cv.height);
 
-    for (let i = 0; i < stops(); i++) {
+    const midY = Math.round(cv.height * 0.46);
+    const stop = STOPS[value];
+    const byKind = kindEl.checked;
+    const level = value / (STOPS.length - 1);
+
+    /* ── the idle field ──────────────────────────────────────────────
+       By kind: nothing at all below xhigh, then a walking head, then a
+       wave over the whole track. By degree (the current house approach):
+       one wave whose amplitude simply scales with the value — which is
+       what the reference is more interesting than.                    */
+    const trackX0 = PAD - 30, trackX1 = cv.width - PAD + 30;
+    for (let x = trackX0; x < trackX1; x += CELL) {
+      const d = (x - xOf(shown)) / CELL;
+      let density = 0;
+      if (byKind) {
+        if (stop.motion === "head") {
+          // one bright cell walking the label, cycling past its own end
+          const span = 12, head = ((phase * 9) % (span + 4)) - 2;
+          const near = Math.abs(d - (head - span / 2));
+          density = near < 0.6 ? 0.95 : near < 1.8 ? 0.35 : 0;
+        } else if (stop.motion === "field") {
+          // a spatial raised cosine travelling outward from the marker
+          const travel = phase * 26;
+          const r = Math.abs(d);
+          if (r <= travel) {
+            const w = ((r - travel) % 20 + 20) % 20;
+            density = (1 + Math.cos(2 * Math.PI * w / 20)) / 2;
+            density = Math.round(density * 7) / 7 * 0.8;   // 8 quantised steps
+          }
+        }
+      } else {
+        // degree, not kind: one wave, amplitude scaled by the value
+        density = level * 0.55 * (0.5 + 0.5 * Math.sin(phase * 3 - d * 0.4));
+      }
+      if (density > 0.02) ditherRect(x, midY - 26, CELL, 52, density, SAP);
+    }
+
+    // the track: uniformly dim, no growing fill anywhere
+    ctx.fillStyle = FAINT;
+    ctx.fillRect(PAD, midY - 1, cv.width - PAD * 2, 2);
+
+    // the hot zone — a property of the RANGE, not of the value
+    const hot = xOf(3);
+    ctx.fillStyle = STRAW;
+    for (let x = hot; x < cv.width - PAD; x += 4) ctx.fillRect(x, midY - 1, 2, 2);
+    for (let y = midY - 34; y < midY + 34; y += 5) ctx.fillRect(hot - 14, y, 1, 2);
+
+    // stops, named. Only the selected one is inked.
+    ctx.font = "300 13px 'Martian Mono', monospace";
+    ctx.textAlign = "center";
+    for (let i = 0; i < STOPS.length; i++) {
       const x = Math.round(xOf(i));
-      const isValue = !contEl.checked && Math.round(value) === i;
-      ctx.fillStyle = isValue ? INK : FAINT;
-      const h = isValue ? 26 : 14;
-      ctx.fillRect(x - 1, midY - h / 2, 2, h);
-      ctx.font = "300 15px 'Martian Mono', monospace";
-      ctx.textAlign = "center";
-      ctx.fillText(String(i + 1), x, midY + 48);
+      const on = value === i;
+      ctx.fillStyle = on ? INK : FAINT;
+      ctx.fillRect(x - 1, midY - (on ? 13 : 7), 2, on ? 26 : 14);
+      ctx.fillText(STOPS[i].name, x, midY + 46);
     }
 
-    const fx = Math.round(xOf(0)), fw = Math.max(0, Math.round(xOf(thumb)) - fx);
-    if (fw > 0) ditherRect(fx, midY - 7, fw, 14, 0.55, SAP);
-
-    if (lieEl.checked && Math.abs(thumb - value) > 0.004) {
-      const vx = Math.round(xOf(value));
-      ctx.fillStyle = STRAW;
-      for (let y = midY - 42; y < midY + 42; y += 4) ctx.fillRect(vx, y, 1, 2);
-    }
-
-    const tx = Math.round(xOf(thumb));
-    const settle = 1 - Math.min(1, Math.abs(value - thumb) * 2.2);
-    ditherRect(tx - 7, midY - 22, 14, 44, 0.35 + 0.65 * settle, INK);
+    // the marker: a triangle, sitting on whole cells
+    const tx = Math.round(xOf(shown) / (chasing ? 1 : CELL)) * (chasing ? 1 : CELL);
     ctx.fillStyle = INK;
-    ctx.fillRect(tx - 7, midY - 22, 14, 1);
-    ctx.fillRect(tx - 7, midY + 21, 14, 1);
+    ctx.beginPath();
+    ctx.moveTo(tx, midY - 20);
+    ctx.lineTo(tx - 9, midY - 6);
+    ctx.lineTo(tx + 9, midY - 6);
+    ctx.closePath();
+    ctx.fill();
 
     ctx.font = "300 13px 'Martian Mono', monospace";
-    ctx.fillStyle = FAINT; ctx.textAlign = "left";
-    ctx.fillText(contEl.checked
-      ? "CONTINUOUS PARAMETER — the thumb must be where the sound is"
-      : "QUANTISED PARAMETER — travel may lag the value", PAD, 34);
+    ctx.fillStyle = FAINT;
+    ctx.textAlign = "left";
+    ctx.fillText(chasing
+      ? "CHASED — hslider's follower, 1-exp(-dt*k). Not what the reference does."
+      : "INSTANT — the reference: the marker arrives, it does not travel.", PAD - 30, 30);
+    ctx.textAlign = "right";
+    ctx.fillText(byKind ? "MOTION ESCALATES BY KIND" : "MOTION ESCALATES BY DEGREE",
+      cv.width - PAD + 30, 30);
 
-    readEl.textContent = contEl.checked
-      ? "VALUE " + value.toFixed(2) + " · THUMB " + thumb.toFixed(2)
-      : "VALUE " + (Math.round(value) + 1) + "/" + stops() + " · THUMB " + (thumb + 1).toFixed(2);
+    readEl.textContent = stop.name + " · " + (byKind ? stop.motion : "scaled wave");
   })(performance.now());
 })();
 </script>
