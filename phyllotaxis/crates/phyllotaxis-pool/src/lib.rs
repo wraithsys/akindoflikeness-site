@@ -309,7 +309,7 @@ mod tests {
 
         fn pool() -> Pool {
         let mut p = Pool::new(SR, VoiceParams::default());
-        p.field_params = FieldParams { floor: 0.0, depth: 1.0, ..Default::default() };
+        p.field_params = FieldParams { depth: 1.0, ..Default::default() };
         p.set_interval(2.0);
         p
     }
@@ -409,42 +409,52 @@ mod tests {
         );
     }
 
-    /// Trough-scheduling is **opportunistic**, and the timescales say why.
+    /// A steal has to be able to wait for a quieter moment. What "quieter"
+    /// means changed with the envelope, and this test changed with it.
     ///
-    /// The field's rate is `freq/φ¹³`, so at pad frequencies its period is
-    /// seconds — 4.7 s at 110 Hz, 2.4 s at 220 Hz. A strum window is a hundred
-    /// or two hundred milliseconds. There is no local minimum in that window
-    /// and there essentially never will be, so a steal on a low voice cannot be
-    /// scheduled to a trough at all.
+    /// It used to assert that a low voice has no reachable trough in a
+    /// strum-length window and a high one does — true when amplitude parked at
+    /// a constant resting level and only oscillated, so the only way to get
+    /// quieter was to catch a dip. Now every voice is decaying, so past the
+    /// attack "quieter" is usually just *later*, and the oscillation may not
+    /// produce a local minimum at all because the decay outruns it.
     ///
-    /// It works where the field moves fast enough, which by construction is the
-    /// **top** of a chord: 880 Hz finds a trough in half a second, 2 kHz in a
-    /// tenth. So the mechanism is real but partial, and level inheritance is
-    /// what carries every case it cannot reach — the opposite of the
-    /// arrangement `DESIGN.md` originally described, where the fade was
-    /// insurance and the trough was primary.
+    /// `next_trough` still answers its own question honestly — it finds a
+    /// local minimum below the present level, or says there isn't one, in
+    /// which case the caller crossfades. So what is worth asserting is the
+    /// property the allocator actually depends on: waiting is never worse.
     #[test]
-    fn troughs_are_reachable_high_and_not_low() {
-        let fp = FieldParams { floor: 0.0, depth: 1.0, ..Default::default() };
+    fn waiting_finds_a_quieter_moment_than_stealing_now() {
+        let fp = FieldParams { depth: 1.0, ..Default::default() };
         let settled = |freq: f32| {
             let mut f = phyllotaxis_field::Field::new(SR, Algorithm::Fm2, Variant::Golden);
             f.set_interval(3.2);
             f.strike();
-            for _ in 0..(SR as usize / 5) { f.tick(freq, &fp); }
+            for _ in 0..(SR as usize) { f.tick(freq, &fp); }
             f
         };
-        // A strum-length window at pad pitch: nothing to find.
-        assert!(settled(110.0).next_trough(0.2, 110.0, &fp).is_none());
-        assert!(settled(220.0).next_trough(0.2, 220.0, &fp).is_none());
-        // The top of a chord breathes fast enough that there is.
-        assert!(settled(2000.0).next_trough(0.2, 2000.0, &fp).is_some());
+        for &freq in &[110.0f32, 220.0, 2000.0] {
+            let f = settled(freq);
+            let now = f.predict(0.0, freq, &fp);
+            let best = (1..=64)
+                .map(|k| f.predict(k as f32 / 64.0 * 0.2, freq, &fp))
+                .fold(f32::MAX, f32::min);
+            assert!(
+                best <= now,
+                "at {freq} Hz nothing in the next 0.2 s is quieter than now ({best} vs {now})"
+            );
+            // And when it does report a trough, that trough is below now.
+            if let Some(t) = f.next_trough(0.2, freq, &fp) {
+                assert!(f.predict(t, freq, &fp) < now, "reported a trough louder than now");
+            }
+        }
     }
 
     /// When a trough *is* found, it must genuinely be quieter than taking the
     /// voice immediately — otherwise scheduling is worse than not.
     #[test]
     fn a_scheduled_steal_is_quieter_than_an_immediate_one() {
-        let fp = FieldParams { floor: 0.0, depth: 1.0, ..Default::default() };
+        let fp = FieldParams { depth: 1.0, ..Default::default() };
         let mut found = 0;
         for k in 0..40 {
             let freq = 1200.0 + k as f32 * 55.0;

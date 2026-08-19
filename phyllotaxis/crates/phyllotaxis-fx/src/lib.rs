@@ -448,8 +448,23 @@ impl Bus {
     ) -> (f32, f32) {
         let dry_mono = (dry_l + dry_r) * 0.5;
         let (cl, cr) = self.chorus.process_stereo(dry_mono, chorus);
-        let chorused_l = dry_l + (cl - dry_l) * chorus.mix;
-        let chorused_r = dry_r + (cr - dry_r) * chorus.mix;
+
+        // **Equal-power, and the wet does not contain the dry.**
+        //
+        // This used to be `dry + (wet - dry) * mix`, a linear blend of two
+        // signals that are near-copies of each other a few milliseconds apart.
+        // That is a comb filter: at mix = 0.5 the delayed copy cancels the
+        // direct one across a whole set of frequencies, and the level falls
+        // out from under you as you turn the control up. "Chorus destroys
+        // volume" is not a side effect of chorus, it is that formula.
+        //
+        // An equal-power crossfade holds the total constant instead, because
+        // sin² + cos² = 1 — the level stays put and the control does only what
+        // it says.
+        let m = chorus.mix.clamp(0.0, 1.0) * core::f32::consts::FRAC_PI_2;
+        let (gw, gd) = (m.sin(), m.cos());
+        let chorused_l = dry_l * gd + cl * gw;
+        let chorused_r = dry_r * gd + cr * gw;
 
         // The follower has to advance before the decay is read, so the two
         // agree about the same sample.
@@ -459,7 +474,27 @@ impl Bus {
         let (wl, wr) = self
             .plate
             .process_stereo((chorused_l + chorused_r) * 0.5 * send, &p);
-        (chorused_l + wl * plate.mix, chorused_r + wr * plate.mix)
+        // Equal-power here too, and WET_MAKEUP because the tank is quiet.
+        //
+        // The plate "having barely any impact" was gain, not topology. The
+        // input is scattered across four lines at 0.5, the output is a quarter
+        // of an orthogonal row, and the whole thing is then added at `mix` on
+        // top of a dry signal at unity — so at mix = 0.3 the reverb arrived
+        // 11.6 dB under the source — measured, not estimated, by
+        // `examples/gain.rs`. Turning it up did almost nothing because there
+        // was almost nothing to turn up.
+        //
+        // 3.8x is unity at mix = 1. This is 6, so the control can go PAST
+        // all-wet rather than stopping exactly at it: a control you are meant
+        // to find a point on should overshoot the point.
+        //
+        // With makeup and an equal-power blend, mix = 1 is genuinely all
+        // reverb and the control spans something worth having an opinion
+        // about. Where it should sit is Billy's, not a constant of mine.
+        const WET_MAKEUP: f32 = 6.0;
+        let pm = plate.mix.clamp(0.0, 1.0) * core::f32::consts::FRAC_PI_2;
+        let (pw, pd) = (pm.sin() * WET_MAKEUP, pm.cos());
+        (chorused_l * pd + wl * pw, chorused_r * pd + wr * pw)
     }
 }
 

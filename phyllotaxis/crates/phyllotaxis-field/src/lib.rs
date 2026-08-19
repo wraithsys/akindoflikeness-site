@@ -28,6 +28,61 @@
 //! with session length. `fibonacci-synth` shipped that bug once: moving RIP
 //! snapped the whole shell, and the snap got worse all session.
 
+/// The event envelope: rise, fall, and a tail that approaches zero without
+/// ever arriving.
+///
+/// **There is no floor and no resting level.** There used to be: amplitude was
+/// `depth * (1/φ² + (1 - 1/φ²) * shaped)`, so when a gesture ended the voice
+/// parked at 38% of depth and stayed there for as long as the instrument ran.
+/// That is what made it drone rather than sound. Events happen; between them
+/// this tends to nothing.
+///
+/// ## Why a power law and not an exponential
+///
+/// An exponential has a fixed half-life. It is a straight line in dB, so it
+/// fades on a schedule and you can hear the schedule — and to stop it running
+/// to literal zero you have to pick a cutoff, which is exactly the hardcoded
+/// imperceptible value this is meant to avoid.
+///
+/// A power law, `1 / (1 + t/τ)^p`, is heavy-tailed. It decays strictly more
+/// slowly than *any* exponential in the long run, it approaches zero
+/// asymptotically and never reaches it, and nothing has to be clamped. The
+/// justification is perceptual rather than aesthetic: loudness follows
+/// Stevens' power law — loudness ∝ intensity^0.3 — so a power-law amplitude
+/// decay is close to linear in perceived loudness, which is what "still
+/// fading" actually sounds like. A dB-linear fade sounds like it is being
+/// turned off.
+///
+/// `p` is the whole point and it is a control, not a constant: **low is
+/// slower**. It is the slowest-descent dial, and where it should sit is a
+/// question for ears.
+///
+/// τ is derived rather than dialled, so every control means something you can
+/// hear: `decay` is the time to fall from the peak to `knee`, and τ follows
+/// from wanting the curve to pass through that point.
+#[inline]
+pub fn envelope(since: f32, gesture_s: f32, p: &FieldParams) -> f32 {
+    let attack_s = (gesture_s * p.attack.clamp(0.0, 1.0)).max(1e-4);
+
+    if since < attack_s {
+        // Logarithmic rise: quick off the mark, easing into the peak, which is
+        // what softens the front of a pad. Linear reads as a ramp and an
+        // exponential rise reads as a swell arriving late.
+        const K: f32 = 9.0;
+        let x = (since / attack_s).clamp(0.0, 1.0);
+        return (1.0 + K * x).ln() / (1.0 + K).ln();
+    }
+
+    let knee = p.knee.clamp(0.02, 0.95);
+    let tail = p.tail.clamp(0.05, 6.0);
+    let decay = p.decay.max(0.02);
+
+    // Put the curve through (decay, knee): knee = 1/(1 + decay/τ)^tail.
+    let tau = decay / (knee.powf(-1.0 / tail) - 1.0).max(1e-6);
+    let t = since - attack_s;
+    1.0 / (1.0 + t / tau).powf(tail)
+}
+
 pub mod signature;
 
 use core::f32::consts::TAU;
@@ -73,12 +128,14 @@ const RATE_MAX_HZ: f32 = 4186.0 / 521.002;
 
 #[derive(Clone, Copy, Debug)]
 pub struct FieldParams {
-    /// The level this voice never falls below while it is held. 0…1.
-    pub floor: f32,
-    /// How far the field reaches up from the floor. 0…1.
+    /// Where the tail takes over, as a fraction of the peak. Billy's ~40%.
+    pub knee: f32,
+    /// How deeply the five-component field modulates the event. 0 is none.
     pub depth: f32,
-    /// Logarithmic → linear → exponential. 0…1, 0.5 linear.
-    pub curve: f32,
+    /// Seconds from the peak down to `knee`.
+    pub decay: f32,
+    /// Power-law exponent for the tail. LOW IS SLOWER.
+    pub tail: f32,
     /// Fraction of the gesture spent rising. **Not a time.**
     ///
     /// As a fraction it inherits the interval-derived length, so it is right at
@@ -90,7 +147,7 @@ pub struct FieldParams {
 
 impl Default for FieldParams {
     fn default() -> Self {
-        Self { floor: 0.0, depth: 0.7, curve: 0.5, attack: 0.35 }
+        Self { knee: 0.40, depth: 0.7, decay: 2.5, tail: 0.9, attack: 0.35 }
     }
 }
 
@@ -218,23 +275,12 @@ impl Field {
         }
         let movement01 = movement * 0.5 + 0.5;
 
-        let t = self.since + ahead;
-        let g = self.gesture_s();
-        let exp = Self::curve_exponent(p.curve);
-        let attack_s = g * p.attack.clamp(0.0, 1.0);
-
-        let shaped = if t >= g {
-            0.0
-        } else if t < attack_s && attack_s > 0.0 {
-            self.boost_level * (t / attack_s).powf(1.0 / exp)
-        } else {
-            let fall = (t - attack_s) / (g - attack_s).max(1e-6);
-            self.boost_level * (1.0 - fall).max(0.0).powf(exp)
-        };
-
-        let depth_now = p.depth * (REST_FRACTION + (1.0 - REST_FRACTION) * shaped);
-        let floor = p.floor.clamp(0.0, 1.0);
-        floor + (1.0 - floor) * depth_now * movement01
+        // The SAME envelope the audio path uses. Prediction that disagrees
+        // with reality is worse than no prediction: the allocator would steal
+        // at a trough that is not there.
+        let shaped = self.boost_level * envelope(self.since + ahead, self.gesture_s(), p);
+        let d = p.depth.clamp(0.0, 1.0);
+        shaped * (1.0 - d + d * movement01)
     }
 
     /// When this voice is next at a local minimum **quieter than it is now**,
@@ -296,28 +342,13 @@ impl Field {
         let movement01 = movement * 0.5 + 0.5;
 
         self.since += dt;
-        let g = self.gesture_s();
-        let exp = Self::curve_exponent(p.curve);
-        let attack_s = g * p.attack.clamp(0.0, 1.0);
+        let shaped = self.boost_level * envelope(self.since, self.gesture_s(), p);
 
-        let shaped = if self.since >= g {
-            0.0
-        } else if self.since < attack_s && attack_s > 0.0 {
-            // Rising: the leading edge, as a fraction of the gesture.
-            self.boost_level * (self.since / attack_s).powf(1.0 / exp)
-        } else {
-            let fall = (self.since - attack_s) / (g - attack_s).max(1e-6);
-            self.boost_level * (1.0 - fall).max(0.0).powf(exp)
-        };
-
-        // Depth rests at 1/phi^2 and interpolates up to full, so a note is
-        // phi^2 deeper than rest and nothing saturates.
-        let rest = REST_FRACTION;
-        let depth_now = p.depth * (rest + (1.0 - rest) * shaped);
-
-        // Reaches UP from the floor by a ratio, never down through it.
-        let floor = p.floor.clamp(0.0, 1.0);
-        floor + (1.0 - floor) * depth_now * movement01
+        // The field MODULATES the event; it no longer sets a resting level.
+        // `depth` at 0 leaves the envelope untouched, at 1 the five components
+        // swing it all the way down and back.
+        let d = p.depth.clamp(0.0, 1.0);
+        shaped * (1.0 - d + d * movement01)
     }
 }
 
@@ -332,43 +363,73 @@ mod tests {
         Field::new(SR, Algorithm::Fm2, Variant::Golden)
     }
 
-    /// The invariant the module exists for: with a voice held, nothing takes
-    /// the level below the floor.
+    /// **Between events, amplitude tends to nothing.**
+    ///
+    /// This replaces `the_floor_is_a_floor`, which asserted the opposite: that
+    /// a held voice never falls below a resting level. That level was the
+    /// instrument's whole problem — it is why it droned instead of sounding
+    /// events, and it was a constant (`1/φ²` of depth) rather than a decision.
     #[test]
-    fn the_floor_is_a_floor() {
-        for &floor in &[0.0f32, 0.25, 0.5, 0.9, 1.0] {
-            let p = FieldParams { floor, depth: 1.0, ..Default::default() };
-            let mut f = field();
-            f.set_interval(1.0);
-            f.strike();
-            for i in 0..(SR as usize * 4) {
-                let a = f.tick(220.0, &p);
-                assert!(a >= floor - 1e-5, "fell through the floor at {i}: {a} < {floor}");
-                assert!(a <= 1.0 + 1e-5, "exceeded unity: {a}");
-            }
+    fn a_voice_left_alone_falls_towards_silence() {
+        let (a, v) = ROSTER[0];
+        let mut f = Field::new(SR, a, v);
+        f.set_interval(2.0);
+        f.strike();
+        let p = FieldParams { depth: 0.0, ..Default::default() };
+        let mut peak: f32 = 0.0;
+        for _ in 0..(SR as usize / 2) {
+            peak = peak.max(f.tick(220.0, &p));
         }
+        // Thirty seconds later it must be a small fraction of what it was.
+        let mut last = 0.0;
+        for _ in 0..(SR as usize * 30) {
+            last = f.tick(220.0, &p);
+        }
+        // The old model parked at a CONSTANT 1/φ² = 38% of depth and stayed
+        // there forever. The bar is being nowhere near that, and still
+        // falling — not an arbitrary smallness.
+        assert!(
+            last < peak * 0.12,
+            "after 30 s it is still at {last} against a peak of {peak} — that is a drone"
+        );
+        let later = f.tick(220.0, &p);
+        assert!(later <= last * 1.0001, "stopped decaying at {last}");
     }
 
-    /// Turning the floor down gives the movement more room, rather than
-    /// squashing it — the property a ratio has and an offset does not.
+    /// **...but it never actually arrives.**
+    ///
+    /// The pair is the point. Anything that decays to a hard zero has a moment
+    /// where it switches off, and a floor never decays at all. A power law
+    /// gives neither: strictly decreasing, strictly positive, forever, with no
+    /// cutoff constant anywhere.
     #[test]
-    fn a_lower_floor_leaves_more_room_to_move() {
-        let swing = |floor: f32| {
-            let p = FieldParams { floor, depth: 1.0, ..Default::default() };
-            let mut f = field();
-            f.set_interval(1.0);
-            f.strike();
-            let (mut lo, mut hi) = (f32::INFINITY, 0.0f32);
-            for _ in 0..(SR as usize * 3) {
-                let a = f.tick(220.0, &p);
-                lo = lo.min(a);
-                hi = hi.max(a);
-            }
-            hi - lo
-        };
-        assert!(swing(0.0) > swing(0.5), "{} vs {}", swing(0.0), swing(0.5));
-        assert!(swing(1.0) < 1e-4, "at floor 1.0 there is nowhere left to go");
+    fn the_tail_approaches_zero_without_reaching_it() {
+        let p = FieldParams { tail: 0.9, knee: 0.4, decay: 2.5, ..Default::default() };
+        let g = 1.0;
+        let mut prev = envelope(0.5, g, &p);
+        for step in 1..2000 {
+            // Out to well over an hour.
+            let t = 0.5 + step as f32 * 2.0;
+            let a = envelope(t, g, &p);
+            assert!(a > 0.0, "hit zero at {t}s");
+            assert!(a < prev, "stopped decreasing at {t}s");
+            prev = a;
+        }
+        assert!(prev < 1e-3, "an hour in it is still at {prev}");
     }
+
+    /// A lower `tail` exponent must decay MORE SLOWLY. It is the control Billy
+    /// is meant to find a point on, so its direction has to be true.
+    #[test]
+    fn a_lower_tail_exponent_descends_more_slowly() {
+        let at = |tail: f32| {
+            let p = FieldParams { tail, knee: 0.4, decay: 2.5, ..Default::default() };
+            envelope(60.0, 1.0, &p)
+        };
+        let (slow, fast) = (at(0.3), at(3.0));
+        assert!(slow > fast, "tail 0.3 gave {slow}, tail 3.0 gave {fast}");
+    }
+
 
     /// The gesture is the golden section of the interval, at **every** rate.
     ///
@@ -417,16 +478,25 @@ mod tests {
                 let mut f = field();
                 f.set_interval(interval);
                 f.strike();
-                let n = (interval * SR) as usize;
-                let mut peak_at = 0usize;
+                let g = f.gesture_s();
+
+                // Measured on the ENVELOPE, not on `tick`. `tick` is the
+                // envelope times the five-component field, and with a tail
+                // that runs for minutes a later movement crest can easily be
+                // taller than the attack — which says nothing about whether
+                // the attack outran anything. The claim is about the envelope,
+                // so measure the envelope.
+                let steps = 4000;
+                let mut peak_at = 0.0f32;
                 let mut peak = 0.0f32;
-                for i in 0..n {
-                    let a = f.tick(220.0, &p);
-                    if a > peak { peak = a; peak_at = i; }
+                for i in 0..steps {
+                    let t = i as f32 / steps as f32 * g * 2.0;
+                    let a = envelope(t, g, &p);
+                    if a > peak { peak = a; peak_at = t; }
                 }
                 assert!(
-                    peak_at as f32 / SR <= f.gesture_s() + 0.05,
-                    "attack {attack} at interval {interval} peaked after the gesture"
+                    peak_at <= g + 1e-3,
+                    "attack {attack} at interval {interval} peaked at {peak_at}s, past the {g}s gesture"
                 );
             }
         }
@@ -519,7 +589,7 @@ mod tests {
     /// A trough found by search must actually be quieter than the level now.
     #[test]
     fn a_found_trough_is_quieter_than_the_present() {
-        let p = FieldParams { floor: 0.0, depth: 1.0, ..Default::default() };
+        let p = FieldParams { depth: 1.0, ..Default::default() };
         let mut f = field();
         f.set_interval(3.0);
         f.strike();

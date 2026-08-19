@@ -24,7 +24,7 @@ fn render(a: phyllotaxis_tuning::Algorithm, v: phyllotaxis_tuning::Variant) -> V
     let cents: Vec<f64> = tuning.cents().into_iter().filter(|&c| c < 1200.0).collect();
 
     let mut pool = Pool::new(SR, params);
-    pool.field_params = FieldParams { floor: 0.10, depth: 0.85, curve: 0.42, attack: 0.30 };
+    pool.field_params = FieldParams { depth: 0.55, attack: 0.30, ..Default::default() };
 
     let mut out = Vec::new();
     for n in 1..=10u64 {

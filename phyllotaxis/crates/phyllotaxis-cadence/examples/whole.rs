@@ -87,7 +87,7 @@ fn render_with(
 
     let params = VoiceParams { algorithm, variant, index, free_ratio: 1.0 };
     let mut pool = Pool::new(SR, params);
-    pool.field_params = FieldParams { floor: 0.10, depth: 0.85, curve: 0.42, attack: 0.30 };
+    pool.field_params = FieldParams { depth: 0.55, attack: 0.30, ..Default::default() };
 
     let mut bus = Bus::new(SR);
     let (pp, cp, dp) = (

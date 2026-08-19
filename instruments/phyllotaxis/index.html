@@ -328,16 +328,20 @@ footer a:hover { color: var(--sap); }
     <fieldset>
       <legend>Field</legend>
       <div class="ctl">
-        <label for="p5">Floor</label><output id="o5"></output>
-        <input type="range" id="p5" data-param="5" min="0" max="1" step="0.01" value="0.10">
+        <label for="p5">Tail</label><output id="o5"></output>
+        <input type="range" id="p5" data-param="5" min="0.05" max="4" step="0.01" value="0.9">
+      </div>
+      <div class="ctl">
+        <label for="p19">Decay</label><output id="o19"></output>
+        <input type="range" id="p19" data-param="19" min="0.1" max="30" step="0.1" value="2.5">
+      </div>
+      <div class="ctl">
+        <label for="p7">Knee</label><output id="o7"></output>
+        <input type="range" id="p7" data-param="7" min="0.02" max="0.95" step="0.01" value="0.40">
       </div>
       <div class="ctl">
         <label for="p6">Depth</label><output id="o6"></output>
-        <input type="range" id="p6" data-param="6" min="0" max="1" step="0.01" value="0.85">
-      </div>
-      <div class="ctl">
-        <label for="p7">Curve</label><output id="o7"></output>
-        <input type="range" id="p7" data-param="7" min="0" max="1" step="0.01" value="0.42">
+        <input type="range" id="p6" data-param="6" min="0" max="1" step="0.01" value="0.55">
       </div>
       <div class="ctl">
         <label for="p8">Attack</label><output id="o8"></output>
@@ -394,10 +398,10 @@ footer a:hover { color: var(--sap); }
 // be a new URL, or a returning browser pairs a fresh engine with a stale
 // worklet and the instrument quietly degrades for twelve months. worklet.js
 // went a whole release unhashed under that rule.
-const WASM_URL = "./build/engine-9bff6041.wasm";
+const WASM_URL = "./build/engine-dd6034ec.wasm";
 const WORKLET_URL = "./build/worklet-0607611d.js";
 const TUNER_URL = "./build/tuner-989ed7e4.js";
-const PARAMS = 19; // mirrors param::COUNT
+const PARAMS = 20; // mirrors param::COUNT
 const PHI = 1.6180339887498949;
 
 // Roster names and kinds, mirroring phyllotaxis-tuning::ROSTER. The order is
@@ -597,6 +601,10 @@ function noteName(hz) {
 const FORMAT = {
   2: (v) => v.toFixed(2) + "s",
   18: (v) => v.toFixed(1) + " Hz \u00b7 " + noteName(v),
+  // Low exponent = slower descent, so say so rather than showing a bare number.
+  5: (v) => v.toFixed(2) + (v <= 0.5 ? " \u00b7 slowest" : v >= 2.5 ? " \u00b7 fast" : ""),
+  7: (v) => Math.round(v * 100) + "% of peak",
+  19: (v) => v.toFixed(1) + "s to knee",
   4: (v) => (v === 0 ? "block" : (v < 0 ? "▲ " : "▼ ") + Math.abs(v).toFixed(2)),
 };
 
@@ -691,12 +699,12 @@ function initGL() {
 
   const warp = prog(VQ, `
     precision highp float;
-    uniform sampler2D u_prev; uniform vec2 u_res; uniform float u_decay, u_spin, u_t;
+    uniform sampler2D u_prev; uniform vec2 u_res; uniform float u_decay, u_spin, u_t, u_zoom;
     void main(){
       vec2 uv = gl_FragCoord.xy / u_res, c = uv - 0.5;
       float ang = u_spin + sin(u_t * 0.13) * 0.004;
       mat2 m = mat2(cos(ang), -sin(ang), sin(ang), cos(ang));
-      vec3 prev = texture2D(u_prev, m * c * 0.997 + 0.5).rgb * u_decay;
+      vec3 prev = texture2D(u_prev, m * c * u_zoom + 0.5).rgb * u_decay;
       gl_FragColor = vec4(prev, 1.0);
     }`, "warp");
 
@@ -772,7 +780,38 @@ function initGL() {
      So the loop gain is written down instead of discovered: pick the peak the
      buffer should settle at, and derive the per-frame contribution from it.
      Overlapping points still stack, which is why the target sits below 1. */
+  /* ── why the trail went blotchy ──────────────────────────────────
+     The sphere is right on a fresh load and dissolves from there, and that is
+     not a brightness or a decay value — it is what feeding a buffer through
+     itself does.
+
+     Every frame the whole buffer is resampled through a rotate-and-zoom. Each
+     resample is a bilinear filter, and each result is stored back into an
+     8-bit texture. Both losses compound: bilinear filtering is a blur, so
+     detail smears a little further every frame, and 8-bit requantisation
+     rounds neighbouring values together until they collapse into flat patches.
+     After a few hundred frames the fine structure of the seed field has been
+     averaged into blotches. Nothing is diverging any more — it is being eroded.
+
+     There are only three levers on erosion. Slow the accumulation (DECAY),
+     resample LESS per frame (ZOOM toward 1, SPIN toward 0), or stop feeding
+     the picture through itself and just draw it. Since a fresh load is the
+     look worth having, TRAIL now sets how much of the picture is accumulation
+     and how much is drawn clean each frame — at 0 the sphere is rendered
+     fresh, with no erosion possible at all.
+
+     Which point on that is right is a question for eyes. */
   const DECAY = 0.965;
+  /* Nearly 1: the closer to 1, the less each frame is resampled and the less
+     it erodes. 0.997 threw away ~0.3% of the image every frame. */
+  const ZOOM = 0.9992;
+  const SPIN = 0.0006;
+  /* 0 = sphere drawn clean every frame, no accumulation, no erosion.
+     1 = all history, which is what shipped. */
+  const TRAIL = 0.45;
+  /* The clean pass is one frame, not a converging sum, so it needs its own
+     level rather than SEED_GAIN's per-frame contribution. */
+  const CLEAN_GAIN = 0.85;
   const TARGET_PEAK = 0.62;
   const SEED_GAIN = TARGET_PEAK * (1.0 - DECAY);
   /* Applied at the output, after the buffer, where it cannot clip anything. */
@@ -822,7 +861,8 @@ function initGL() {
     gl.uniform1i(gl.getUniformLocation(warp, "u_prev"), 0);
     gl.uniform2f(gl.getUniformLocation(warp, "u_res"), W, H);
     gl.uniform1f(gl.getUniformLocation(warp, "u_decay"), DECAY);
-    gl.uniform1f(gl.getUniformLocation(warp, "u_spin"), 0.0016);
+    gl.uniform1f(gl.getUniformLocation(warp, "u_spin"), SPIN);
+    gl.uniform1f(gl.getUniformLocation(warp, "u_zoom"), ZOOM);
     gl.uniform1f(gl.getUniformLocation(warp, "u_t"), t);
     drawQuad(warp);
 
@@ -841,14 +881,35 @@ function initGL() {
     gl.drawArrays(gl.POINTS, 0, count);
     gl.disable(gl.BLEND);
 
+    // Draw the seeds AGAIN, straight to the screen, over the accumulated
+    // buffer. TRAIL decides how much of what you see is the eroded history
+    // and how much is drawn clean this frame; at TRAIL = 0 the sphere never
+    // passes through the feedback path at all and cannot erode.
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, b.tex);
     gl.useProgram(show);
     gl.uniform1i(gl.getUniformLocation(show, "u_src"), 0);
     gl.uniform2f(gl.getUniformLocation(show, "u_res"), W, H);
-    gl.uniform1f(gl.getUniformLocation(show, "u_exposure"), EXPOSURE);
+    gl.uniform1f(gl.getUniformLocation(show, "u_exposure"), EXPOSURE * TRAIL);
     drawQuad(show);
+
+    // The clean pass. Additive over the trail, so TRAIL only ever moves weight
+    // between the two — the picture does not get darker as you take history out.
+    gl.useProgram(seeds);
+    gl.bindBuffer(gl.ARRAY_BUFFER, idx);
+    const lj = gl.getAttribLocation(seeds, "i");
+    gl.enableVertexAttribArray(lj);
+    gl.vertexAttribPointer(lj, 1, gl.FLOAT, false, 0, 0);
+    gl.uniform1f(gl.getUniformLocation(seeds, "u_count"), count);
+    gl.uniform1f(gl.getUniformLocation(seeds, "u_level"), smooth);
+    gl.uniform1f(gl.getUniformLocation(seeds, "u_t"), t);
+    gl.uniform2f(gl.getUniformLocation(seeds, "u_res"), W, H);
+    gl.uniform1f(gl.getUniformLocation(seeds, "u_gain"), (1.0 - TRAIL) * CLEAN_GAIN);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.ONE, gl.ONE);
+    gl.drawArrays(gl.POINTS, 0, count);
+    gl.disable(gl.BLEND);
 
     const s = a; a = b; b = s;
   })();

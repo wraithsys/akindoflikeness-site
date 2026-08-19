@@ -39,9 +39,12 @@ pub mod param {
     pub const MEAN_INTERVAL: u32 = 2;
     pub const MIRROR: u32 = 3;
     pub const STRUM_BIAS: u32 = 4;
-    pub const FLOOR: u32 = 5;
+    /// Power-law exponent for the tail. **Low is slower.** Was FLOOR, which
+    /// is gone: a resting level is what made this drone instead of sound.
+    pub const TAIL: u32 = 5;
     pub const DEPTH: u32 = 6;
-    pub const CURVE: u32 = 7;
+    /// Where the tail takes over, as a fraction of the peak. Was CURVE.
+    pub const KNEE: u32 = 7;
     pub const ATTACK: u32 = 8;
     pub const PLATE_DECAY: u32 = 9;
     pub const PLATE_DAMPING: u32 = 10;
@@ -56,7 +59,9 @@ pub mod param {
     /// preset is a list of `id:value` pairs in a URL, so renumbering the
     /// existing parameters would silently re-point every preset already shared.
     pub const ROOT_HZ: u32 = 18;
-    pub const COUNT: u32 = 19;
+    /// Seconds from the peak down to KNEE.
+    pub const DECAY: u32 = 19;
+    pub const COUNT: u32 = 20;
 }
 
 /// A note waiting for its strum offset to elapse.
@@ -114,9 +119,9 @@ fn defaults() -> [f32; param::COUNT as usize] {
     p[param::MEAN_INTERVAL as usize] = 1.618;
     p[param::MIRROR as usize] = word::INV_PHI2 as f32;
     p[param::STRUM_BIAS as usize] = -0.7;
-    p[param::FLOOR as usize] = 0.10;
+    p[param::TAIL as usize] = 0.9;
     p[param::DEPTH as usize] = 0.85;
-    p[param::CURVE as usize] = 0.42;
+    p[param::KNEE as usize] = 0.40;
     p[param::ATTACK as usize] = 0.30;
     // RT60 0.94s: longer than either rest window, so the tail carries through
     // rather than filling it. Settled by ear against 0.60. See DESIGN.md §8.
@@ -130,6 +135,7 @@ fn defaults() -> [f32; param::COUNT as usize] {
     p[param::DENSITY_AMOUNT as usize] = 0.55;
     p[param::MASTER as usize] = 0.8;
     p[param::ROOT_HZ as usize] = 110.0; // A2, where the instrument was built
+    p[param::DECAY as usize] = 2.5;
     p
 }
 
@@ -215,9 +221,10 @@ impl Engine {
 
     fn field_params(&self) -> FieldParams {
         FieldParams {
-            floor: self.params[param::FLOOR as usize],
+            knee: self.params[param::KNEE as usize],
+            decay: self.params[param::DECAY as usize],
+            tail: self.params[param::TAIL as usize],
             depth: self.params[param::DEPTH as usize],
-            curve: self.params[param::CURVE as usize],
             attack: self.params[param::ATTACK as usize],
         }
     }
@@ -921,7 +928,8 @@ mod tests {
         assert_eq!(param::ENTRY, 0);
         assert_eq!(param::MASTER, 17);
         assert_eq!(param::ROOT_HZ, 18);
-        assert_eq!(param::COUNT, 19);
+        assert_eq!(param::DECAY, 19);
+        assert_eq!(param::COUNT, 20);
         assert_eq!(phy_param_count(), param::COUNT);
         assert_eq!(phy_scope_len(), SCOPE_LEN as u32);
     }

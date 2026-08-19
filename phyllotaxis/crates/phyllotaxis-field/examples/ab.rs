@@ -64,7 +64,7 @@ fn build(params: VoiceParams, degrees: &[f64]) -> Stack {
 /// `field: false` reproduces the bare-voice benchmark exactly.
 fn render(params: VoiceParams, degrees: &[f64], out: &mut Vec<f32>, field: bool) {
     let mut s = build(params, degrees);
-    let fp = FieldParams { floor: 0.12, depth: 0.85, curve: 0.42, attack: 0.30 };
+    let fp = FieldParams { depth: 0.55, attack: 0.30, ..Default::default() };
     let n = (SEG_S * SR) as usize;
     let scale = 1.0 / (s.voices.len() as f32).sqrt();
 
