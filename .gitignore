@@ -1,2 +1,6 @@
 .DS_Store
 phyllotaxis/renders/
+
+# wrangler pages dev writes here when the site is served locally
+.wrangler/
+node_modules/
