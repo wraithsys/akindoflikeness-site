@@ -95,7 +95,7 @@ body {
 .shell {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 0.9rem 1rem 2.5rem;
+  padding: 1.25rem 1rem 4rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -130,18 +130,16 @@ header .state {
 
 /* ── the centrepiece ─────────────────────────────────────────────── */
 
-/* The instrument has to fit one screen without zooming out.
-   `aspect-ratio` alone sets the stage's height from its WIDTH, so on a wide
-   window it grew to 620px and pushed the controls off the bottom — the racks
-   are the part you play, and they were the part you had to scroll to. Height
-   is capped against the viewport instead, and the aspect ratio gives way when
-   the two disagree. */
+/* 16:9, and nothing capping it.
+   Capping the height while keeping `aspect-ratio` does not shrink the stage —
+   it makes the box wider than 16:9 and the canvas, which is stretched to fill
+   it, draws the sphere as an ellipse. Fitting the page is not worth deforming
+   the one thing on it. */
 .stage {
   position: relative;
   border: 1px solid var(--rule);
   background: #000;
   aspect-ratio: 16 / 9;
-  max-height: 46dvh;
   overflow: hidden;
 }
 
@@ -185,8 +183,8 @@ button.play:hover, button.play:focus-visible { background: var(--sap); color: va
 
 .racks {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 0.6rem;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.75rem;
 }
 
 fieldset {
@@ -859,6 +857,9 @@ function initGL() {
 
   const t0 = performance.now();
   let smooth = 0;
+  // Slow average of the output level, so the picture reacts to change rather
+  // than to how loud the instrument happens to be set.
+  let agc = 0.02;
 
   (function frame() {
     requestAnimationFrame(frame);
@@ -867,10 +868,20 @@ function initGL() {
     let rms = 0;
     for (let k = 0; k < scope.length; k++) rms += scope[k] * scope[k];
     rms = Math.sqrt(rms / Math.max(1, scope.length));
-    // The field never falls to silence, so the useful range is narrow and sits
-    // well above zero. Map it with a floor rather than from 0, or the
-    // centrepiece spends its life nearly black.
-    smooth += (Math.min(1, 0.22 + rms * 6.5) - smooth) * 0.12;
+
+    /* The picture follows EVENTS, not the settings.
+       It used to map absolute RMS straight to brightness and density, which
+       meant every control that changes the output level or the timbre moved
+       the visuals too — turn the chorus up and the sphere swells, change the
+       modulation index and it changes size, neither of which is anything
+       happening musically.
+       A slow-moving average divides that out. Anything constant is absorbed
+       within a few seconds, so level and timbre stop registering, while notes
+       arriving and decaying still do — they are exactly the part that is not
+       constant. */
+    agc += (rms - agc) * 0.006;
+    const rel = rms / Math.max(agc, 1e-6);
+    smooth += (Math.min(1, 0.18 + rel * 0.42) - smooth) * 0.12;
 
     const count = Math.max(600, Math.floor(1500 + 42000 * smooth));
 
