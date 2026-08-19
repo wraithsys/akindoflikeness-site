@@ -446,11 +446,52 @@ it is the field moving more for a while.
 4. **Per-voice phase offset `frac(n/φ)`.** Five voices running one signature in
    phase pump as a single object — the inverse of the failure `breath.rs` opens
    with. Offset each voice's field phase and the chord breathes as five bodies.
-5. **Eight signatures, one per algorithm**, extending the Fibonacci / Lucas /
-   Padovan families already in `signature()`. Preserve the property deliberately:
-   exactly one signature is commensurate, and it is the only movement that
-   repeats. The mode you would expect to be periodic should stay the only
-   periodic one.
+5. **Eight signatures, one per roster entry — and the inherited picking rule
+   does not port.** `breath.rs` chose each mode's integers by a stated rule:
+   *the sequence whose ratio limit **is** that mode's own constant.* That rule
+   cannot extend here. A Variant supplies only two constants — 2/1 and 13/8 ≈ φ
+   — for eight slots, and the modulation types have no constant of their own,
+   so four entries would have to share each signature.
+
+   The replacement rule is derived from something this instrument measures and
+   BYPO did not: **an entry's signature period is set by whether its partials
+   reinforce or shimmer.** `fm I` has 27 exactly-coincident partial pairs and
+   *zero* beating pairs; every other entry beats. So `fm I` takes the one
+   commensurate signature, and the seven that shimmer take long ones. The mode
+   you would expect to repeat is still the only one that repeats — but now it is
+   derived rather than noticed.
+
+   **"Commensurate" is now a computed property, not a comment.** `breath.rs`
+   says the non-harmonic modes never repeat because they are built on irrational
+   limits. They do repeat: normalising integers by an integer yields rationals,
+   so every signature is periodic. The real quantity is the period, and it has a
+   closed form — with rates `aᵢ/max(a)`, all five realign after `T = max(a) /
+   gcd(a)` base cycles. Harmonic is `T = 5`; Fibonacci is `T = 34`. A short
+   period against a long one, which is what the original prose was reaching for,
+   and a test asserts exactly one entry sits below ten.
+
+   | entry | family | terms | period |
+   |---|---|---|---|
+   | fm I | harmonic | 30 24 18 12 6 | **5** |
+   | fm II | fibonacci | 34 21 13 8 5 | 34 |
+   | rm I | lucas | 29 18 11 7 4 | 29 |
+   | rm II | lucas mirrored | 4 7 11 18 29 | 29 |
+   | am I | padovan | 28 21 16 12 9 | 28 |
+   | am II | perrin | 29 22 17 12 10 | 29 |
+   | rect I | tribonacci | 44 24 13 7 4 | 44 |
+   | rect II | pell | 29 12 5 2 1 | 29 |
+
+   **A mirrored signature collapses unless two things are true**, and in BYPO
+   they are not. Reversed terms normalise to the same rate *multiset*, so with
+   equal component amplitudes the pair is identical; and `begin()` there resets
+   all five phases to one value, so after any note the two modes are
+   bit-identical — measured at a mean absolute difference of 2.3e-17, which its
+   own distinctness test never catches because it only compares the opening
+   state. Here amplitude falls by φ with component *index*, so reversal changes
+   which rate leads — a flutter against a heave — and `strike()` never touches
+   phase, so the per-voice offset survives a note as well. Both are asserted by
+   tests that render four seconds and compare.
+
 6. **`release()` becomes load-bearing.** `breath.rs:277` notes the sequencer
    never calls it, because S&H has no note-offs. Cadence does — every new chord
    ends the last one — so `RELEASE_BOOST` (1/φ) now fires constantly and needs

@@ -3,6 +3,14 @@
 version = 4
 
 [[package]]
+name = "phyllotaxis-field"
+version = "0.1.0"
+dependencies = [
+ "phyllotaxis-tuning",
+ "phyllotaxis-voice",
+]
+
+[[package]]
 name = "phyllotaxis-tuning"
 version = "0.1.0"
 

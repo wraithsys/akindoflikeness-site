@@ -226,22 +226,60 @@ pub fn tuning_for(
     scale::from_spectrum(&spectrum, dissonance::REFERENCE_HZ, degrees)
 }
 
-/// Every algorithm's tuning at one index — the bake.
+/// **The roster: exactly eight.**
 ///
-/// Eight entries: five modulation types, two variants each, minus the pairs
-/// that collapse. FM I and FM II both take both variants; so do RM, AM and
-/// Rect. See `DESIGN.md` §2 for why the eight are counted this way.
+/// The cross product of five algorithms and two variants is ten, and ten is
+/// not a Fibonacci number. The design does not ask for a cross product.
+///
+/// FM's two entries are differentiated **structurally** — two modulators into a
+/// carrier, against one modulator into a feedback operator into a carrier — and
+/// their ratio is a free control rather than a roster axis. The three complex
+/// types have no structural difference between their pair, so they are
+/// differentiated **by ratio**, one from each end of the convergents.
+///
+/// `2 + (3 × 2) = 8`. See `DESIGN.md` §2.
+pub const ROSTER: [(Algorithm, Variant); 8] = [
+    (Algorithm::Fm1, Variant::Golden),
+    (Algorithm::Fm2, Variant::Golden),
+    (Algorithm::Rm, Variant::Harmonic),
+    (Algorithm::Rm, Variant::Golden),
+    (Algorithm::Am, Variant::Harmonic),
+    (Algorithm::Am, Variant::Golden),
+    (Algorithm::Rect, Variant::Harmonic),
+    (Algorithm::Rect, Variant::Golden),
+];
+
+/// How an entry is named on the surface. FM's pair are numbered by topology;
+/// the complex pairs by which end of the convergents they took.
+pub fn roster_name(algorithm: Algorithm, variant: Variant) -> String {
+    match algorithm {
+        Algorithm::Fm1 => "fm I".into(),
+        Algorithm::Fm2 => "fm II".into(),
+        _ => format!("{} {}", algorithm.name(), variant.numeral()),
+    }
+}
+
+/// Every roster entry's tuning at one index — the bake.
 pub fn tables(index: f64) -> Vec<(Algorithm, Variant, Tuning)> {
-    Algorithm::ALL
+    ROSTER
         .iter()
-        .flat_map(|&a| Variant::ALL.iter().map(move |&v| (a, v)))
-        .map(|(a, v)| (a, v, tuning_for(a, v, index, DEGREES_PER_SCALE)))
+        .map(|&(a, v)| (a, v, tuning_for(a, v, index, DEGREES_PER_SCALE)))
         .collect()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The count is the point. Ten would break 2/3/5/8.
+    #[test]
+    fn the_roster_is_eight() {
+        assert_eq!(ROSTER.len(), DEGREES_PER_SCALE);
+        let mut seen = ROSTER.to_vec();
+        seen.sort_by_key(|(a, v)| (format!("{a:?}"), format!("{v:?}")));
+        seen.dedup();
+        assert_eq!(seen.len(), 8, "the roster has a duplicate entry");
+    }
 
     #[test]
     fn every_algorithm_produces_partials() {

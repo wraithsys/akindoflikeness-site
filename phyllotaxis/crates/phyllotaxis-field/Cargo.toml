@@ -1,0 +1,13 @@
+[package]
+name = "phyllotaxis-field"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Always-on amplitude movement. There is no envelope; a note is the field moving more for a while."
+
+[dependencies]
+phyllotaxis-tuning = { path = "../phyllotaxis-tuning" }
+
+[dev-dependencies]
+phyllotaxis-voice = { path = "../phyllotaxis-voice" }
