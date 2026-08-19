@@ -725,6 +725,39 @@ modulation never re-aligns and the chorus never develops an audible pulse. For
 sustained material that is the difference between a chorus you can leave on and
 one you cannot.
 
+### The plate is a party to the envelope without touching amplitude
+
+Billy, on the whole-chain A/B: *"the second bit of audio in each file has a
+superior amp mod shape, so B over A."* The bus won its A/B under §11's rule —
+but it changes no amplitude at all, so why it reads that way is the interesting
+part.
+
+§5 makes the gesture `interval/φ` and the rest `interval/φ²`. **Dry, that rest
+is a real fall toward the floor. With a plate, the tail decides what happens in
+it** — filling it, falling short, or carrying across into the next gesture. The
+plate shapes the perceived contour while never being in the amplitude path.
+
+At the 1.618 s mean interval:
+
+| | |
+|---|---|
+| rest after a long step | 0.724 s |
+| rest after a short step | 0.447 s |
+| ratio | **φ**, necessarily — the step durations are φ apart |
+
+So **no single decay can match both rests.** It can sit on the short one
+(decay ≈ 0.50), the long one (≈ 0.66), between them at their geometric mean of
+0.569 s (≈ 0.60), or past both. The shipped default of 0.74 gives an RT60 of
+0.943 s — longer than either — so the tail carries *through* the rest instead of
+filling it, and that is the setting preferred by ear.
+
+Deliberately **not** derived into a coupling. §8 already records why: a chain
+that computes itself from the structure is the instrument deciding, and it
+closes off the misuse a player would otherwise find. This is a relationship
+worth knowing and a default worth choosing well, not a rule to enforce.
+`cargo run -p phyllotaxis-fx --example rt` prints the table so it stays visible,
+and `renders/whole/decay-ab.wav` is the comparison rather than an assertion.
+
 **The plate is a bus, not per-voice.** A stolen voice's send has already
 happened, so its energy persists in the tail after the voice is gone. This is
 why §6 works.
