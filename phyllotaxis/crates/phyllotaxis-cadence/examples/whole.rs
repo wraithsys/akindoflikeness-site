@@ -71,6 +71,15 @@ fn write_wav(path: &str, samples: &[f32]) -> std::io::Result<()> {
 }
 
 fn render(algorithm: phyllotaxis_tuning::Algorithm, variant: phyllotaxis_tuning::Variant, wet: bool) -> Vec<f32> {
+    render_with(algorithm, variant, wet, 0.74)
+}
+
+fn render_with(
+    algorithm: phyllotaxis_tuning::Algorithm,
+    variant: phyllotaxis_tuning::Variant,
+    wet: bool,
+    decay: f32,
+) -> Vec<f32> {
     let index = 4.0;
     let tuning = tuning_for(algorithm, variant, index as f64, DEGREES_PER_SCALE);
     let cents = tuning.cents();
@@ -82,7 +91,7 @@ fn render(algorithm: phyllotaxis_tuning::Algorithm, variant: phyllotaxis_tuning:
 
     let mut bus = Bus::new(SR);
     let (pp, cp, dp) = (
-        PlateParams { decay: 0.74, damping: 0.34, noise_mod: 0.35, mix: 0.30 },
+        PlateParams { decay, damping: 0.34, noise_mod: 0.35, mix: 0.30 },
         ChorusParams { depth: 0.4, rate: 0.35, mix: 0.30 },
         DensityParams::default(), // off: it has to earn its keep separately
     );
@@ -178,6 +187,16 @@ fn main() -> std::io::Result<()> {
         let tuning = tuning_for(algorithm, variant, 4.0, DEGREES_PER_SCALE);
         let secs: f32 = (1..=CHORDS).map(|n| word::interval_s(n, MEAN_INTERVAL_S)).sum();
         println!("{:<10} {:>8} {:>8.1}  {}", name, tuning.kind().name(), secs, word::prefix(CHORDS as usize));
+    }
+
+    // Decay A/B: the tail carrying past the rest, against the tail sitting
+    // between the two rests at their geometric mean.
+    for &(a, v) in &[(phyllotaxis_tuning::Algorithm::Fm2, phyllotaxis_tuning::Variant::Golden)] {
+        let mut buf = render_with(a, v, true, 0.74);
+        buf.extend(std::iter::repeat(0.0).take((0.7 * SR) as usize));
+        buf.extend(render_with(a, v, true, 0.60));
+        write_wav("renders/whole/decay-ab.wav", &buf)?;
+        println!("decay-ab: RT60 0.94s (carries past the rest), then 0.58s (between the rests)");
     }
 
     println!("\nEach file: {CHORDS} chords dry, 0.7s silence, the same {CHORDS} through the bus.");
