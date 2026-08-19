@@ -216,12 +216,61 @@ inharmonic spectrum played in a scale computed from itself is **more** consonant
 than the same spectrum on the grid, and it is audible without training or
 prompting. Everything downstream can be built on it.
 
-**One honest caveat about what was heard.** The audition is a bare additive sine
-bank — no filter, no plate, no hyperchorus, no unison, no field movement. The
-ghostliness may be partly the *purity* of that path rather than the tuning, and
-the full signal chain could bury it. Keep a route back to it: filter wide open,
-plate low, unison off should reproduce the audition's thinness, and that should
-be a preset rather than a coincidence.
+### The dry voice is already chorused — measured, not impressionistic
+
+Billy, on the same bare additive render: *"i can hear chorus reverb and the fact
+it was mono … there was also unison going on"* — against a file containing none
+of those. He is right, and the reason matters more than the observation.
+
+Sound a chord of inharmonic spectra and the partials of *different notes* land
+near each other. Near coincidences beat, and beating at a few Hz is what chorus
+is. `examples/coincidences.rs` counts them, over the same four-note chords the
+audition renders:
+
+| algorithm | partials sounding | exact unisons | chorusing pairs |
+|---|---|---|---|
+| fm I | 80 | 27 | 0 |
+| **fm II** | **559** | **119** | **354** |
+| fm fb I | 68 | 6 | 1 |
+| fm fb II | 132 | 2 | 15 |
+| rm I / rm II / am I | 9 / 6 / 9 | 1 | 0 |
+| am II | 16 | 5 | 1 |
+| rect I / rect II | 40 / 36 | 7 / 8 | 5 / 3 |
+
+The file sent as the headline test, `fm II`, arrives with **354 beating pairs and
+119 exactly-doubled partials before a single effect is applied.** That is the
+chorus and the unison, heard correctly and named correctly. The "reverb" is the
+same fact from another angle: 559 partials at slightly differing frequencies is a
+dense decorrelated field, which is perceptually what a reverb produces.
+
+**The I/II pair separates here too, and audibly.** fm I has 27 exact coincidences
+and *zero* beating — harmonic ratios make partials land exactly on each other. fm
+II has 119 exact and 354 beating. So "I = harmonic, II = golden" is not only a
+tuning distinction: one variant reinforces and the other shimmers. That was hoped
+for in §2 and is now a number.
+
+### Consequence: the FX chain is designed for a voice that does not exist
+
+§8 assumes it is treating a dry signal. It is not. Adding a hyperchorus to fm II
+is adding chorus to 354 beating pairs, and the plate is adding density to
+something already dense — while rm I, rm II and am I are genuinely bone dry at
+nine partials and would take everything the chain has.
+
+So **FX depth should be derived from the algorithm's partial count**, not dialled
+flat across the roster. That is a coupling derived from something the
+architecture already computes, which is the only kind this house permits — a
+sparse algorithm gets the full plate and chorus, a dense one gets almost none,
+and the control stays an amount scaling a relationship rather than specifying
+one.
+
+Open: whether the derivation is on partial count, on the chorusing-pair count, or
+on measured spectral flatness. The pair count is the most direct measure of the
+thing being avoided.
+
+**What was originally written here** — that the ghostliness might be the purity of
+an unfiltered sine path, and needed protecting as a preset — was wrong about the
+cause but right about the instinct. The thinness is worth a preset; the
+ghostliness is the spectrum and travels with it.
 
 **Applied at chord change, not to held notes.** The tuning drifts while INDEX
 moves; retuning a held pad mid-note is worse than letting the next chord land in
