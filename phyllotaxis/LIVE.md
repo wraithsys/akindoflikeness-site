@@ -17,32 +17,33 @@ Two pieces, both in this repo:
 
 ## Running it
 
-Build once:
+One terminal, from this directory (`live.sh` builds the relay if needed):
 
-    cargo build --release -p phyllotaxis-live
+    ./live.sh twitch <channel>          # anonymous, no account or token
+    ./live.sh youtube <url-or-video-id> # via yt-chat.py, see below
+    ./live.sh test                      # type `name: message` lines yourself
 
-Start the relay against the chat:
+YouTube's official API can't sustain 24/7 chat polling on default quota, and
+chat-downloader (the usual answer) no longer parses current YouTube — its
+last release predates a site change. `yt-chat.py` uses yt-dlp instead
+(`pip install yt-dlp`, and keep it updated: tracking YouTube is its whole
+job), tailing the live-chat file yt-dlp records into clean `user: message`
+lines. Anything else that can print such lines works via `... | 
+phyllotaxis-live stdin`.
 
-    # Twitch — anonymous, no account or token, reconnects on its own
-    ./target/release/phyllotaxis-live twitch <channel>
+The picture: OBS's **Browser Source** is a built-in Chromium, so the page
+needs no separate browser window and no window capture. Add a Browser source
+with the URL below, canvas-sized (e.g. 1920×1080), tick **Control audio via
+OBS** — it autoplays without a click, so a rebooted rig does not sit silent
+behind the Begin button:
 
-    # YouTube — the official API can't sustain 24/7 chat polling on default
-    # quota, so pipe chat-downloader (pip install chat-downloader) instead:
-    chat_downloader "https://www.youtube.com/watch?v=<video-id>" \
-      | ./target/release/phyllotaxis-live stdin
+    https://akindoflikeness.net/instruments/phyllotaxis/?live
 
-    # Anything else that can print `user: message` lines also works via stdin.
+(If a real browser window is ever preferred, launch Chromium with
+`--autoplay-policy=no-user-gesture-required` and the same URL; without the
+flag, click Begin once.)
 
-Open the instrument in the browser OBS captures:
-
-    chromium --autoplay-policy=no-user-gesture-required \
-      "https://akindoflikeness.net/instruments/phyllotaxis/?live"
-
-With that flag the page starts itself — a rebooted rig does not sit silent
-behind a Begin button. Without it, click Begin once; live mode works the same.
-
-Point OBS at that window, stream it, and put something like this in the
-description:
+Stream that scene, and put something like this in the description:
 
 > This instrument is playing itself. To play it yourself: open
 > https://akindoflikeness.net/instruments/phyllotaxis/ — shape a patch, press
