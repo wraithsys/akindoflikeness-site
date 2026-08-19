@@ -218,9 +218,12 @@ prompting. Everything downstream can be built on it.
 
 ### The dry voice is already chorused — measured, not impressionistic
 
-Billy, on the same bare additive render: *"i can hear chorus reverb and the fact
-it was mono … there was also unison going on"* — against a file containing none
-of those. He is right, and the reason matters more than the observation.
+Billy, on the same bare additive render: *"there was also unison going on"* —
+against a file that applies no unison, chorus or reverb anywhere. He is right,
+and the reason matters more than the observation. (The rest of that message was
+him saying he can identify those characteristics unaided and did not need the
+caveat, not a list of what he had found in the file. The finding below stands on
+its own measurement either way.)
 
 Sound a chord of inharmonic spectra and the partials of *different notes* land
 near each other. Near coincidences beat, and beating at a few Hz is what chorus
