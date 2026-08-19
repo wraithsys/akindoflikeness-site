@@ -11,6 +11,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "phyllotaxis-pool"
+version = "0.1.0"
+dependencies = [
+ "phyllotaxis-field",
+ "phyllotaxis-tuning",
+ "phyllotaxis-voice",
+]
+
+[[package]]
 name = "phyllotaxis-tuning"
 version = "0.1.0"
 

@@ -1,0 +1,12 @@
+[package]
+name = "phyllotaxis-pool"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Five voices, allocated by prediction rather than by age."
+
+[dependencies]
+phyllotaxis-tuning = { path = "../phyllotaxis-tuning" }
+phyllotaxis-voice = { path = "../phyllotaxis-voice" }
+phyllotaxis-field = { path = "../phyllotaxis-field" }

@@ -512,10 +512,29 @@ per-sample bookkeeping.
    louder one falls into its own. The strum says exactly when the incoming note
    needs the slot, so the question is which voice is quietest at
    `t + strum_offset`.
-2. **Schedule the steal.** Inside the strum's time budget, steal at the victim's
-   next amplitude minimum. A steal at the bottom of a voice's own breath is
-   inaudible before any fade applies; the fade is insurance for when no trough
-   falls inside the window.
+2. **Schedule the steal — where the timescales allow it, which is not
+   everywhere.** Inside the strum's budget, steal at the victim's next local
+   minimum *below its present level*. A steal at the bottom of a voice's own
+   breath is inaudible before any fade applies.
+
+   **Built, and the original arrangement was backwards.** The field's rate is
+   `freq/φ¹³`, so its period at pad pitch is measured in seconds — 4.7 s at
+   110 Hz, 2.4 s at 220 Hz — while a strum window is one or two hundred
+   milliseconds. There is no local minimum in that window and there never will
+   be, so a steal on a low voice cannot be scheduled at all. It works where the
+   field moves fast enough, which by construction is the **top** of a chord:
+   880 Hz finds a trough inside half a second, 2 kHz inside a tenth.
+
+   So trough-scheduling is opportunistic, not primary, and **level inheritance
+   is what carries every case it cannot reach** — the reverse of what was
+   written here before building it. Both are needed and neither is redundant.
+
+   One correctness note kept because a test caught it: a local minimum is not
+   necessarily *below* the present level. If the field is rising at t=0 it can
+   crest and fall to a trough still louder than where it started, and
+   scheduling a steal there is worse than stealing immediately. The search
+   requires quieter-than-now, not merely a turning point.
+
 3. **Inherit the level.** The incoming voice starts its rise from the outgoing
    voice's current amplitude, which is known exactly. The slot's level never
    steps — continuity by construction, the same shape of argument as the floor.

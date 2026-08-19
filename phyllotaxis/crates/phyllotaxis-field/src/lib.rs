@@ -183,6 +183,86 @@ impl Field {
         (freq.max(0.0) / PHI.powi(RATE_RUNGS)).clamp(RATE_MIN_HZ, RATE_MAX_HZ)
     }
 
+    /// This voice's amplitude `ahead` seconds from now, **without advancing**.
+    ///
+    /// The field is a closed form, not a sampled signal: five sinusoids at
+    /// known rates and phases, times a gesture whose shape is known from its
+    /// start. So any future level can be evaluated analytically — no lookahead
+    /// buffer, no per-sample bookkeeping, and cheap enough to call a handful of
+    /// times per note-on at control rate.
+    ///
+    /// This is what makes predictive allocation possible at all: the allocator
+    /// can ask which voice will be quietest at the moment a note actually needs
+    /// the slot, rather than which is quietest now — and those are different
+    /// about half the time, because a quiet voice may be climbing out of its
+    /// trough while a louder one falls into its own.
+    pub fn predict(&self, ahead: f32, freq_hz: f32, p: &FieldParams) -> f32 {
+        let base = Self::rate_hz(freq_hz);
+
+        let mut movement = 0.0;
+        for i in 0..5 {
+            let phase = self.phases[i] + base * self.rates[i] * ahead;
+            movement += (phase.fract() * TAU).sin() * self.amps[i];
+        }
+        let movement01 = movement * 0.5 + 0.5;
+
+        let t = self.since + ahead;
+        let g = self.gesture_s();
+        let exp = Self::curve_exponent(p.curve);
+        let attack_s = g * p.attack.clamp(0.0, 1.0);
+
+        let shaped = if t >= g {
+            0.0
+        } else if t < attack_s && attack_s > 0.0 {
+            self.boost_level * (t / attack_s).powf(1.0 / exp)
+        } else {
+            let fall = (t - attack_s) / (g - attack_s).max(1e-6);
+            self.boost_level * (1.0 - fall).max(0.0).powf(exp)
+        };
+
+        let depth_now = p.depth * (REST_FRACTION + (1.0 - REST_FRACTION) * shaped);
+        let floor = p.floor.clamp(0.0, 1.0);
+        floor + (1.0 - floor) * depth_now * movement01
+    }
+
+    /// When this voice is next at a local minimum **quieter than it is now**,
+    /// searched over `window` seconds — the moment a steal is inaudible before
+    /// any fade is applied.
+    ///
+    /// The "quieter than now" clause is load-bearing rather than fussy. A local
+    /// minimum is not necessarily below the present level: if the field is
+    /// rising at t=0 it can crest and come back down to a trough that is still
+    /// louder than where it started, and scheduling a steal there is worse than
+    /// stealing immediately. The first version of this searched for any local
+    /// minimum and a test caught it doing exactly that.
+    ///
+    /// Returns `None` if the window contains no such moment, in which case the
+    /// caller inherits the level and crossfades rather than waiting.
+    pub fn next_trough(&self, window: f32, freq_hz: f32, p: &FieldParams) -> Option<f32> {
+        const STEPS: usize = 96;
+        if window <= 0.0 {
+            return None;
+        }
+        let dt = window / STEPS as f32;
+        let mut best: Option<(f32, f32)> = None;
+        let now = self.predict(0.0, freq_hz, p);
+        let mut prev = now;
+        let mut cur = self.predict(dt, freq_hz, p);
+        for k in 1..STEPS {
+            let t = (k + 1) as f32 * dt;
+            let next = self.predict(t, freq_hz, p);
+            if cur < prev && cur <= next && cur < now {
+                let at = k as f32 * dt;
+                if best.map_or(true, |(_, v)| cur < v) {
+                    best = Some((at, cur));
+                }
+            }
+            prev = cur;
+            cur = next;
+        }
+        best.map(|(t, _)| t)
+    }
+
     /// Advance one sample and return this voice's amplitude.
     ///
     /// Never returns less than `floor` while the voice is held — by
@@ -376,6 +456,46 @@ mod tests {
                 let x = f.tick(330.0, &p);
                 assert!(x.is_finite() && (0.0..=1.0).contains(&x), "{a:?} {v:?} produced {x}");
             }
+        }
+    }
+
+    /// Prediction has to be the same function as reality, or every decision
+    /// built on it is decided on a fiction.
+    #[test]
+    fn prediction_matches_what_actually_happens() {
+        let p = FieldParams::default();
+        for &ahead in &[0.001f32, 0.01, 0.1, 0.5, 1.2] {
+            let mut f = field();
+            f.set_interval(2.0);
+            f.strike();
+            for _ in 0..1000 { f.tick(220.0, &p); }
+
+            let predicted = f.predict(ahead, 220.0, &p);
+            let n = (ahead * SR) as usize;
+            let mut actual = 0.0;
+            for _ in 0..n { actual = f.tick(220.0, &p); }
+            assert!(
+                (predicted - actual).abs() < 2e-3,
+                "at {ahead}s predicted {predicted}, got {actual}"
+            );
+        }
+    }
+
+    /// A trough found by search must actually be quieter than the level now.
+    #[test]
+    fn a_found_trough_is_quieter_than_the_present() {
+        let p = FieldParams { floor: 0.0, depth: 1.0, ..Default::default() };
+        let mut f = field();
+        f.set_interval(3.0);
+        f.strike();
+        // Start somewhere on the way up, so "now" is not already a minimum.
+        for _ in 0..(SR as usize / 5) { f.tick(220.0, &p); }
+        if let Some(t) = f.next_trough(1.0, 220.0, &p) {
+            assert!(t > 0.0);
+            assert!(
+                f.predict(t, 220.0, &p) <= f.predict(0.0, 220.0, &p) + 1e-6,
+                "the trough was louder than now"
+            );
         }
     }
 

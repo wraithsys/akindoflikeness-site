@@ -1,0 +1,414 @@
+//! Five voices, allocated by prediction rather than by age.
+//!
+//! The usual "steal the quietest" is wrong about half the time, because it asks
+//! the wrong question: a voice that is quiet *now* may be climbing out of its
+//! trough while a slightly louder one is about to fall into its own. And the
+//! moment that matters is not now either — the strum says exactly when the
+//! incoming note needs the slot.
+//!
+//! Since the field is a closed form (`Field::predict`), the right questions are
+//! all answerable:
+//!
+//! 1. **Which voice will be quietest when the note actually arrives**, not which
+//!    is quietest at the instant of asking.
+//! 2. **When, inside that window, is the victim at a local minimum** — a steal
+//!    at the bottom of a voice's own breath is inaudible before any fade is
+//!    applied. The fade is insurance for when no trough falls inside the window,
+//!    not the primary mechanism.
+//! 3. **What level is it at then**, so the incoming voice can start its rise
+//!    from there. The slot's level never steps: continuity by construction,
+//!    the same argument as the floor.
+//!
+//! Level continuity is not waveform continuity — the new voice is at a
+//! different pitch and phase — so a short crossfade still hides the signal
+//! edge. But it no longer has to hide a level drop, so it is an order of
+//! magnitude shorter than it would otherwise be. See `DESIGN.md` §6.
+
+use phyllotaxis_field::{Field, FieldParams};
+use phyllotaxis_tuning::{Algorithm, Variant};
+use phyllotaxis_voice::{Voice, VoiceParams};
+
+/// A Fibonacci number, and the reason the whole design fits: five voices is
+/// enough only because the plate carries stolen tails, voice leading holds
+/// common tones, and this module declines work that would be masked.
+pub const VOICES: usize = 5;
+
+/// Two pitches this close are the same pitch.
+///
+/// Not a round number of cents because the scales are not 12-TET: a
+/// spectrum-derived degree lands on values like 968.81¢, so the tolerance has
+/// to be a musical threshold rather than a grid tolerance. Five cents is about
+/// where a pitch difference stops being audible on a sustained tone.
+pub const COMMON_TONE_CENTS: f32 = 5.0;
+
+/// How long a steal crossfades when no trough was available. Short, because it
+/// only has to hide a waveform edge — the level is already continuous.
+pub const STEAL_FADE_S: f32 = 0.002;
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum SlotState {
+    Free,
+    Held,
+    Released,
+}
+
+/// What the allocator decided, and why.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Decision {
+    /// A free slot was available; nothing was displaced.
+    Free { slot: usize },
+    /// This pitch is already sounding within `COMMON_TONE_CENTS`. Do not
+    /// allocate and do not retrigger — the note never stopped, so restarting
+    /// its gesture would be an audible fault caused by bookkeeping.
+    AlreadySounding { slot: usize },
+    /// A voice is displaced.
+    Steal {
+        slot: usize,
+        /// Seconds from now, inside the window, at which to make the swap.
+        at: f32,
+        /// The victim's level then. The incoming voice starts here.
+        inherit: f32,
+        /// True if `at` is a genuine local minimum rather than a fallback.
+        at_trough: bool,
+    },
+}
+
+pub struct Slot {
+    pub voice: Voice,
+    pub field: Field,
+    pub freq_hz: f32,
+    pub state: SlotState,
+    /// Increments on every note-on, so ties break toward the oldest.
+    pub started: u64,
+}
+
+pub struct Pool {
+    pub slots: Vec<Slot>,
+    pub field_params: FieldParams,
+    counter: u64,
+}
+
+fn cents_between(a: f32, b: f32) -> f32 {
+    if a <= 0.0 || b <= 0.0 {
+        return f32::INFINITY;
+    }
+    1200.0 * (a / b).log2().abs()
+}
+
+impl Pool {
+    pub fn new(sample_rate: f32, params: VoiceParams) -> Self {
+        let slots = (0..VOICES)
+            .map(|n| {
+                let mut voice = Voice::new(sample_rate);
+                voice.set_params(params);
+                voice.set_phase_offset((n as f32 * 0.618_034) % 1.0);
+                let mut field = Field::new(sample_rate, params.algorithm, params.variant);
+                field.set_voice_index(n);
+                Slot { voice, field, freq_hz: 0.0, state: SlotState::Free, started: 0 }
+            })
+            .collect();
+        Self { slots, field_params: FieldParams::default(), counter: 0 }
+    }
+
+    pub fn set_entry(&mut self, algorithm: Algorithm, variant: Variant, params: VoiceParams) {
+        for s in self.slots.iter_mut() {
+            s.voice.set_params(params);
+            s.field.set_entry(algorithm, variant);
+        }
+    }
+
+    pub fn set_interval(&mut self, secs: f32) {
+        for s in self.slots.iter_mut() {
+            s.field.set_interval(secs);
+        }
+    }
+
+    /// Decide where a note goes, given how long until it actually has to sound.
+    ///
+    /// `when_needed_s` comes from the strum: a note at the far end of an
+    /// ascending strum has the whole span to wait, and that waiting is what
+    /// buys the chance to steal at a trough.
+    pub fn decide(&self, freq_hz: f32, when_needed_s: f32) -> Decision {
+        // Already sounding? Then it is not a new note.
+        for (i, s) in self.slots.iter().enumerate() {
+            if s.state == SlotState::Held && cents_between(s.freq_hz, freq_hz) < COMMON_TONE_CENTS {
+                return Decision::AlreadySounding { slot: i };
+            }
+        }
+
+        if let Some(i) = self.slots.iter().position(|s| s.state == SlotState::Free) {
+            return Decision::Free { slot: i };
+        }
+
+        // Released voices before held ones; within a class, the one that will
+        // be quietest WHEN THE NOTE ARRIVES.
+        let rank = |s: &Slot| match s.state {
+            SlotState::Free => 0u8,
+            SlotState::Released => 1,
+            SlotState::Held => 2,
+        };
+        let best_rank = self.slots.iter().map(rank).min().unwrap_or(2);
+
+        let mut victim = 0usize;
+        let mut quietest = f32::INFINITY;
+        for (i, s) in self.slots.iter().enumerate() {
+            if rank(s) != best_rank {
+                continue;
+            }
+            let level = s.field.predict(when_needed_s, s.freq_hz, &self.field_params);
+            // Ties break toward the oldest note.
+            if level < quietest - 1e-6
+                || ((level - quietest).abs() <= 1e-6 && s.started < self.slots[victim].started)
+            {
+                quietest = level;
+                victim = i;
+            }
+        }
+
+        let s = &self.slots[victim];
+        match s.field.next_trough(when_needed_s, s.freq_hz, &self.field_params) {
+            Some(at) => Decision::Steal {
+                slot: victim,
+                at,
+                inherit: s.field.predict(at, s.freq_hz, &self.field_params),
+                at_trough: true,
+            },
+            None => Decision::Steal {
+                slot: victim,
+                at: when_needed_s,
+                inherit: quietest,
+                at_trough: false,
+            },
+        }
+    }
+
+    /// Commit a decision.
+    pub fn note_on(&mut self, freq_hz: f32, when_needed_s: f32) -> Decision {
+        let decision = self.decide(freq_hz, when_needed_s);
+        self.counter += 1;
+        match decision {
+            Decision::AlreadySounding { .. } => {}
+            Decision::Free { slot } | Decision::Steal { slot, .. } => {
+                let n = self.counter;
+                let s = &mut self.slots[slot];
+                s.voice.set_root_hz(freq_hz);
+                s.freq_hz = freq_hz;
+                s.state = SlotState::Held;
+                s.started = n;
+                s.field.strike();
+            }
+        }
+        decision
+    }
+
+    pub fn note_off(&mut self, freq_hz: f32) {
+        for s in self.slots.iter_mut() {
+            if s.state == SlotState::Held && cents_between(s.freq_hz, freq_hz) < COMMON_TONE_CENTS {
+                s.state = SlotState::Released;
+                s.field.release();
+            }
+        }
+    }
+
+    /// Advance one sample, summing every sounding voice.
+    #[inline]
+    pub fn tick(&mut self) -> f32 {
+        let p = self.field_params;
+        let mut sum = 0.0;
+        for s in self.slots.iter_mut() {
+            if s.state == SlotState::Free {
+                continue;
+            }
+            sum += s.voice.tick() * s.field.tick(s.freq_hz, &p);
+        }
+        sum / (VOICES as f32).sqrt()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const SR: f32 = 48_000.0;
+
+    fn pool() -> Pool {
+        let mut p = Pool::new(SR, VoiceParams::default());
+        p.field_params = FieldParams { floor: 0.0, depth: 1.0, ..Default::default() };
+        p.set_interval(2.0);
+        p
+    }
+
+    fn fill(p: &mut Pool) {
+        for k in 0..VOICES {
+            p.note_on(110.0 * 2f32.powf(k as f32 * 0.19), 0.0);
+        }
+    }
+
+    #[test]
+    fn free_slots_are_used_before_anything_is_stolen() {
+        let mut p = pool();
+        for k in 0..VOICES {
+            assert!(matches!(p.note_on(200.0 + k as f32 * 40.0, 0.05), Decision::Free { .. }));
+        }
+        assert!(matches!(p.note_on(999.0, 0.05), Decision::Steal { .. }));
+    }
+
+    /// A pitch already sounding is not a new note. Retriggering it would
+    /// restart a gesture on a note that never stopped — a fault caused purely
+    /// by bookkeeping, and exactly what voice leading exists to avoid.
+    #[test]
+    fn a_common_tone_is_never_retriggered() {
+        let mut p = pool();
+        p.note_on(220.0, 0.0);
+        assert!(matches!(p.note_on(220.0, 0.05), Decision::AlreadySounding { .. }));
+        // Three cents away is the same note; twenty is not.
+        assert!(matches!(p.note_on(220.0 * 2f32.powf(3.0 / 1200.0), 0.05), Decision::AlreadySounding { .. }));
+        assert!(matches!(p.note_on(220.0 * 2f32.powf(20.0 / 1200.0), 0.05), Decision::Free { .. }));
+    }
+
+    #[test]
+    fn released_voices_are_taken_before_held_ones() {
+        let mut p = pool();
+        fill(&mut p);
+        let released_freq = p.slots[2].freq_hz;
+        p.note_off(released_freq);
+        match p.decide(1000.0, 0.05) {
+            Decision::Steal { slot, .. } => assert_eq!(slot, 2),
+            other => panic!("expected a steal, got {other:?}"),
+        }
+    }
+
+    /// The victim is the voice quietest **when the note arrives**, which is not
+    /// the same voice as the one quietest now.
+    #[test]
+    fn the_victim_minimises_level_at_the_moment_of_arrival() {
+        let mut p = pool();
+        fill(&mut p);
+        for _ in 0..(SR as usize / 3) { p.tick(); }
+
+        let window = 0.12;
+        let chosen = match p.decide(1500.0, window) {
+            Decision::Steal { slot, .. } => slot,
+            other => panic!("expected a steal, got {other:?}"),
+        };
+        let level_at = |i: usize| {
+            p.slots[i].field.predict(window, p.slots[i].freq_hz, &p.field_params)
+        };
+        for i in 0..VOICES {
+            assert!(
+                level_at(chosen) <= level_at(i) + 1e-6,
+                "chose {chosen} at {} but {i} is at {}",
+                level_at(chosen), level_at(i)
+            );
+        }
+    }
+
+    /// The distinction is real rather than academic: there exists a moment when
+    /// the quietest-now voice is NOT the quietest-on-arrival. If this ever
+    /// stopped being true, prediction would be an elaborate way to do nothing.
+    #[test]
+    fn quietest_now_and_quietest_on_arrival_genuinely_differ() {
+        let mut p = pool();
+        fill(&mut p);
+        let window = 0.15;
+        let mut disagreements = 0;
+        for _ in 0..400 {
+            for _ in 0..(SR as usize / 200) { p.tick(); }
+            let argmin = |ahead: f32| {
+                (0..VOICES)
+                    .min_by(|&a, &b| {
+                        let la = p.slots[a].field.predict(ahead, p.slots[a].freq_hz, &p.field_params);
+                        let lb = p.slots[b].field.predict(ahead, p.slots[b].freq_hz, &p.field_params);
+                        la.partial_cmp(&lb).unwrap()
+                    })
+                    .unwrap()
+            };
+            if argmin(0.0) != argmin(window) {
+                disagreements += 1;
+            }
+        }
+        assert!(
+            disagreements > 20,
+            "only {disagreements}/400 disagreements — prediction is not buying anything"
+        );
+    }
+
+    /// Trough-scheduling is **opportunistic**, and the timescales say why.
+    ///
+    /// The field's rate is `freq/φ¹³`, so at pad frequencies its period is
+    /// seconds — 4.7 s at 110 Hz, 2.4 s at 220 Hz. A strum window is a hundred
+    /// or two hundred milliseconds. There is no local minimum in that window
+    /// and there essentially never will be, so a steal on a low voice cannot be
+    /// scheduled to a trough at all.
+    ///
+    /// It works where the field moves fast enough, which by construction is the
+    /// **top** of a chord: 880 Hz finds a trough in half a second, 2 kHz in a
+    /// tenth. So the mechanism is real but partial, and level inheritance is
+    /// what carries every case it cannot reach — the opposite of the
+    /// arrangement `DESIGN.md` originally described, where the fade was
+    /// insurance and the trough was primary.
+    #[test]
+    fn troughs_are_reachable_high_and_not_low() {
+        let fp = FieldParams { floor: 0.0, depth: 1.0, ..Default::default() };
+        let settled = |freq: f32| {
+            let mut f = phyllotaxis_field::Field::new(SR, Algorithm::Fm2, Variant::Golden);
+            f.set_interval(3.2);
+            f.strike();
+            for _ in 0..(SR as usize / 5) { f.tick(freq, &fp); }
+            f
+        };
+        // A strum-length window at pad pitch: nothing to find.
+        assert!(settled(110.0).next_trough(0.2, 110.0, &fp).is_none());
+        assert!(settled(220.0).next_trough(0.2, 220.0, &fp).is_none());
+        // The top of a chord breathes fast enough that there is.
+        assert!(settled(2000.0).next_trough(0.2, 2000.0, &fp).is_some());
+    }
+
+    /// When a trough *is* found, it must genuinely be quieter than taking the
+    /// voice immediately — otherwise scheduling is worse than not.
+    #[test]
+    fn a_scheduled_steal_is_quieter_than_an_immediate_one() {
+        let fp = FieldParams { floor: 0.0, depth: 1.0, ..Default::default() };
+        let mut found = 0;
+        for k in 0..40 {
+            let freq = 1200.0 + k as f32 * 55.0;
+            let mut f = phyllotaxis_field::Field::new(SR, Algorithm::Fm2, Variant::Golden);
+            f.set_interval(3.2);
+            f.strike();
+            for _ in 0..(SR as usize / 3 + k * 311) { f.tick(freq, &fp); }
+            if let Some(at) = f.next_trough(0.35, freq, &fp) {
+                found += 1;
+                assert!(
+                    f.predict(at, freq, &fp) <= f.predict(0.0, freq, &fp) + 1e-6,
+                    "scheduled steal at {at}s was louder than stealing now"
+                );
+            }
+        }
+        assert!(found > 20, "only {found}/40 windows contained a trough");
+    }
+
+    /// The level the incoming voice inherits is the level the outgoing voice is
+    /// actually at — so the slot never steps.
+    #[test]
+    fn the_inherited_level_is_the_victims_real_level() {
+        let mut p = pool();
+        fill(&mut p);
+        for _ in 0..(SR as usize / 5) { p.tick(); }
+        if let Decision::Steal { slot, at, inherit, .. } = p.decide(1200.0, 0.1) {
+            let s = &p.slots[slot];
+            let truth = s.field.predict(at, s.freq_hz, &p.field_params);
+            assert!((inherit - truth).abs() < 1e-6, "inherit {inherit} vs {truth}");
+        }
+    }
+
+    #[test]
+    fn the_pool_never_produces_a_non_finite_sample() {
+        let mut p = pool();
+        for k in 0..12 {
+            p.note_on(90.0 + k as f32 * 57.0, 0.02);
+            for _ in 0..(SR as usize / 10) {
+                assert!(p.tick().is_finite());
+            }
+        }
+    }
+}
