@@ -858,6 +858,13 @@ const plant = {
   curvePeriod: 89,       // seconds; starfield's curvature term, on its clock
   growS: 1,              // seconds from sprout to full field
   density: 1,
+  /* The dark heart. The exact centre used to be the most static and the
+     dullest point in the frame — the one place a space object cannot afford
+     either. Now it is a true-black core whose centre WANDERS on two slow
+     incommensurate periods: the darkest point is the one that moves. */
+  coreFrac: 0.16,        // core radius as a fraction of the field scale
+  coreW: 0.5,            // how far the heart wanders, as a fraction of coreFrac
+  coreP1: 34, coreP2: 55,
   bornMs: -1e9,          // fully grown at boot
 };
 
@@ -881,6 +888,10 @@ function plantReseed(str) {
   plant.curvePeriod = 16 + rng() * 217; // the starfield presets' range
   plant.growS = 8 + rng() * 26;
   plant.density = 0.7 + rng() * 0.6;
+  plant.coreFrac = 0.1 + rng() * 0.14;
+  plant.coreW = 0.3 + rng() * 0.5;
+  plant.coreP1 = 21 + rng() * 68;
+  plant.coreP2 = 34 + rng() * 89;
   plant.bornMs = performance.now();
 }
 
@@ -1194,8 +1205,8 @@ function initGL() {
     // only symptom being several hundred downstream warnings.
     precision highp float;
     attribute float i;
-    uniform float u_count, u_level, u_angle, u_rot, u_px; uniform vec2 u_res, u_center;
-    varying float v_r;
+    uniform float u_count, u_level, u_angle, u_rot, u_px, u_coreFrac; uniform vec2 u_res, u_center, u_core;
+    varying float v_r, v_dark;
     void main(){
       // u_angle is the divergence angle — the plant's, not necessarily the
       // golden one — and the sound bends it a fraction of a degree, which is
@@ -1204,26 +1215,45 @@ function initGL() {
       float ang = i * u_angle + u_rot;
       float rad = sqrt(i / u_count);
       float s = 0.92 * min(u_res.x, u_res.y) * 0.5 * (0.55 + 0.45 * u_level);
-      vec2 p = vec2(cos(ang), sin(ang)) * rad * s + u_center;
-      gl_Position = vec4(p / (u_res * 0.5), 0., 1.);
-      gl_PointSize = max(1.0, (1.2 + 3.0 * u_level) * (0.4 + 0.6 * rad)) * u_px;
+      vec2 q = vec2(cos(ang), sin(ang)) * rad * s;
+      gl_Position = vec4((q + u_center) / (u_res * 0.5), 0., 1.);
+      // The dark heart: black inside a third of the core radius, ramping to
+      // full light at its edge. u_core wanders (in units of the field scale,
+      // so the heart breathes with the field), which makes the centre the
+      // most alive point in the plant rather than the most static.
+      float dcore = length(q - u_core * s);
+      v_dark = smoothstep(0.35, 1.0, dcore / max(u_coreFrac * s, 1.0));
+      // Coarser than it was: at 12 Mbps a spiral arm one pixel wide is a
+      // filament the encoder must redraw every frame, and it pays for that
+      // with mush. Fatter marks with the soft shoulder below are lower
+      // spatial frequency — coarseness spent as compression headroom.
+      gl_PointSize = max(1.0, (1.9 + 3.4 * u_level) * (0.55 + 0.45 * rad)) * u_px;
       v_r = rad;
     }`, `
     precision highp float;
     #define HILITE vec3(0.45, 0.98, 0.58)
     uniform float u_level, u_gain;
-    varying float v_r;
+    varying float v_r, v_dark;
     void main(){
       vec2 d = gl_PointCoord - 0.5;
       float l = length(d);
       if (l > 0.5) discard;
+      // Smoothstep shoulder instead of a linear cone: same peak, same zero,
+      // softer edge — the encoder-friendly half of the coarseness trade.
+      float cone = 1.0 - l * 2.0;
+      cone = cone * cone * (3.0 - 2.0 * cone);
       // Normalised to at most 1 by construction, so u_gain alone sets how
-      // bright the buffer settles. See SEED_GAIN.
-      float amp = (1.0 - l * 2.0) * (1.0 - 0.5 * v_r) * (0.75 + 0.85 * u_level) / 1.6;
-      // The bright end stays GREEN. It used to be (0.90, 0.97, 0.88), which
-      // is near-white — so the outer field lost its colour by palette even
-      // before the buffer clipped, and no exposure change could bring it back.
-      vec3 col = mix(vec3(0.34, 0.62, 0.43), HILITE, v_r * (0.4 + 0.6 * u_level));
+      // bright the buffer settles. See SEED_GAIN. Energy now RISES toward
+      // the rim rather than falling: with the black heart at the centre and
+      // the lit limb at the edge, the radial profile is what says sphere.
+      float amp = cone * (0.55 + 0.45 * v_r) * (0.75 + 0.85 * u_level) / 1.6 * v_dark;
+      // Colour is distributed, not flat: near-black deep green out of the
+      // heart, the body green through the mid-field, and the bright end —
+      // which stays GREEN (it was once near-white, and the outer field lost
+      // its colour by palette before the buffer even clipped) — only at the
+      // limb. Three zones on one radius: the eclipse reading.
+      vec3 col = mix(vec3(0.10, 0.26, 0.16), vec3(0.34, 0.62, 0.43), smoothstep(0.0, 0.55, v_r));
+      col = mix(col, HILITE, smoothstep(0.55, 1.0, v_r) * (0.4 + 0.6 * u_level));
       gl_FragColor = vec4(col * amp * u_gain, 1.0);
     }`, "seeds");
 
@@ -1430,6 +1460,12 @@ function initGL() {
     const cx = W * space.swayA * Math.sin((2 * Math.PI * t) / space.swayP + 1.0);
     const cy = H * space.bobA * Math.sin((2 * Math.PI * t) / space.bobP);
 
+    // The dark heart's wander, in units of the field scale: two slow sines
+    // on incommensurate seeded periods trace a Lissajous inside the core.
+    const cw = plant.coreFrac * plant.coreW;
+    const hx = cw * Math.sin((2 * Math.PI * t) / plant.coreP1);
+    const hy = cw * Math.sin((2 * Math.PI * t) / plant.coreP2 + 0.7);
+
     gl.viewport(0, 0, W, H);
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, b.fbo);
@@ -1459,6 +1495,8 @@ function initGL() {
     gl.uniform1f(gl.getUniformLocation(seeds, "u_px"), PX);
     gl.uniform2f(gl.getUniformLocation(seeds, "u_res"), W, H);
     gl.uniform2f(gl.getUniformLocation(seeds, "u_center"), cx, cy);
+    gl.uniform2f(gl.getUniformLocation(seeds, "u_core"), hx, hy);
+    gl.uniform1f(gl.getUniformLocation(seeds, "u_coreFrac"), plant.coreFrac);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE);
     gl.drawArrays(gl.POINTS, 0, drawn);
@@ -1531,6 +1569,8 @@ function initGL() {
     gl.uniform1f(gl.getUniformLocation(seeds, "u_px"), PX);
     gl.uniform2f(gl.getUniformLocation(seeds, "u_res"), W, H);
     gl.uniform2f(gl.getUniformLocation(seeds, "u_center"), cx, cy);
+    gl.uniform2f(gl.getUniformLocation(seeds, "u_core"), hx, hy);
+    gl.uniform1f(gl.getUniformLocation(seeds, "u_coreFrac"), plant.coreFrac);
     gl.uniform1f(gl.getUniformLocation(seeds, "u_gain"), (1.0 - plant.trail) * CLEAN_GAIN);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE);
