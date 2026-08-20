@@ -411,9 +411,13 @@
         <p>a polyphonic instrument that plays itself, in the browser. nothing to
         download. its scales are computed from each algorithm&rsquo;s own spectrum
         rather than assumed &mdash; so the more inharmonic a voice gets, the more
-        consonant it sounds.</p>
+        consonant it sounds. when the stream is on it plays itself on youtube,
+        and the chat plays it too: shape a patch, press share, paste the link
+        into the chat &mdash; the stream takes it, with your name on it.</p>
         <div class="frow">
           <a class="cta" href="/instruments/phyllotaxis/">play in browser &#9656;</a>
+          <a class="cta ghost" id="stream" hidden target="_blank" rel="noopener"
+             href="https://www.youtube.com/@akindoflikeness/live">stream &#183; youtube</a>
           <span class="state on">no install</span>
         </div>
       </div>
@@ -646,5 +650,24 @@
       })
       .catch(function(){ m.textContent='no connection — try again?'; });
   });
+})();
+</script>
+
+<script>
+/* Whether the PHYLLOTAXIS stream is on. /api/live reads YouTube's canonical
+   link server-side, cached a minute at the edge. Hidden until it answers —
+   offline it stays a quiet link to the channel, live it drops the ghost and
+   points straight at the watch URL. */
+(function(){
+  var a=document.getElementById('stream'); if(!a) return;
+  fetch('/api/live').then(function(r){return r.json();}).then(function(d){
+    a.hidden=false;
+    if(d && d.live && d.url){
+      a.href=d.url;
+      a.textContent='● live now — watch';
+      a.classList.remove('ghost');
+      if(d.title) a.title=d.title;
+    }
+  }).catch(function(){ /* endpoint missing: no row, no error */ });
 })();
 </script>

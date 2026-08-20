@@ -290,6 +290,50 @@ footer {
 footer a { color: var(--dim); text-decoration: none; }
 footer a:hover { color: var(--sap); }
 
+/* Whether the stream is on. A state, so it reads in the data face like the
+   others; offline it is quiet furniture pointing at the channel, live it
+   lights up sap and points at the watch URL. Hidden until /api/live answers —
+   a section that says "offline" for 300ms on every load is noise. */
+a.stream {
+  font-family: var(--face-data);
+  font-size: 16px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dim);
+  text-decoration: none;
+  border: 1px solid var(--faint);
+  padding: 0.15rem 0.7rem;
+}
+a.stream:hover, a.stream:focus-visible { border-color: var(--sap); color: var(--sap); }
+a.stream.on { color: var(--sap); border-color: var(--sap); }
+a.stream.on::before { content: "\25cf "; }
+
+/* ── the broadcast frame ─────────────────────────────────────────────
+   `?live` is captured by OBS at 1920×1080. The reading layout wastes that
+   frame — an 1100px column in the middle of a television. In live mode the
+   stage takes the height and the racks stand as a rail beside it: watching
+   the sliders move under a viewer's patch is part of the show. Prose and
+   the share button are for hands, not cameras — the stream description
+   carries the how-to. */
+body.live { overflow: hidden; }
+body.live .shell {
+  max-width: none;
+  height: 100vh;
+  padding: 12px 18px;
+  display: grid;
+  grid-template-columns: 1fr 460px;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px 18px;
+}
+body.live header { grid-column: 1 / -1; padding-bottom: 0.5rem; }
+/* Sized by WIDTH only, computed from the viewport height, because the box's
+   own comment above is right: `aspect-ratio` plus a height cap does not
+   shrink the stage, it deforms it. 116px is the header row plus the frame's
+   padding and gaps. */
+body.live .stage { grid-row: 2; align-self: center; justify-self: center; width: min(100%, calc((100vh - 116px) * 16 / 9)); }
+body.live .racks { grid-row: 2; grid-template-columns: 1fr 1fr; align-content: start; overflow: hidden; }
+body.live .notes, body.live footer, body.live button.share, body.live a.stream { display: none; }
+
 @media (prefers-reduced-motion: reduce) {
   .stage canvas { opacity: 0.85; }
 }
@@ -301,6 +345,8 @@ footer a:hover { color: var(--sap); }
     <h1>PHYLLOTAXIS</h1>
     <div class="state" id="state">idle</div>
     <button class="share" id="share" title="Copy this patch as a URL">share</button>
+    <a class="stream" id="stream" hidden target="_blank" rel="noopener"
+       href="https://www.youtube.com/@akindoflikeness/live">stream</a>
     <div class="credit" id="credit"></div>
   </header>
 
@@ -483,10 +529,16 @@ function readHash() { return parseHash(location.hash); }
 function applyPatch(hash) {
   const saved = parseHash(hash);
   if (saved[0] !== undefined) {
-    entry = Math.max(0, Math.min(ROSTER.length - 1, saved[0] | 0));
-    showEntry();
-    setParam(0, entry);
-    requestTuningSoon();
+    if (VOICE_PINNED) {
+      // The voice stays FM 1:1; the patch's entry knob is re-routed to pick
+      // the director's route — which of root, mirror, voicing and pace move.
+      director.route = ROUTES[Math.max(0, Math.min(ROUTES.length - 1, saved[0] | 0))];
+    } else {
+      entry = Math.max(0, Math.min(ROSTER.length - 1, saved[0] | 0));
+      showEntry();
+      setParam(0, entry);
+      requestTuningSoon();
+    }
   }
   for (const input of document.querySelectorAll("input[data-param]")) {
     const id = +input.dataset.param;
@@ -606,10 +658,7 @@ function startTuner(wasmBytes) {
       tuningCache.set(tuningKey(m.entry, m.index), m);
       // Only install it if it is still the tuning being asked for — a slower
       // derivation must never overwrite a newer one.
-      if (wantTuning === tuningKey(m.entry, m.index)) {
-        send({ type: "tuning", cents: m.cents, isChord: m.isChord });
-        el("kind").textContent = m.isChord ? "chord" : "scale";
-      }
+      if (wantTuning === tuningKey(m.entry, m.index)) installTuning(m);
     } else if (m.type === "error") {
       console.error("tuner failed:", m.message);
     }
@@ -629,12 +678,39 @@ function requestTuning() {
   wantTuning = key;
   const hit = tuningCache.get(key);
   if (hit) {
-    send({ type: "tuning", cents: hit.cents, isChord: hit.isChord });
-    el("kind").textContent = hit.isChord ? "chord" : "scale";
+    installTuning(hit);
     return;
   }
   el("kind").textContent = "tuning\u2026";
   tuner.postMessage({ type: "derive", entry, index });
+}
+
+/* The derived tuning is kept, and what the engine hears is composed from it.
+   Off the stream the composition is the identity and this is exactly the old
+   direct send. `#kind` stays the tuner's verdict — scale or chord is its
+   answer alone — with the director's voicing appended after a dot when there
+   is one, so the readout never lies about which is which. */
+let baseTuning = null;
+
+function installTuning(m) {
+  baseTuning = { cents: Array.from(m.cents), isChord: !!m.isChord };
+  if (IS_LIVE && !baseTuning.isChord && baseTuning.cents.length >= 5) {
+    // The director's cadence vocabulary is read off THIS scale: the nearest
+    // degrees to a fourth, a fifth and a third. Re-read on every install, so
+    // an Index change re-derives the cadences along with the tuning.
+    const body = baseTuning.cents.slice(0, -1);
+    const near = (t) => body.reduce((a, b) => (Math.abs(b - t) < Math.abs(a - t) ? b : a));
+    const moves = [...new Set([near(498), near(702), near(350)])].filter((c) => c > 80);
+    if (moves.length) director.moves = moves;
+  }
+  sendComposed();
+}
+
+function sendComposed() {
+  if (!baseTuning) return;
+  const v = composeVoicing(baseTuning);
+  send({ type: "tuning", cents: v.cents, isChord: v.isChord });
+  el("kind").textContent = (baseTuning.isChord ? "chord" : "scale") + (v.label ? " · " + v.label : "");
 }
 
 let tuneTimer = 0;
@@ -678,7 +754,7 @@ const FORMAT = {
 
 function wire() {
   const saved = readHash();
-  if (saved[0] !== undefined) entry = Math.max(0, Math.min(ROSTER.length - 1, saved[0] | 0));
+  if (saved[0] !== undefined && !VOICE_PINNED) entry = Math.max(0, Math.min(ROSTER.length - 1, saved[0] | 0));
   showEntry();
 
   for (const input of document.querySelectorAll("input[data-param]")) {
@@ -732,11 +808,257 @@ function wire() {
 
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
 
+/* ── the plant, reseeded ──────────────────────────────────────────
+   A patch is a seed. Every patch the stream imports rehashes into a fresh
+   plant: a new divergence angle, a new growth rate, new motion — the field
+   collapses to a sprout and reassembles while the old plant erodes in the
+   trail. Nudging the angle off 137.507° reorganises the arm count entirely
+   (one continuous variable, wildly different pictures), which is what makes
+   a patch VISIBLE as a different organism and not just a different loudness.
+
+   The angles are not sampled uniformly: the taste ledger's law 4 ("the
+   canonical value is avoided" — TASTE.md) is built from fifteen angles Billy
+   chose on the workbench, 117–170°, golden never among them. Those choices
+   are the palette here, with jitter so a repeated patch is a sibling rather
+   than a twin, and a 20% wildcard draw so the range stays walkable. */
+
+const CHOSEN_ANGLES = [
+  // presets/phyllo/*.ron, duplicates kept: they are how often he chose it.
+  117.0, 119.5, 122.5, 123.0, 125.5, 129.0, 129.5, 129.5, 129.5,
+  133.2, 142.7, 142.7, 143.5, 170.0,
+];
+
+// xmur3 over the string, mulberry32 over the result: a patch hash in, a
+// deterministic stream of [0,1) out. The same patch replants the same plant.
+function mulberry(str) {
+  let h = 1779033703 ^ str.length;
+  for (let k = 0; k < str.length; k++) {
+    h = Math.imul(h ^ str.charCodeAt(k), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
+  let a = h >>> 0;
+  return () => {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Shipped constants as the resting state: with no patch ever imported the
+// page looks exactly as it did before any of this existed.
+const plant = {
+  angle: GOLDEN_ANGLE,   // divergence, radians
+  drive: 0,              // how far the sound bends the angle, radians
+  spin: 0.02,            // whole-field rotation, rad/s
+  trail: 0.45,           // accumulation vs clean redraw, see the erosion note in initGL
+  zoom: 0.9992,          // per-frame resample of the feedback buffer
+  warpSpin: 0.0006,
+  curve: 0,              // radial breathing of the resample, ± at |c|=0.5
+  curvePeriod: 89,       // seconds; starfield's curvature term, on its clock
+  growS: 1,              // seconds from sprout to full field
+  density: 1,
+  bornMs: -1e9,          // fully grown at boot
+};
+
+function plantReseed(str) {
+  const rng = mulberry(str + "|plant");
+  let deg = rng() < 0.8
+    ? CHOSEN_ANGLES[Math.floor(rng() * CHOSEN_ANGLES.length)] + (rng() - 0.5) * 0.3
+    : 117 + rng() * 53;
+  if (Math.abs(deg - 137.50776) < 0.05) deg += 0.21; // law 4, enforced
+  plant.angle = (deg * Math.PI) / 180;
+  plant.drive = (rng() * 2.0 * Math.PI) / 180; // ≤2°: enough to recount arms
+  plant.spin = (rng() - 0.5) * 0.12;
+  plant.trail = 0.2 + rng() * 0.45;
+  // Both bounded near 1: the further from 1, the more each frame is
+  // resampled and the faster the trail erodes — see the blotch note below.
+  plant.zoom = 0.9985 + rng() * 0.0019;
+  plant.warpSpin = (rng() - 0.5) * 0.0024;
+  plant.curve = (rng() - 0.5) * 0.012;
+  plant.curvePeriod = 16 + rng() * 217; // the starfield presets' range
+  plant.growS = 8 + rng() * 26;
+  plant.density = 0.7 + rng() * 0.6;
+  plant.bornMs = performance.now();
+}
+
+/* ── the director ─────────────────────────────────────────────────
+   Live mode only. Between patches the stream is not a held chord — a
+   seeded itinerary explores harmony with the engine's own vocabulary, all
+   of it through the page's existing controls and the tuning channel the
+   page already owns, so the director can reach nothing a slider can't.
+
+   What it has to work with:
+   - ROOT, stepped by intervals read off the CURRENT DERIVED SCALE — the
+     nearest degrees to a fourth, a fifth and a third. FM 1:1's table finds
+     498 and 702 on its own (README: "nobody told it about those
+     intervals"), so its cadences are plagal and authentic BY DERIVATION,
+     and an inharmonic voice cadences in its own crooked intervals.
+   - MIRROR, the engine's negative harmony: stepping it is modal
+     interchange by reflection, the mechanism §4 already built.
+   - VOICING, composed on the tuning channel: rotations of the derived
+     scale are its modes; subsets are chords with its own thirds and
+     fifths, sounded whole the way sparse spectra already are.
+   - PACE, slow breathing on Interval and Strum.
+
+   With the voice pinned to FM 1:1, the patch's entry knob is re-routed
+   here: it chooses which of those move, and that is the whole meaning of
+   "the engine drives something different". */
+
+const ROUTES = [
+  { root: 1, mirror: 0, voice: 0, pace: 0 }, // 0 cadence only
+  { root: 1, mirror: 1, voice: 0, pace: 0 }, // 1 + interchange
+  { root: 1, mirror: 0, voice: 1, pace: 0 }, // 2 + modes
+  { root: 0, mirror: 0, voice: 1, pace: 1 }, // 3 pedal root, voicings breathe
+  { root: 1, mirror: 1, voice: 1, pace: 0 }, // 4 full harmony, steady pace
+  { root: 0, mirror: 1, voice: 0, pace: 1 }, // 5 interchange over a pedal
+  { root: 1, mirror: 0, voice: 1, pace: 1 }, // 6 everything but the mirror
+  { root: 1, mirror: 1, voice: 1, pace: 1 }, // 7 everything
+];
+
+const director = {
+  route: ROUTES[0],
+  t: 0, holdUntil: 1e9, nextBeat: 0, n: 0,
+  beatS: 21, weylX: 0.5, eps: 0.15,
+  moves: [498, 702], rootHz: 110,
+  voicings: ["full"], voiceAt: 0,
+  mirrorPlan: [0, 0.382, 0.9], mirrorAt: 0,
+  paceP: 34, strumP: 55, strumDepth: 0.3, paceDepth: 0.22,
+  bases: null,
+};
+
+const frac = (x) => x - Math.floor(x);
+
+function directorReseed(str) {
+  const rng = mulberry(str + "|director");
+  director.beatS = Math.round(13 + rng() * 21);
+  director.eps = rng() * 0.3;
+  director.weylX = rng();
+  director.paceP = [21, 34, 55][Math.floor(rng() * 3)];
+  director.strumP = [34, 55, 89][Math.floor(rng() * 3)];
+  director.strumDepth = 0.15 + rng() * 0.3;
+  director.paceDepth = 0.1 + rng() * 0.2;
+  // Always opens on the patch as sent: "full" first, exploration after.
+  const pool = ["mode", "triad", "open", "mode"];
+  director.voicings = ["full"];
+  for (let k = 0; k < 4; k++) director.voicings.push(pool[Math.floor(rng() * pool.length)]);
+  director.voiceAt = 0;
+  director.mirrorAt = 0;
+  director.n = 0;
+  director.bases = null; // re-captured at first active tick, patch long applied
+  // The relay holds a patch's floor for 30s; the director honours the same
+  // floor, so a viewer hears their patch as they shaped it before it grows.
+  director.holdUntil = director.t + 30;
+  director.nextBeat = director.holdUntil;
+}
+
+function setInput(id, v) {
+  // Through the input, like every other writer: the browser clamps, the
+  // existing listener sends and the hash stays truthful.
+  const i = document.querySelector(`input[data-param="${id}"]`);
+  i.value = v;
+  i.dispatchEvent(new Event("input"));
+}
+
+function setRoot(hz) {
+  // The root slider steps in 0.5 Hz, which at the bottom of its range is a
+  // sixth of a semitone — enough to sour a just fourth. So the engine gets
+  // the exact frequency and the slider is only told the nearest step it can
+  // show; no input event, or the quantised value would overwrite the true one.
+  setParam(18, hz);
+  const i = document.querySelector('input[data-param="18"]');
+  i.value = hz;
+  el("o18").textContent = FORMAT[18](+i.value);
+  writeHash();
+}
+
+function directorTick() {
+  director.t++;
+  if (!IS_LIVE || !node || director.t < director.holdUntil) return;
+  if (!director.bases) {
+    const read = (id) => +document.querySelector(`input[data-param="${id}"]`).value;
+    director.bases = { p2: read(2), p3: read(3), p4: read(4) };
+    director.rootHz = read(18);
+    director.mirrorPlan = [...new Set([director.bases.p3, 0.382, 0.9])];
+  }
+  const r = director.route;
+  if (r.pace) {
+    setInput(2, director.bases.p2 * (1 + director.paceDepth * Math.sin((2 * Math.PI * director.t) / director.paceP)));
+    setInput(4, director.bases.p4 + director.strumDepth * Math.sin((2 * Math.PI * director.t) / director.strumP));
+  }
+  if (director.t >= director.nextBeat) {
+    director.nextBeat = director.t + director.beatS;
+    director.n++;
+    // The Fibonacci word decides WHICH thing moves on a beat, the same
+    // Sturmian gate the cadence engine uses for its own timing (§4): mirror
+    // moves on the rare letter, voicing on the common one, so interchange
+    // stays an event rather than a wobble.
+    const word = frac(director.n * 0.6180339887) < 0.3819660113;
+    if (r.root) {
+      const x = (director.weylX = frac(director.weylX + 0.6180339887 + director.eps * (Math.random() - 0.5)));
+      const move = director.moves[Math.floor(x * director.moves.length) % director.moves.length];
+      // Descent favoured: falling roots read as resolution, rising as a question.
+      director.rootHz *= Math.pow(2, (frac(x * 7) > 0.585 ? move : -move) / 1200);
+      while (director.rootHz > 176) director.rootHz /= 2;
+      while (director.rootHz < 55) director.rootHz *= 2;
+      setRoot(director.rootHz);
+    }
+    if (r.mirror && word) {
+      director.mirrorAt++;
+      setInput(3, director.mirrorPlan[director.mirrorAt % director.mirrorPlan.length]);
+    }
+    if (r.voice && !word) {
+      director.voiceAt++;
+      sendComposed();
+    }
+  }
+}
+setInterval(directorTick, 1000);
+
+/* Voicings are composed from the derived tuning, never from 12-TET: a
+   rotation of the scale is one of its modes, a subset is a chord of its own
+   nearest third and fifth. Chord-kind tunings pass through untouched — two
+   entries are already sounded whole, and re-voicing a chord's chord is how
+   an instrument stops sounding like itself. */
+function composeVoicing(base) {
+  const pass = { cents: base.cents, isChord: base.isChord, label: "" };
+  if (!IS_LIVE || base.isChord || base.cents.length < 5) return pass;
+  const kind = director.voicings[director.voiceAt % director.voicings.length];
+  if (kind === "full") return pass;
+  const oct = base.cents[base.cents.length - 1];
+  const body = base.cents.slice(0, -1); // ascending, starts at 0
+  const near = (t) => body.reduce((a, b) => (Math.abs(b - t) < Math.abs(a - t) ? b : a));
+  if (kind === "triad" || kind === "open") {
+    const set = [...new Set(kind === "triad" ? [0, near(370), near(700)] : [0, near(700)])].sort((a, b) => a - b);
+    return { cents: [...set, oct], isChord: true, label: kind === "triad" ? "triad" : "fifths" };
+  }
+  // mode: rotate the scale to start on degree k of itself.
+  const k = 1 + (director.n % (body.length - 1));
+  const rot = body
+    .slice(k).map((c) => c - body[k])
+    .concat(body.slice(0, k).map((c) => c - body[k] + oct))
+    .sort((a, b) => a - b);
+  return { cents: [...rot, oct], isChord: false, label: "mode " + (k + 1) };
+}
+
 function initGL() {
   const cv = el("gl");
-  const gl = cv.getContext("webgl", { antialias: false, alpha: false });
+  if (IS_LIVE) {
+    // The broadcast frame is a fixed 1920×1080 viewport, so the canvas can
+    // render 1:1 with the pixels OBS actually captures. The public page keeps
+    // its 1280×720 backing store; scaling THAT up to a 12 Mbps 1080p60
+    // stream is upscaling softness and then paying bitrate to encode it.
+    const r = cv.getBoundingClientRect();
+    cv.width = Math.max(2, Math.round(r.width));
+    cv.height = Math.max(2, Math.round(r.height));
+  }
+  const gl = cv.getContext("webgl", { antialias: false, alpha: false, powerPreference: "high-performance" });
   if (!gl) return;
   const W = cv.width, H = cv.height;
+  // Marks scale with the resolution, floored at one 720p-equivalent pixel:
+  // sub-pixel seeds at 1080p are shimmer, and shimmer is the most expensive
+  // thing a video encoder is ever asked to keep.
+  const PX = H / 720;
 
   const sh = (t, src, tag) => {
     const s = gl.createShader(t);
@@ -785,9 +1107,13 @@ function initGL() {
 
   const warp = prog(VQ, `
     precision highp float;
-    uniform sampler2D u_prev; uniform vec2 u_res; uniform float u_decay, u_spin, u_t, u_zoom, u_sink;
+    uniform sampler2D u_prev; uniform vec2 u_res; uniform float u_decay, u_spin, u_t, u_zoom, u_sink, u_curve;
     void main(){
       vec2 uv = gl_FragCoord.xy / u_res, c = uv - 0.5;
+      // The starfield's curvature term, breathing on a long period (the sin
+      // lives in JS). It compounds per frame like u_zoom does, so its
+      // amplitude is held to the same order as u_zoom's distance from 1.
+      c *= 1.0 + u_curve * dot(c, c);
       float ang = u_spin + sin(u_t * 0.13) * 0.004;
       mat2 m = mat2(cos(ang), -sin(ang), sin(ang), cos(ang));
       // Multiply AND subtract. Multiplying alone cannot reach black in an
@@ -810,15 +1136,19 @@ function initGL() {
     // only symptom being several hundred downstream warnings.
     precision highp float;
     attribute float i;
-    uniform float u_count, u_level, u_t; uniform vec2 u_res;
+    uniform float u_count, u_level, u_angle, u_rot, u_px; uniform vec2 u_res;
     varying float v_r;
     void main(){
-      float ang = i * ${GOLDEN_ANGLE.toFixed(10)} + u_t * 0.02;
+      // u_angle is the divergence angle — the plant's, not necessarily the
+      // golden one — and the sound bends it a fraction of a degree, which is
+      // enough to recount the arms. u_rot is integrated in JS so a reseeded
+      // spin rate changes velocity without snapping the field's position.
+      float ang = i * u_angle + u_rot;
       float rad = sqrt(i / u_count);
       float s = 0.92 * min(u_res.x, u_res.y) * 0.5 * (0.55 + 0.45 * u_level);
       vec2 p = vec2(cos(ang), sin(ang)) * rad * s;
       gl_Position = vec4(p / (u_res * 0.5), 0., 1.);
-      gl_PointSize = max(1.0, (1.2 + 3.0 * u_level) * (0.4 + 0.6 * rad));
+      gl_PointSize = max(1.0, (1.2 + 3.0 * u_level) * (0.4 + 0.6 * rad)) * u_px;
       v_r = rad;
     }`, `
     precision highp float;
@@ -894,19 +1224,17 @@ function initGL() {
      There are only three levers on erosion. Slow the accumulation (DECAY),
      resample LESS per frame (ZOOM toward 1, SPIN toward 0), or stop feeding
      the picture through itself and just draw it. Since a fresh load is the
-     look worth having, TRAIL now sets how much of the picture is accumulation
-     and how much is drawn clean each frame — at 0 the sphere is rendered
-     fresh, with no erosion possible at all.
+     look worth having, the trail knob (plant.trail) sets how much of the
+     picture is accumulation and how much is drawn clean each frame — at 0 the
+     sphere is rendered fresh, with no erosion possible at all.
 
      Which point on that is right is a question for eyes. */
   const DECAY = 0.965;
-  /* Nearly 1: the closer to 1, the less each frame is resampled and the less
-     it erodes. 0.997 threw away ~0.3% of the image every frame. */
-  const ZOOM = 0.9992;
-  const SPIN = 0.0006;
-  /* 0 = sphere drawn clean every frame, no accumulation, no erosion.
-     1 = all history, which is what shipped. */
-  const TRAIL = 0.45;
+  /* ZOOM, SPIN and TRAIL live on `plant` now — they are what a reseed varies
+     — with the shipped values as its resting state. The erosion analysis
+     above still governs their ranges: zoom stays within ~0.0015 of 1 and the
+     curve term is held to the same order, because both are resampling and
+     resampling is the only thing that blurs. */
   /* The clean pass is one frame, not a converging sum, so it needs its own
      level rather than SEED_GAIN's per-frame contribution. */
   const CLEAN_GAIN = 0.85;
@@ -941,10 +1269,15 @@ function initGL() {
   // Slow average of the output level, so the picture reacts to change rather
   // than to how loud the instrument happens to be set.
   let agc = 0.02;
+  // Field rotation, integrated: a reseeded spin rate changes velocity, not
+  // position, so a replant never snaps the old trail sideways.
+  let rot = 0, tPrev = 0;
 
   (function frame() {
     requestAnimationFrame(frame);
     const t = (performance.now() - t0) / 1000;
+    rot += plant.spin * (t - tPrev);
+    tPrev = t;
 
     let rms = 0;
     for (let k = 0; k < scope.length; k++) rms += scope[k] * scope[k];
@@ -964,7 +1297,20 @@ function initGL() {
     const rel = rms / Math.max(agc, 1e-6);
     smooth += (Math.min(1, 0.18 + rel * 0.42) - smooth) * 0.12;
 
-    const count = Math.max(600, Math.floor(1500 + 42000 * smooth));
+    const count = Math.min(MAX, Math.max(600, Math.floor((1500 + 42000 * smooth) * plant.density)));
+
+    /* Regrowth. `count` keeps normalising radius and density; `drawn` is how
+       many of those seeds exist yet. Drawing the first k of a √i field is a
+       disc of radius √(k/count) at full density — the plant assembles from
+       the centre outward at the seeded rate, while the previous plant erodes
+       in the trail it left. The floor is a sprout, never a blank pane. */
+    const grown = Math.min(1, (performance.now() - plant.bornMs) / (1000 * plant.growS));
+    const drawn = Math.max(89, Math.floor(count * grown));
+
+    // The sound bends the divergence angle around the plant's own (u_level's
+    // resting point is ~0.6, so the bend is bipolar about rest): arrivals
+    // recount the arms one way, decays the other.
+    const ang = plant.angle + plant.drive * (smooth - 0.6);
 
     gl.viewport(0, 0, W, H);
 
@@ -975,9 +1321,10 @@ function initGL() {
     gl.uniform1i(gl.getUniformLocation(warp, "u_prev"), 0);
     gl.uniform2f(gl.getUniformLocation(warp, "u_res"), W, H);
     gl.uniform1f(gl.getUniformLocation(warp, "u_decay"), DECAY);
-    gl.uniform1f(gl.getUniformLocation(warp, "u_spin"), SPIN);
-    gl.uniform1f(gl.getUniformLocation(warp, "u_zoom"), ZOOM);
+    gl.uniform1f(gl.getUniformLocation(warp, "u_spin"), plant.warpSpin);
+    gl.uniform1f(gl.getUniformLocation(warp, "u_zoom"), plant.zoom);
     gl.uniform1f(gl.getUniformLocation(warp, "u_sink"), SINK);
+    gl.uniform1f(gl.getUniformLocation(warp, "u_curve"), plant.curve * Math.sin((2 * Math.PI * t) / plant.curvePeriod));
     gl.uniform1f(gl.getUniformLocation(warp, "u_t"), t);
     drawQuad(warp);
 
@@ -989,27 +1336,29 @@ function initGL() {
     gl.uniform1f(gl.getUniformLocation(seeds, "u_count"), count);
     gl.uniform1f(gl.getUniformLocation(seeds, "u_level"), smooth);
     gl.uniform1f(gl.getUniformLocation(seeds, "u_gain"), SEED_GAIN);
-    gl.uniform1f(gl.getUniformLocation(seeds, "u_t"), t);
+    gl.uniform1f(gl.getUniformLocation(seeds, "u_angle"), ang);
+    gl.uniform1f(gl.getUniformLocation(seeds, "u_rot"), rot);
+    gl.uniform1f(gl.getUniformLocation(seeds, "u_px"), PX);
     gl.uniform2f(gl.getUniformLocation(seeds, "u_res"), W, H);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE);
-    gl.drawArrays(gl.POINTS, 0, count);
+    gl.drawArrays(gl.POINTS, 0, drawn);
     gl.disable(gl.BLEND);
 
     // Draw the seeds AGAIN, straight to the screen, over the accumulated
-    // buffer. TRAIL decides how much of what you see is the eroded history
-    // and how much is drawn clean this frame; at TRAIL = 0 the sphere never
-    // passes through the feedback path at all and cannot erode.
+    // buffer. plant.trail decides how much of what you see is the eroded
+    // history and how much is drawn clean this frame; at trail = 0 the sphere
+    // never passes through the feedback path at all and cannot erode.
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, b.tex);
     gl.useProgram(show);
     gl.uniform1i(gl.getUniformLocation(show, "u_src"), 0);
     gl.uniform2f(gl.getUniformLocation(show, "u_res"), W, H);
-    gl.uniform1f(gl.getUniformLocation(show, "u_exposure"), EXPOSURE * TRAIL);
+    gl.uniform1f(gl.getUniformLocation(show, "u_exposure"), EXPOSURE * plant.trail);
     drawQuad(show);
 
-    // The clean pass. Additive over the trail, so TRAIL only ever moves weight
+    // The clean pass. Additive over the trail, so the knob only ever moves weight
     // between the two — the picture does not get darker as you take history out.
     gl.useProgram(seeds);
     gl.bindBuffer(gl.ARRAY_BUFFER, idx);
@@ -1018,12 +1367,14 @@ function initGL() {
     gl.vertexAttribPointer(lj, 1, gl.FLOAT, false, 0, 0);
     gl.uniform1f(gl.getUniformLocation(seeds, "u_count"), count);
     gl.uniform1f(gl.getUniformLocation(seeds, "u_level"), smooth);
-    gl.uniform1f(gl.getUniformLocation(seeds, "u_t"), t);
+    gl.uniform1f(gl.getUniformLocation(seeds, "u_angle"), ang);
+    gl.uniform1f(gl.getUniformLocation(seeds, "u_rot"), rot);
+    gl.uniform1f(gl.getUniformLocation(seeds, "u_px"), PX);
     gl.uniform2f(gl.getUniformLocation(seeds, "u_res"), W, H);
-    gl.uniform1f(gl.getUniformLocation(seeds, "u_gain"), (1.0 - TRAIL) * CLEAN_GAIN);
+    gl.uniform1f(gl.getUniformLocation(seeds, "u_gain"), (1.0 - plant.trail) * CLEAN_GAIN);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE);
-    gl.drawArrays(gl.POINTS, 0, count);
+    gl.drawArrays(gl.POINTS, 0, drawn);
     gl.disable(gl.BLEND);
 
     const s = a; a = b; b = s;
@@ -1051,6 +1402,10 @@ function pollLive() {
     if (m && typeof m.hash === "string" && m.hash && m.seq !== seq) {
       seq = m.seq;
       el("credit").textContent = "◂ " + (m.from || "chat");
+      // seq is in the seed on purpose: the SAME patch sent again is a new
+      // planting, not a no-op — "each new imported patch reseeds the plant".
+      plantReseed(m.hash + "|" + m.seq);
+      directorReseed(m.hash + "|" + m.seq);
       applyPatch(m.hash);
     }
   };
@@ -1061,10 +1416,25 @@ function pollLive() {
   loop();
 }
 
+const IS_LIVE = LIVE.has("live");
+/* FM 1:1 is the voice of the stream (Billy, 2026-08-20: "FM 1:1 is still
+   superior — perhaps it just becomes the voice and the engine drives
+   something different"). Pinned, a patch's entry knob stops choosing the
+   timbre and is re-routed to choose what the director moves — see ROUTES.
+   `?live&voice=roster` restores the roster if the pin turns out wrong. */
+const VOICE_PINNED = IS_LIVE && LIVE.get("voice") !== "roster";
+if (IS_LIVE) {
+  document.body.classList.add("live");
+  if (VOICE_PINNED) entry = 0;
+}
+
 wire();
 initGL();
 
-if (LIVE.has("live")) {
+if (IS_LIVE) {
+  // Alive at rest: an idle stream explores on its own from boot, seeded by
+  // nothing, until the first patch arrives and plants something specific.
+  directorReseed("genesis");
   pollLive();
   // A rebooted rig must not sit silent behind a Begin button. Probe whether
   // audio is allowed to start on its own (Chromium launched with
@@ -1075,6 +1445,25 @@ if (LIVE.has("live")) {
   const allowed = probe.state === "running";
   probe.close();
   if (allowed) begin();
+} else {
+  // The stream section. /api/live reads YouTube's canonical link server-side
+  // and the edge caches it a minute; the badge stays hidden until the answer
+  // arrives, because a section that says "offline" for the round-trip on
+  // every load is noise. Offline it is a quiet link to the channel.
+  fetch("/api/live").then((r) => r.json()).then((m) => {
+    const a = el("stream");
+    a.hidden = false;
+    if (m && m.live && m.url) {
+      a.classList.add("on");
+      a.href = m.url;
+      a.textContent = "live now";
+      if (m.title) a.title = m.title;
+    }
+  }).catch(() => { /* endpoint missing or blocked: no section, no error */ });
+
+  // A shared patch grows its own plant. Same rule as the relay: four pairs
+  // make a patch, so a stray one-parameter link doesn't reseed anything.
+  if (Object.keys(readHash()).length >= 4) plantReseed(location.hash);
 }
 </script>
 </html>
