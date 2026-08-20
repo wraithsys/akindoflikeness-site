@@ -124,6 +124,23 @@ Stream that scene, and put something like this in the description:
 - `--port` moves the loopback port (open the page with `?live=<port>` to
   match). The relay binds 127.0.0.1 only.
 
+## If the ground goes quiet
+
+Learned the hard way (2026-08-20 crash). Checks, in order:
+
+- **The relay is stateless**: after any restart it holds `seq:0, hash:""`
+  and the whole rig sits on genesis defaults until the first chat patch.
+  Genesis has a ground too — if it is missing entirely, read on.
+- **OBS's browser is a codec-stripped Chromium** — no AAC. The ground ships
+  Opus-first for exactly this; if it ever regresses, the page console says
+  `ground: <file> playing` on success and warns with the reason on failure
+  (right-click the browser source → Interact, or add
+  `--remote-debugging-port` to see the console).
+- **Failed loads retry every 15 s forever**, like the relay poller — a bad
+  moment during a reboot heals itself now.
+- After a deploy, right-click the browser source → **Refresh cache of
+  current page**, or the stream keeps playing the page it loaded at launch.
+
 ## Restarting
 
 Everything is stateless. If the relay dies, restart it — the page keeps

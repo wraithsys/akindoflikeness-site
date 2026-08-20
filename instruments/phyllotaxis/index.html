@@ -1135,15 +1135,21 @@ function composeVoicing(base) {
    input bus, and not before. */
 
 const GROUND_BASE = "./ground/";
+/* Each texture twice: Opus first, AAC as the fallback. Opus is the codec
+   every Chromium build carries INCLUDING codec-stripped ones — OBS's browser
+   source is built without proprietary codecs (AAC among them) for licensing
+   reasons, which is exactly the environment the streaming rig runs in. The
+   m4a stays for Safari on the public page, whose decodeAudioData has always
+   had AAC and only recently learned Ogg. */
 const GROUND = [
-  "despair-057b8a67.m4a",
-  "digitalz-8178cb4d.m4a",
-  "morpher-e33229c0.m4a",
-  "eruption-c8e48162.m4a",
-  "crispy-5c88581a.m4a",
-  "thinly-veiled-flatulance-e98b7ee9.m4a",
-  "homunculus-e75dbedb.m4a",
-  "spirit-box-e4836658.m4a",
+  { o: "despair-617f26ae.opus", m: "despair-057b8a67.m4a" },
+  { o: "digitalz-1ad7283a.opus", m: "digitalz-8178cb4d.m4a" },
+  { o: "morpher-4de63d7d.opus", m: "morpher-e33229c0.m4a" },
+  { o: "eruption-55e486ff.opus", m: "eruption-c8e48162.m4a" },
+  { o: "crispy-9f53a7aa.opus", m: "crispy-5c88581a.m4a" },
+  { o: "thinly-veiled-flatulance-e97d3e94.opus", m: "thinly-veiled-flatulance-e98b7ee9.m4a" },
+  { o: "homunculus-e6dfebe8.opus", m: "homunculus-e75dbedb.m4a" },
+  { o: "spirit-box-7878b887.opus", m: "spirit-box-e4836658.m4a" },
 ];
 // The one dial, deliberately not a slider: how loud the ground sits under
 // everything, before the breathing and the Master fader scale it.
@@ -1178,16 +1184,31 @@ async function loadGround() {
   if (groundCache.has(want)) { ground.buf = groundCache.get(want); return; }
   if (ground.loading === want) return;
   ground.loading = want;
-  try {
-    const r = await fetch(GROUND_BASE + GROUND[want]);
-    const buf = await ctx.decodeAudioData(await r.arrayBuffer());
+  let buf = null, err = null;
+  for (const f of [GROUND[want].o, GROUND[want].m]) {
+    try {
+      const r = await fetch(GROUND_BASE + f);
+      if (!r.ok) throw new Error("HTTP " + r.status + " for " + f);
+      buf = await ctx.decodeAudioData(await r.arrayBuffer());
+      break;
+    } catch (e) { err = e; }
+  }
+  ground.loading = -1;
+  if (buf) {
     // One decoded texture resident at a time: 150s of mono float is ~30MB,
-    // and a re-fetch is 1.8MB behind a year-long cache header.
+    // and a re-fetch is ~1MB behind a year-long cache header.
     groundCache.clear();
     groundCache.set(want, buf);
     if (ground.idx === want) ground.buf = buf;
-  } catch { /* offline or missing: the instrument simply has no ground */ }
-  ground.loading = -1;
+    console.log("ground: " + GROUND[want].o + " playing");
+  } else {
+    // NEVER give up silently. This exact failure happened on the rig: one
+    // fetch at a bad moment after a crash-reboot, an empty catch, and the
+    // ground was gone until the next patch — which an empty relay never
+    // sends. The relay poller retries forever; the ground now does too.
+    console.warn("ground: load failed (" + (err && err.message) + "), retrying in 15s");
+    setTimeout(() => { if (!groundCache.has(ground.idx)) loadGround(); }, 15000);
+  }
 }
 
 function spawnGrain(t) {
