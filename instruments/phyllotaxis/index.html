@@ -870,6 +870,8 @@ function plantReseed(str) {
   plant.angle = (deg * Math.PI) / 180;
   plant.drive = (rng() * 2.0 * Math.PI) / 180; // ≤2°: enough to recount arms
   plant.spin = (rng() - 0.5) * 0.12;
+  // A space object is never quite still: the spin can be slow, not zero.
+  if (Math.abs(plant.spin) < 0.004) plant.spin = plant.spin < 0 ? -0.004 : 0.004;
   plant.trail = 0.2 + rng() * 0.45;
   // Both bounded near 1: the further from 1, the more each frame is
   // resampled and the faster the trail erodes — see the blotch note below.
@@ -880,6 +882,62 @@ function plantReseed(str) {
   plant.growS = 8 + rng() * 26;
   plant.density = 0.7 + rng() * 0.6;
   plant.bornMs = performance.now();
+}
+
+/* ── the space around it ──────────────────────────────────────────
+   Until now the plant could only be itself relative to itself: nothing else
+   in the frame, so nothing to be vast against. The environment is the
+   hostile-visualiser starfield's six terms, ported — wrapped drift on the
+   golden angle, parallax (near motes bigger AND faster AND brighter, they
+   must agree), curvature breathing on a long period, local shear, LENSING
+   AROUND THE SUBJECT, edge shimmer hiding the wrap seam — with the plant as
+   the subject the light bends around. The lens radius is the plant's real
+   rim, so a sprout barely dents the field and a grown plant displaces it,
+   and a swell of sound pushes the sky outward. Black hole, Exhaust, Funnel:
+   the ranges below span the eight starfield presets Billy kept.
+
+   Motes are SQUARE and crisp where the plant is round and glowing — the
+   environment is drawn, the organism accumulates. Depth is carried by size
+   and speed, not a brightness ramp (taste ledger, law 6), and the count can
+   reach zero: some plantings hang in a bare void, because every element
+   should be deletable. */
+
+const space = {
+  // `implied` — the resting sky, so the page is never only the plant.
+  motes: 360, drift: 0.026, wobble: 0.056,
+  curve: 0.33, curvePeriod: 16,
+  warp: 0.06, lens: 0.34, lensMax: 0.8,
+  edge: 0.39, duty: 0.63,
+  floor: 1.0, gain: 0.49, bright: 0.16, seed: 7,
+  // The object floats: slow vertical bob, a smaller sway on another period —
+  // amplitudes a percent or two of the frame, drift rather than travel.
+  bobA: 0.012, bobP: 89, swayA: 0.006, swayP: 55,
+  bornMs: -1e9,
+};
+
+function spaceReseed(str) {
+  const rng = mulberry(str + "|space");
+  space.motes = rng() < 0.12 ? 0 : Math.floor(300 + rng() * 2700);
+  space.drift = rng() * 0.12;
+  space.wobble = rng() * 0.12;
+  space.curve = rng() * 2.4 - 1.2;
+  space.curvePeriod = 5 + rng() * 228;
+  space.warp = rng() * 0.2;
+  space.lens = 0.08 + rng() * 0.8;
+  space.lensMax = 0.28 + rng() * 1.22;
+  space.edge = rng() * 0.7;
+  space.duty = 0.34 + rng() * 0.66;
+  space.floor = 0.5 + rng() * 0.5;
+  space.gain = 0.14 + rng() * 0.86;
+  space.bright = 0.1 + rng() * 0.2;
+  space.seed = rng() * 977;
+  space.bobA = 0.008 + rng() * 0.012;
+  space.bobP = 55 + rng() * 89;
+  space.swayA = space.bobA * (0.3 + rng() * 0.4);
+  space.swayP = 34 + rng() * 55;
+  // A new sky fades in over ~5s around the sprouting plant; the old one
+  // simply is not there any more — the cut IS the reseed moment.
+  space.bornMs = performance.now();
 }
 
 /* ── the director ─────────────────────────────────────────────────
@@ -1136,7 +1194,7 @@ function initGL() {
     // only symptom being several hundred downstream warnings.
     precision highp float;
     attribute float i;
-    uniform float u_count, u_level, u_angle, u_rot, u_px; uniform vec2 u_res;
+    uniform float u_count, u_level, u_angle, u_rot, u_px; uniform vec2 u_res, u_center;
     varying float v_r;
     void main(){
       // u_angle is the divergence angle — the plant's, not necessarily the
@@ -1146,7 +1204,7 @@ function initGL() {
       float ang = i * u_angle + u_rot;
       float rad = sqrt(i / u_count);
       float s = 0.92 * min(u_res.x, u_res.y) * 0.5 * (0.55 + 0.45 * u_level);
-      vec2 p = vec2(cos(ang), sin(ang)) * rad * s;
+      vec2 p = vec2(cos(ang), sin(ang)) * rad * s + u_center;
       gl_Position = vec4(p / (u_res * 0.5), 0., 1.);
       gl_PointSize = max(1.0, (1.2 + 3.0 * u_level) * (0.4 + 0.6 * rad)) * u_px;
       v_r = rad;
@@ -1193,7 +1251,61 @@ function initGL() {
       gl_FragColor = vec4(c * (mapped / L), 1.0);
     }`, "show");
 
-  if (!warp || !seeds || !show) {
+  /* The environment. Stateless like everything else here: each mote is a
+     pure function of (index, seed, t), hashed in the shader, so 3000 of them
+     cost one draw call and no upload. The terms are the starfield's, in its
+     order; see the note above `space`. Drawn straight to the screen, never
+     into the feedback buffer — the sky stays crisp while the plant erodes,
+     which is exactly the difference between an environment and an organism. */
+  const motes = prog(`
+    precision highp float;
+    attribute float i;
+    uniform vec2 u_res, u_center;
+    uniform float u_t, u_seed, u_px, u_level, u_radius;
+    uniform float u_drift, u_wobble, u_curve, u_warp, u_lens, u_lensMax, u_edge, u_duty, u_floor, u_vgain;
+    varying float v_val;
+    float hash(float k){ return fract(sin((i * 16.0 + k) * 12.9898 + u_seed * 78.233) * 43758.5453); }
+    void main(){
+      float depth = floor(hash(0.0) * 3.0) / 3.0;
+      float near = 0.35 + 0.65 * depth;
+      float phase = hash(1.0) * 6.28318;
+      // (1) drift, wrapped, along the golden angle (cos/sin of 2.3999632)
+      vec2 f = fract(vec2(hash(2.0), hash(3.0)) + u_t * u_drift * near * vec2(-0.7373688, 0.6754903));
+      float e = max(0.0, min(1.0 - abs(f.x - 0.5) * 2.0, 1.0 - abs(f.y - 0.5) * 2.0));
+      float edge = u_edge > 0.0 ? clamp(1.0 - e / u_edge, 0.0, 1.0) : 0.0;
+      // (2) parallax wobble
+      f += vec2(sin(u_t / 34.0 * 6.28318 + phase), sin(u_t / 21.0 * 6.28318 + phase)) * u_wobble * near;
+      // (3) curvature of the whole field (breathing sin lives in JS)
+      vec2 u = f - 0.5;
+      u *= 1.0 + u_curve * dot(u, u);
+      // (4) local shear
+      float nx = u.x * 6.283, ny = u.y * 6.283;
+      u += vec2(sin(nx + u_t * 0.11) * cos(ny * 1.3 - u_t * 0.07),
+                sin(ny * 0.8 - u_t * 0.09) * cos(nx * 1.7 + u_t * 0.13)) * u_warp;
+      vec2 pos = u_res * 0.5 + u * u_res;
+      // (5) lensing around the subject — the plant's actual rim, ∝ 1/d, capped
+      vec2 off = pos - (u_res * 0.5 + u_center);
+      float d = max(length(off), 0.5);
+      pos += off / d * min(u_lens * u_radius * u_radius / d, u_lensMax * u_radius);
+      // (6) edge shimmer hides the wrap seam; a blinked-out mote is clipped away
+      float blink = 0.5 + 0.5 * sin(u_t * (1.3 + 1.7 * hash(4.0)) + phase);
+      if (edge > 0.0 && blink < edge * u_duty) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; v_val = 0.0; return; }
+      gl_Position = vec4(pos / u_res * 2.0 - 1.0, 0.0, 1.0);
+      // Depth carried by size and speed, never a brightness ramp (law 6);
+      // floored at a 720p-equivalent pixel like everything else on a stream.
+      gl_PointSize = (depth > 0.6 ? 2.0 : 1.0) * u_px;
+      v_val = (u_floor + u_vgain * depth) * (1.0 + u_level * 0.25);
+    }`, `
+    precision highp float;
+    uniform float u_bright;
+    varying float v_val;
+    void main(){
+      // Square, on purpose: the starfield draws rects. The environment is
+      // marked, the organism glows — the two must not read as one species.
+      gl_FragColor = vec4(vec3(0.34, 0.62, 0.43) * (v_val * u_bright), 1.0);
+    }`, "motes");
+
+  if (!warp || !seeds || !show || !motes) {
     console.error("visualiser disabled: a shader did not build");
     return;
   }
@@ -1312,6 +1424,12 @@ function initGL() {
     // recount the arms one way, decays the other.
     const ang = plant.angle + plant.drive * (smooth - 0.6);
 
+    // Where the object is. A slow Lissajous drift — bob and a smaller sway on
+    // incommensurate periods — in pixels, shared by the plant and the lens
+    // that bends the sky around it, so the space follows the object.
+    const cx = W * space.swayA * Math.sin((2 * Math.PI * t) / space.swayP + 1.0);
+    const cy = H * space.bobA * Math.sin((2 * Math.PI * t) / space.bobP);
+
     gl.viewport(0, 0, W, H);
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, b.fbo);
@@ -1340,6 +1458,7 @@ function initGL() {
     gl.uniform1f(gl.getUniformLocation(seeds, "u_rot"), rot);
     gl.uniform1f(gl.getUniformLocation(seeds, "u_px"), PX);
     gl.uniform2f(gl.getUniformLocation(seeds, "u_res"), W, H);
+    gl.uniform2f(gl.getUniformLocation(seeds, "u_center"), cx, cy);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE);
     gl.drawArrays(gl.POINTS, 0, drawn);
@@ -1358,6 +1477,46 @@ function initGL() {
     gl.uniform1f(gl.getUniformLocation(show, "u_exposure"), EXPOSURE * plant.trail);
     drawQuad(show);
 
+    // The sky, between the trail and the clean plant: behind the organism,
+    // over its history. Skipped entirely when this planting hangs in a void.
+    if (space.motes > 0) {
+      // The lens bends around the plant's ACTUAL rim — the same radius the
+      // seed pass computes, scaled by how grown this planting is — so
+      // presence is earned by growing into it, and a swell of sound pushes
+      // the sky outward because the rim itself swells.
+      const rim = 0.92 * Math.min(W, H) * 0.5 * (0.55 + 0.45 * smooth) * Math.sqrt(drawn / count);
+      const fade = Math.min(1, (performance.now() - space.bornMs) / 5000);
+      gl.useProgram(motes);
+      gl.bindBuffer(gl.ARRAY_BUFFER, idx);
+      const lm = gl.getAttribLocation(motes, "i");
+      gl.enableVertexAttribArray(lm);
+      gl.vertexAttribPointer(lm, 1, gl.FLOAT, false, 0, 0);
+      gl.uniform2f(gl.getUniformLocation(motes, "u_res"), W, H);
+      gl.uniform2f(gl.getUniformLocation(motes, "u_center"), cx, cy);
+      gl.uniform1f(gl.getUniformLocation(motes, "u_t"), t);
+      gl.uniform1f(gl.getUniformLocation(motes, "u_seed"), space.seed);
+      gl.uniform1f(gl.getUniformLocation(motes, "u_px"), PX);
+      gl.uniform1f(gl.getUniformLocation(motes, "u_level"), smooth);
+      gl.uniform1f(gl.getUniformLocation(motes, "u_radius"), rim);
+      gl.uniform1f(gl.getUniformLocation(motes, "u_drift"), space.drift);
+      gl.uniform1f(gl.getUniformLocation(motes, "u_wobble"), space.wobble);
+      // Curvature breathes on its long period and leans harder when the
+      // field is loud — the sketch's `(1 + low * 0.5)`, with smooth for low.
+      gl.uniform1f(gl.getUniformLocation(motes, "u_curve"), space.curve * Math.sin((2 * Math.PI * t) / space.curvePeriod) * (1.0 + smooth * 0.5));
+      gl.uniform1f(gl.getUniformLocation(motes, "u_warp"), space.warp);
+      gl.uniform1f(gl.getUniformLocation(motes, "u_lens"), space.lens);
+      gl.uniform1f(gl.getUniformLocation(motes, "u_lensMax"), space.lensMax);
+      gl.uniform1f(gl.getUniformLocation(motes, "u_edge"), space.edge);
+      gl.uniform1f(gl.getUniformLocation(motes, "u_duty"), space.duty);
+      gl.uniform1f(gl.getUniformLocation(motes, "u_floor"), space.floor);
+      gl.uniform1f(gl.getUniformLocation(motes, "u_vgain"), space.gain);
+      gl.uniform1f(gl.getUniformLocation(motes, "u_bright"), space.bright * fade);
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.ONE, gl.ONE);
+      gl.drawArrays(gl.POINTS, 0, Math.min(MAX, space.motes));
+      gl.disable(gl.BLEND);
+    }
+
     // The clean pass. Additive over the trail, so the knob only ever moves weight
     // between the two — the picture does not get darker as you take history out.
     gl.useProgram(seeds);
@@ -1371,6 +1530,7 @@ function initGL() {
     gl.uniform1f(gl.getUniformLocation(seeds, "u_rot"), rot);
     gl.uniform1f(gl.getUniformLocation(seeds, "u_px"), PX);
     gl.uniform2f(gl.getUniformLocation(seeds, "u_res"), W, H);
+    gl.uniform2f(gl.getUniformLocation(seeds, "u_center"), cx, cy);
     gl.uniform1f(gl.getUniformLocation(seeds, "u_gain"), (1.0 - plant.trail) * CLEAN_GAIN);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE);
@@ -1405,6 +1565,7 @@ function pollLive() {
       // seq is in the seed on purpose: the SAME patch sent again is a new
       // planting, not a no-op — "each new imported patch reseeds the plant".
       plantReseed(m.hash + "|" + m.seq);
+      spaceReseed(m.hash + "|" + m.seq);
       directorReseed(m.hash + "|" + m.seq);
       applyPatch(m.hash);
     }
@@ -1461,9 +1622,12 @@ if (IS_LIVE) {
     }
   }).catch(() => { /* endpoint missing or blocked: no section, no error */ });
 
-  // A shared patch grows its own plant. Same rule as the relay: four pairs
-  // make a patch, so a stray one-parameter link doesn't reseed anything.
-  if (Object.keys(readHash()).length >= 4) plantReseed(location.hash);
+  // A shared patch grows its own plant, in its own sky. Same rule as the
+  // relay: four pairs make a patch, so a stray link doesn't reseed anything.
+  if (Object.keys(readHash()).length >= 4) {
+    plantReseed(location.hash);
+    spaceReseed(location.hash);
+  }
 }
 </script>
 </html>
