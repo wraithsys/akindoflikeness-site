@@ -142,6 +142,17 @@ button.share {
 
 button.share:hover, button.share:focus-visible { border-color: var(--sap); color: var(--sap); }
 
+/* What is sounding, as harmony: the voice, and the chord as an interval to
+   the home root — "Vsus2". A value, so it wears the data face; no uppercase
+   transform, because the symbol's case is the symbol. */
+.reading {
+  font-family: var(--face-data);
+  font-size: 16px;
+  letter-spacing: 0.14em;
+  color: var(--straw);
+  font-variant-numeric: tabular-nums;
+}
+
 /* Who sent the patch now playing, in live mode. Empty otherwise. */
 .credit {
   font-family: var(--face-data);
@@ -267,13 +278,6 @@ legend {
 
 :where(button, input, a):focus-visible { outline: 2px solid var(--sap); outline-offset: 2px; }
 
-/* ── notes ───────────────────────────────────────────────────────── */
-
-.notes { max-width: var(--measure); color: var(--dim); font-size: 16px; line-height: 1.75; }
-.notes p { margin: 0 0 0.7rem; }
-.notes b { color: var(--ink); font-weight: 600; }
-.notes a { color: var(--sap); }
-
 footer {
   border-top: 1px solid var(--rule);
   padding-top: 0.7rem;
@@ -332,7 +336,7 @@ body.live header { grid-column: 1 / -1; padding-bottom: 0.5rem; }
    padding and gaps. */
 body.live .stage { grid-row: 2; align-self: center; justify-self: center; width: min(100%, calc((100vh - 116px) * 16 / 9)); }
 body.live .racks { grid-row: 2; grid-template-columns: 1fr 1fr; align-content: start; overflow: hidden; }
-body.live .notes, body.live footer, body.live button.share, body.live a.stream { display: none; }
+body.live footer, body.live button.share, body.live a.stream { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .stage canvas { opacity: 0.85; }
@@ -343,6 +347,7 @@ body.live .notes, body.live footer, body.live button.share, body.live a.stream {
 
   <header>
     <h1>PHYLLOTAXIS</h1>
+    <div class="reading" id="reading"></div>
     <div class="state" id="state">idle</div>
     <button class="share" id="share" title="Copy this patch as a URL">share</button>
     <a class="stream" id="stream" hidden target="_blank" rel="noopener"
@@ -453,19 +458,6 @@ body.live .notes, body.live footer, body.live button.share, body.live a.stream {
     </fieldset>
   </div>
 
-  <div class="notes">
-    <p><b>There is no randomise button.</b> STEP walks the roster forward and
-      back along a fixed path, so anything you find can be returned to. The whole
-      state reconstructs from its parameters, which is why the address bar is a
-      preset — SHARE copies the URL, and the URL carries the patch.</p>
-    <p><b>Each entry brings its own scale.</b> The degrees are computed from that
-      algorithm's own spectrum by minimising sensory dissonance, so the more
-      inharmonic a voice is, the further its scale sits from 12-TET — and the
-      more consonant it sounds. Two entries have so few partials that they prefer
-      a handful of intervals and are sounded whole; those are marked
-      <em>chord</em> rather than <em>scale</em>.</p>
-  </div>
-
   <footer>
     <a href="/">akindoflikeness</a>
     <a href="/bypo">bypo</a>
@@ -546,6 +538,10 @@ function applyPatch(hash) {
     input.value = saved[id];
     input.dispatchEvent(new Event("input"));
   }
+  // The patch's root is its tonic: numerals in the reading are measured from
+  // here until a hand moves the Root slider itself.
+  homeRootHz = +document.querySelector('input[data-param="18"]').value;
+  updateReading();
   writeHash();
 }
 
@@ -571,11 +567,30 @@ function send(msg, transfer) { if (node) node.port.postMessage(msg, transfer || 
 
 function setParam(id, value) { send({ type: "set", id, value: +value }); }
 
+/* Usable Index ceilings, one per roster entry — Billy's listening notes,
+   2026-08-20: past these the timbre thins and goes inharmonic-messy. FM 1:1
+   "thins at around 2.5 — best mode by far"; the FM irrationals get thin over
+   1; FB ∛2 thins after 3, FB ρ after 1.5, FB e around 2; FB √3 is
+   "interesting at 0.2 (min) index but quickly becomes inharmonic bells above
+   that". The slider's ceiling moves with the voice, so its whole travel is
+   usable range rather than mostly ruin. */
+const INDEX_MAX = [2.5, 1.0, 1.0, 1.0, 3.0, 1.5, 0.6, 2.0];
+
+function applyIndexCap() {
+  const i = document.querySelector('input[data-param="1"]');
+  const max = INDEX_MAX[((entry % ROSTER.length) + ROSTER.length) % ROSTER.length];
+  const v = +i.value; // before the max moves: assigning it clamps silently
+  i.max = max;
+  if (v > max) { i.value = max; i.dispatchEvent(new Event("input")); }
+}
+
 function showEntry() {
   // Name only. `#kind` is owned by the tuner, which knows whether the derived
   // tuning came out a scale or a chord — the table below is a label, not the
   // authority, and duplicating the answer in two places is how they drift.
   el("entry").textContent = ROSTER[((entry % ROSTER.length) + ROSTER.length) % ROSTER.length];
+  applyIndexCap();
+  updateReading();
 }
 
 async function begin() {
@@ -613,6 +628,11 @@ async function start() {
       state.textContent = "sounding";
       gate.style.display = "none";
       applyAll();
+      // The director's 30s floor counts from first SOUND, not page load —
+      // a visitor who read the gate for a minute still hears the patch as
+      // planted before it starts to grow.
+      director.holdUntil = director.t + 30;
+      director.nextBeat = director.holdUntil;
       requestAnimationFrame(pull);
     } else if (m.type === "scope") {
       scope = m.samples;
@@ -624,6 +644,18 @@ async function start() {
       showEntry();
       requestTuning();
       writeHash();
+      if (!IS_LIVE) {
+        // STEP is a planting, the way a relay patch is on the stream: a new
+        // voice grows its own plant in its own sky, walks its own ground and
+        // deals the director a new itinerary. Deterministic per (entry,
+        // patch), so a walk that found something can walk back to it.
+        const seed = "step|" + entry + "|" + hashString();
+        plantReseed(seed);
+        spaceReseed(seed);
+        groundReseed(seed);
+        directorReseed(seed);
+        director.route = ROUTES[Math.floor(mulberry(seed + "|route")() * ROUTES.length)];
+      }
     }
   };
   node.onprocessorerror = (e) => {
@@ -695,7 +727,7 @@ let baseTuning = null;
 
 function installTuning(m) {
   baseTuning = { cents: Array.from(m.cents), isChord: !!m.isChord };
-  if (IS_LIVE && !baseTuning.isChord && baseTuning.cents.length >= 5) {
+  if (!baseTuning.isChord && baseTuning.cents.length >= 5) {
     // The director's cadence vocabulary is read off THIS scale: the nearest
     // degrees to a fourth, a fifth and a third. Re-read on every install, so
     // an Index change re-derives the cadences along with the tuning.
@@ -712,6 +744,43 @@ function sendComposed() {
   const v = composeVoicing(baseTuning);
   send({ type: "tuning", cents: v.cents, isChord: v.isChord });
   el("kind").textContent = (baseTuning.isChord ? "chord" : "scale") + (v.label ? " · " + v.label : "");
+  lastVoicing = v;
+  updateReading();
+}
+
+/* ── the reading ──────────────────────────────────────────────────
+   What is sounding, as harmony: the voice, and what it stands on as an
+   interval to the HOME root — the root as the patch set it, before the
+   director began to walk — so a cadence reads as "V" landing back on "I"
+   rather than as a stream of unrelated hertz. The numeral names the nearest
+   12-TET step; the sounding cents stay the scale's own. Chord quality is
+   read off the composed voicing the same way: nearest third if it has one
+   (minor under 350¢), else sus2/sus4/bare fifth. */
+let homeRootHz = null;
+let lastVoicing = null;
+const NUMERAL = ["I", "♭II", "II", "♭III", "III", "IV", "♭V", "V", "♭VI", "VI", "♭VII", "VII"];
+
+function chordQuality(cents) {
+  const iv = cents.filter((x) => x > 50 && x < 1150);
+  const third = iv.find((x) => x >= 250 && x <= 450);
+  if (third !== undefined) return third < 350 ? "m" : "";
+  if (iv.some((x) => Math.abs(x - 200) <= 110)) return "sus2";
+  if (iv.some((x) => Math.abs(x - 500) <= 90)) return "sus4";
+  if (iv.some((x) => Math.abs(x - 700) <= 110)) return "5";
+  return "";
+}
+
+function updateReading() {
+  const out = el("reading");
+  if (!out) return;
+  const root = +document.querySelector('input[data-param="18"]').value;
+  const home = homeRootHz || root;
+  const c = ((1200 * Math.log2(root / home)) % 1200 + 1200) % 1200;
+  const numeral = NUMERAL[Math.round(c / 100) % 12];
+  const name = ROSTER[((entry % ROSTER.length) + ROSTER.length) % ROSTER.length];
+  const v = lastVoicing;
+  const sounding = v && v.isChord ? numeral + chordQuality(v.cents) : numeral;
+  out.textContent = name + " · " + sounding;
 }
 
 let tuneTimer = 0;
@@ -753,8 +822,15 @@ const FORMAT = {
   4: (v) => (v === 0 ? "block" : (v < 0 ? "▲ " : "▼ ") + Math.abs(v).toFixed(2)),
 };
 
+/* The front door opens on the instrument at its best. Billy, 2026-08-20:
+   "the instrument should be beautiful and it already is a lot of the time
+   but almost exclusively in FM 1:1 with a preset like" — this one. A URL
+   that carries its own patch still wins; this is only what no-patch means. */
+const DEFAULT_PATCH = "0:0,1:0.750,18:93.500,2:3.270,20:0.850,3:0.240,4:0.480,5:0.440,19:12.500,7:0.070,6:1.000,8:0.110,9:0.740,11:0.300,14:0.300,17:0.800";
+
 function wire() {
-  const saved = readHash();
+  let saved = readHash();
+  if (Object.keys(saved).length === 0) saved = parseHash(DEFAULT_PATCH);
   if (saved[0] !== undefined && !VOICE_PINNED) entry = Math.max(0, Math.min(ROSTER.length - 1, saved[0] | 0));
   showEntry();
 
@@ -764,7 +840,7 @@ function wire() {
     const out = el("o" + id);
     const show = () => { out.textContent = (FORMAT[id] || ((v) => v.toFixed(2)))(+input.value); };
     show();
-    input.addEventListener("input", () => {
+    input.addEventListener("input", (e) => {
       show();
       setParam(id, input.value);
       // Index changes the spectrum, and the scale is read off the spectrum —
@@ -772,9 +848,19 @@ function wire() {
       // computed when the ENTRY changed, so moving Index reshaped the timbre
       // and left it playing a scale computed for a different one.
       if (id === 1) requestTuningSoon();
+      if (e.isTrusted) {
+        // A hand on a slider is guidance: the director lets go for 30s and
+        // re-reads its bases from wherever the hand leaves things. A trusted
+        // event is a hand — the director and applyPatch write synthetically.
+        director.bases = null;
+        director.holdUntil = director.t + 30;
+        if (id === 18) { homeRootHz = +input.value; updateReading(); }
+      }
       writeHash();
     });
   }
+  homeRootHz = +document.querySelector('input[data-param="18"]').value;
+  updateReading();
 
   el("next").addEventListener("click", () => { send({ type: "step", delta: 1 }); });
   el("prev").addEventListener("click", () => { send({ type: "step", delta: -1 }); });
@@ -953,10 +1039,12 @@ function spaceReseed(str) {
 }
 
 /* ── the director ─────────────────────────────────────────────────
-   Live mode only. Between patches the stream is not a held chord — a
-   seeded itinerary explores harmony with the engine's own vocabulary, all
-   of it through the page's existing controls and the tuning channel the
-   page already owns, so the director can reach nothing a slider can't.
+   Born on the stream, now the instrument's own habit: a planted patch is
+   not a held chord — a seeded itinerary explores harmony with the engine's
+   own vocabulary, all of it through the page's existing controls and the
+   tuning channel the page already owns, so the director can reach nothing
+   a slider can't. On the public page a trusted input holds it for 30s:
+   the hand guides, the director resumes from where the hand left things.
 
    What it has to work with:
    - ROOT, stepped by intervals read off the CURRENT DERIVED SCALE — the
@@ -1040,11 +1128,12 @@ function setRoot(hz) {
   i.value = hz;
   el("o18").textContent = FORMAT[18](+i.value);
   writeHash();
+  updateReading();
 }
 
 function directorTick() {
   director.t++;
-  if (!IS_LIVE || !node || director.t < director.holdUntil) return;
+  if (!node || director.t < director.holdUntil) return;
   if (!director.bases) {
     const read = (id) => +document.querySelector(`input[data-param="${id}"]`).value;
     director.bases = { p2: read(2), p3: read(3), p4: read(4) };
@@ -1092,7 +1181,7 @@ setInterval(directorTick, 1000);
    an instrument stops sounding like itself. */
 function composeVoicing(base) {
   const pass = { cents: base.cents, isChord: base.isChord, label: "" };
-  if (!IS_LIVE || base.isChord || base.cents.length < 5) return pass;
+  if (base.isChord || base.cents.length < 5) return pass;
   const kind = director.voicings[director.voiceAt % director.voicings.length];
   if (kind === "full") return pass;
   const oct = base.cents[base.cents.length - 1];
@@ -1827,6 +1916,15 @@ if (IS_LIVE) {
     spaceReseed(location.hash);
     groundReseed(location.hash);
   }
+
+  // The stream's life, at home (Billy, 2026-08-20: "this instrument plays
+  // itself and can do for hours — our job is to make it continuously
+  // interesting"). The public page runs the same director from the first
+  // sound: plant a seed, watch it, and a hand on any slider is guidance —
+  // the trusted-input hold above lets go for 30s and re-reads its bases.
+  const seed = Object.keys(readHash()).length >= 4 ? location.hash : "genesis";
+  directorReseed(seed);
+  director.route = ROUTES[Math.floor(mulberry(seed + "|route")() * ROUTES.length)];
 }
 </script>
 </html>
