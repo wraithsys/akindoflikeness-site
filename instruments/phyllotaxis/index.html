@@ -633,6 +633,7 @@ async function start() {
   node.connect(ctx.destination);
   node.port.postMessage({ type: "init", bytes }, [bytes]);
   startTuner(tunerBytes);
+  groundInit();
 }
 
 /* ── tuning ───────────────────────────────────────────────────────
@@ -1110,6 +1111,139 @@ function composeVoicing(base) {
   return { cents: [...rot, oct], isChord: false, label: "mode " + (k + 1) };
 }
 
+/* ── the ground ───────────────────────────────────────────────────
+   A grain cloud over one of eight of Billy's own textures (ground/NOTICE.md
+   has the roster and its provenance). No controls anywhere, by his word: it
+   just happens, and everything about it is inherited —
+
+   - grain read-positions walk the recording by the golden Weyl step,
+     x ← frac(x + 1/φ + ε·u): the Hold-source math from DESIGN.md §4, so the
+     ground and the harmony walk on the same mathematics. Each planting gets
+     a FOCUS — a window of the tape it lives in — so a patch is somewhere in
+     the recording, not everywhere in it.
+   - density and level breathe AGAINST the engine's field: the ground is
+     heard when the plant rests and recedes under dense chords, the way
+     ground is. It also follows the Master slider, so one fader still rules.
+   - which texture, the walk's seed, its ε, the grain length (φ-ladder
+     seconds) and the focus all reseed per patch, like the plant and the sky.
+
+   It runs beside the engine, not inside it: the engine's purity is its
+   identity, and a sampler in the worklet would muddy the one story it tells
+   perfectly. The known seam — the ground does not sit in the engine's room —
+   gets its own gentle band instead (high-passed off the rumble, low-passed
+   dark). If the seam shows on stream, THAT is the day the worklet grows an
+   input bus, and not before. */
+
+const GROUND_BASE = "./ground/";
+const GROUND = [
+  "despair-057b8a67.m4a",
+  "digitalz-8178cb4d.m4a",
+  "morpher-e33229c0.m4a",
+  "eruption-c8e48162.m4a",
+  "crispy-5c88581a.m4a",
+  "thinly-veiled-flatulance-e98b7ee9.m4a",
+  "homunculus-e75dbedb.m4a",
+  "spirit-box-e4836658.m4a",
+];
+// The one dial, deliberately not a slider: how loud the ground sits under
+// everything, before the breathing and the Master fader scale it.
+const GROUND_LEVEL = 0.09;
+
+// The engine's slow field level, written by the frame loop each frame; the
+// ground breathes against it.
+let fieldLevel = 0.6;
+
+const ground = {
+  idx: 0, rng: mulberry("genesis|ground"),
+  weylX: 0.5, eps: 0.15, grainS: 0.61,
+  focusW: 1.0, focusC: 0.5,
+  buf: null, bus: null, loading: -1,
+};
+const groundCache = new Map();
+
+function groundReseed(str) {
+  const rng = mulberry(str + "|ground");
+  ground.idx = Math.floor(rng() * GROUND.length);
+  ground.weylX = rng();
+  ground.eps = rng() * 0.4;
+  ground.grainS = [0.377, 0.61, 0.987, 1.597][Math.floor(rng() * 4)];
+  ground.focusW = 0.3 + rng() * 0.7;
+  ground.focusC = rng();
+  ground.rng = rng;
+  if (ctx) loadGround();
+}
+
+async function loadGround() {
+  const want = ground.idx;
+  if (groundCache.has(want)) { ground.buf = groundCache.get(want); return; }
+  if (ground.loading === want) return;
+  ground.loading = want;
+  try {
+    const r = await fetch(GROUND_BASE + GROUND[want]);
+    const buf = await ctx.decodeAudioData(await r.arrayBuffer());
+    // One decoded texture resident at a time: 150s of mono float is ~30MB,
+    // and a re-fetch is 1.8MB behind a year-long cache header.
+    groundCache.clear();
+    groundCache.set(want, buf);
+    if (ground.idx === want) ground.buf = buf;
+  } catch { /* offline or missing: the instrument simply has no ground */ }
+  ground.loading = -1;
+}
+
+function spawnGrain(t) {
+  const b = ground.buf;
+  const x = (ground.weylX = frac(ground.weylX + 0.6180339887 + ground.eps * (ground.rng() - 0.5)));
+  const pos = frac(ground.focusC + (x - 0.5) * ground.focusW);
+  const dur = ground.grainS * (0.75 + 0.5 * ground.rng());
+  const off = Math.max(0, Math.min(pos * b.duration, b.duration - dur - 0.1));
+  const src = ctx.createBufferSource();
+  src.buffer = b;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(1, t + dur * 0.5);
+  g.gain.linearRampToValueAtTime(0, t + dur);
+  src.connect(g);
+  // The cloud makes its own width: mono tape, per-grain pan — population
+  // stereo, which is more this instrument's kind than a stereo file would be.
+  if (ctx.createStereoPanner) {
+    const pan = ctx.createStereoPanner();
+    pan.pan.value = (ground.rng() - 0.5) * 1.2;
+    g.connect(pan);
+    pan.connect(ground.bus);
+  } else {
+    g.connect(ground.bus);
+  }
+  src.start(t, off, dur + 0.02);
+  src.stop(t + dur + 0.05);
+}
+
+function groundInit() {
+  ground.bus = ctx.createGain();
+  ground.bus.gain.value = 0;
+  const hp = ctx.createBiquadFilter();
+  hp.type = "highpass"; hp.frequency.value = 55;   // wind rumble stays off the stream
+  const lp = ctx.createBiquadFilter();
+  lp.type = "lowpass"; lp.frequency.value = 2600;  // dark: a floor, never a lead
+  ground.bus.connect(hp); hp.connect(lp); lp.connect(ctx.destination);
+  loadGround();
+  let next = ctx.currentTime + 0.3;
+  setInterval(() => {
+    if (!ground.buf || !node) return;
+    const now = ctx.currentTime;
+    if (next < now) next = now + 0.05;
+    // rest ≈ how quiet the plant is: fieldLevel sits ~0.6 at rest, ~1 in a
+    // swell, ~0.18 in a deep decay. The ground blooms into the quiet.
+    const rest = Math.max(0.15, 1.15 - fieldLevel);
+    const master = +document.querySelector('input[data-param="17"]').value;
+    ground.bus.gain.setTargetAtTime(GROUND_LEVEL * rest * master, now, 0.8);
+    while (next < now + 0.6) {
+      spawnGrain(next);
+      // φ overlap, breathing: quiet stretches pack grains closer.
+      next += ground.grainS / 1.618 / rest * 0.55;
+    }
+  }, 120);
+}
+
 function initGL() {
   const cv = el("gl");
   if (IS_LIVE) {
@@ -1438,6 +1572,7 @@ function initGL() {
     agc += (rms - agc) * 0.006;
     const rel = rms / Math.max(agc, 1e-6);
     smooth += (Math.min(1, 0.18 + rel * 0.42) - smooth) * 0.12;
+    fieldLevel = smooth; // the ground breathes against this
 
     const count = Math.min(MAX, Math.max(600, Math.floor((1500 + 42000 * smooth) * plant.density)));
 
@@ -1606,6 +1741,7 @@ function pollLive() {
       // planting, not a no-op — "each new imported patch reseeds the plant".
       plantReseed(m.hash + "|" + m.seq);
       spaceReseed(m.hash + "|" + m.seq);
+      groundReseed(m.hash + "|" + m.seq);
       directorReseed(m.hash + "|" + m.seq);
       applyPatch(m.hash);
     }
@@ -1636,6 +1772,7 @@ if (IS_LIVE) {
   // Alive at rest: an idle stream explores on its own from boot, seeded by
   // nothing, until the first patch arrives and plants something specific.
   directorReseed("genesis");
+  groundReseed("genesis");
   pollLive();
   // A rebooted rig must not sit silent behind a Begin button. Probe whether
   // audio is allowed to start on its own (Chromium launched with
@@ -1667,6 +1804,7 @@ if (IS_LIVE) {
   if (Object.keys(readHash()).length >= 4) {
     plantReseed(location.hash);
     spaceReseed(location.hash);
+    groundReseed(location.hash);
   }
 }
 </script>

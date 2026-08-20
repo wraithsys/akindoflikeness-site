@@ -80,6 +80,14 @@ two plantings):
   the eight kept starfield presets, occasionally a bare void, fading in
   over ~5 s. The object also floats — a slow bob and sway, never quite
   still — and the lens follows it.
+- **The ground reseeds.** A grain cloud over one of eight of Billy's own
+  textures (`instruments/phyllotaxis/ground/`, provenance in its NOTICE.md)
+  runs beside the engine with no controls at all: grain positions walk the
+  tape by the same golden-Weyl step the harmony uses, density and level
+  breathe AGAINST the engine's field (the ground blooms when the plant
+  rests), and the texture, walk seed, grain length and tape-focus reseed
+  per patch. It follows the Master fader. The one dial is `GROUND_LEVEL`
+  in index.html.
 - **The director reseeds.** FM 1:1 stays the voice (`?live&voice=roster`
   restores the roster if that pin turns out wrong); the patch's entry knob
   is re-routed to choose the director's route — which of ROOT, MIRROR,
