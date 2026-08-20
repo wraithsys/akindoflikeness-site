@@ -63,7 +63,12 @@ pub mod param {
     pub const DECAY: u32 = 19;
     /// How hard each voice follows its own tendency. 0 is no bias at all.
     pub const BIAS: u32 = 20;
-    pub const COUNT: u32 = 21;
+    /// Sub oscillator level, pre the master mix. One control by Billy's word
+    /// (2026-08-20): everything else about the sub — which octave, root or
+    /// fifth — is cadence's decision, not a knob. "The real magic here is
+    /// cadence."
+    pub const SUB: u32 = 21;
+    pub const COUNT: u32 = 22;
 }
 
 /// A note waiting for its strum offset to elapse.
@@ -104,6 +109,15 @@ pub struct Engine {
     sounding: [f64; VOICES],
     sounding_len: usize,
 
+    /// The sub oscillator: a sine below everything, cadence's own bass.
+    /// Phase is continuous forever; only frequency moves, and it glides.
+    sub_phase: f32,
+    sub_hz: f32,
+    sub_target_hz: f32,
+    /// One-pole coefficient for the frequency glide (~50 ms), fixed at
+    /// construction so the per-sample path never calls `exp`.
+    sub_glide: f32,
+
     params: [f32; param::COUNT as usize],
     scope: Box<[f32; SCOPE_LEN]>,
     scope_head: usize,
@@ -142,6 +156,7 @@ fn defaults() -> [f32; param::COUNT as usize] {
     p[param::ROOT_HZ as usize] = 110.0; // A2, where the instrument was built
     p[param::DECAY as usize] = 2.5;
     p[param::BIAS as usize] = 0.75;
+    p[param::SUB as usize] = 0.0; // silent by default: every shipped URL predates it
     p
 }
 
@@ -172,6 +187,10 @@ impl Engine {
             pending_len: 0,
             sounding: [0.0; VOICES],
             sounding_len: 0,
+            sub_phase: 0.0,
+            sub_hz: 0.0,
+            sub_target_hz: 0.0,
+            sub_glide: 1.0 - (-1.0 / (0.05 * sample_rate)).exp(),
             params,
             scope: Box::new([0.0; SCOPE_LEN]),
             scope_head: 0,
@@ -346,6 +365,42 @@ impl Engine {
         let root_deg = (((root_tick as f64) * word::INV_PHI).fract() * k as f64) as usize;
         let root_offset = cents[root_deg.min(MAX_DEGREES - 1)];
 
+        // ── The sub: cadence's own bass ─────────────────────────────────
+        //
+        // One sine under everything, following the walking root, and only its
+        // LEVEL is a control (param::SUB). What it plays is decided here, on
+        // the root's clock, by the same Sturmian machinery as everything else:
+        //
+        // - the OCTAVE: one below usually, two below on a golden schedule at
+        //   the word's density — "-2 octaves is probably maximum" (Billy,
+        //   2026-08-20).
+        // - ROOT or FIFTH: the fifth is this tuning's own nearest degree to
+        //   702¢, arriving on its own schedule. Different βs so the two
+        //   decisions can never lock step.
+        //
+        // Mirror-exempt like the pedal: the sub is ground, not a part.
+        let sub_oct = if mirror_this_chord(root_tick, 0.25, word::INV_PHI2) { 2.0 } else { 1.0 };
+        let sub_fifth = if mirror_this_chord(root_tick, 0.75, word::INV_PHI2) {
+            let mut best = f64::MAX;
+            let mut fifth_c = 0.0f64;
+            for i in 0..k {
+                let d = (cents[i] - 702.0).abs();
+                if d < best {
+                    best = d;
+                    fifth_c = cents[i];
+                }
+            }
+            fifth_c
+        } else {
+            0.0
+        };
+        let sub_rel = (root_offset + sub_fifth).rem_euclid(1200.0);
+        self.sub_target_hz = leading::hz_of(self.root_cents + sub_rel - 1200.0 * sub_oct) as f32;
+        if self.sub_hz <= 0.0 {
+            // First chord ever: arrive, don't sweep up from DC.
+            self.sub_hz = self.sub_target_hz;
+        }
+
         let mut targets = [0.0f64; VOICES];
         let n_targets = VOICES;
         for v in 0..VOICES {
@@ -474,8 +529,18 @@ impl Engine {
 
         let (dl, dr) = self.pool.tick_stereo();
         let (wl, wr) = self.bus.process_stereo(dl, dr, &plate, &chorus, &density);
+
+        // The sub joins DRY, beside the bus rather than through it — a 25 Hz
+        // sine through the plate is rumble, and the 350 Hz send dip exists
+        // because low weight in the wet was already a fight. Mono and centred:
+        // ground, not width. Level is the one control; Master still rules all.
+        self.sub_hz += (self.sub_target_hz - self.sub_hz) * self.sub_glide;
+        self.sub_phase = (self.sub_phase + self.sub_hz / self.sample_rate).fract();
+        let sub = (core::f32::consts::TAU * self.sub_phase).sin()
+            * self.params[param::SUB as usize].clamp(0.0, 1.0);
+
         let m = self.params[param::MASTER as usize];
-        let (l, r) = (wl * m, wr * m);
+        let (l, r) = ((wl + sub) * m, (wr + sub) * m);
 
         // The scope is one trace of what is actually leaving the instrument.
         self.scope[self.scope_head] = (l + r) * 0.5;
@@ -1008,8 +1073,9 @@ mod tests {
         assert_eq!(param::MASTER, 17);
         assert_eq!(param::ROOT_HZ, 18);
         assert_eq!(param::DECAY, 19);
-        assert_eq!(param::COUNT, 21);
         assert_eq!(param::BIAS, 20);
+        assert_eq!(param::SUB, 21);
+        assert_eq!(param::COUNT, 22);
         assert_eq!(phy_param_count(), param::COUNT);
         assert_eq!(phy_scope_len(), SCOPE_LEN as u32);
     }
