@@ -69,7 +69,17 @@ two plantings):
   among them, per the taste ledger's law 4) — new growth rate, spin, trail,
   and a slow curvature breath borrowed from the starfield presets. The field
   collapses to a sprout and reassembles over 8–34 s while the old plant
-  erodes in its own trail.
+  erodes in its own trail. Colour is distributed radially — black wandering
+  heart, body green, lit limb — so the head reads as a sphere, and the marks
+  are deliberately coarse: fine lines are what a 12 Mbps encoder chokes on.
+- **The space reseeds.** The plant is no longer only itself relative to
+  itself: around it hangs the hostile-visualiser starfield — drift,
+  parallax, curvature, shear, edge shimmer, and lensing with the plant's
+  actual rim as the subject, so a sprout barely dents the sky and a grown
+  plant displaces it. Each planting draws its own sky from the ranges of
+  the eight kept starfield presets, occasionally a bare void, fading in
+  over ~5 s. The object also floats — a slow bob and sway, never quite
+  still — and the lens follows it.
 - **The director reseeds.** FM 1:1 stays the voice (`?live&voice=roster`
   restores the roster if that pin turns out wrong); the patch's entry knob
   is re-routed to choose the director's route — which of ROOT, MIRROR,
