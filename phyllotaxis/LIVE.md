@@ -43,6 +43,46 @@ behind the Begin button:
 `--autoplay-policy=no-user-gesture-required` and the same URL; without the
 flag, click Begin once.)
 
+Under `?live` the page trades the reading layout for a broadcast frame: the
+stage takes the height of the 1080p canvas and the racks stand beside it as a
+rail — the sliders moving under a viewer's patch are part of the show. The
+canvas renders 1:1 with the browser source's pixels, so nothing is upscaled
+into softness and then paid for in bitrate.
+
+**Encoder settings the page is tuned for:** 1080p at 60 fps, 12000 kbps
+(YouTube's recommended rate for 1080p60), keyframe interval 2 s. In the
+browser source properties tick nothing unusual — but if the stream looks
+30fps, set the source's custom FPS to 60 or raise OBS's canvas FPS; browser
+sources follow the canvas. The visual is encoder-friendly by construction:
+true blacks, a feedback trail that gives the codec temporal coherence, and
+marks floored at a 720p-equivalent pixel so nothing shimmers at sub-pixel
+size.
+
+## What the stream does between patches
+
+Two things happen to every patch the relay hands over, both seeded from the
+patch itself (the same patch replants the same plant; sending it twice is
+two plantings):
+
+- **The plant reseeds.** New divergence angle — drawn from the fifteen
+  angles Billy chose on the workbench (117–170°, the golden angle never
+  among them, per the taste ledger's law 4) — new growth rate, spin, trail,
+  and a slow curvature breath borrowed from the starfield presets. The field
+  collapses to a sprout and reassembles over 8–34 s while the old plant
+  erodes in its own trail.
+- **The director reseeds.** FM 1:1 stays the voice (`?live&voice=roster`
+  restores the roster if that pin turns out wrong); the patch's entry knob
+  is re-routed to choose the director's route — which of ROOT, MIRROR,
+  VOICING and PACE move. After honouring the same 30 s floor as the relay,
+  the director explores: roots step by the derived scale's own nearest
+  fourth, fifth and third (FM 1:1's table found 498 and 702 by itself, so
+  its cadences are plagal and authentic by derivation); Mirror steps are the
+  engine's negative-harmony modal interchange; voicings are composed on the
+  tuning channel — rotations of the derived scale are its modes, subsets its
+  own triads and open fifths, shown after the dot in the `#kind` readout.
+  Everything moves through the page's existing inputs, so the director can
+  reach nothing a slider can't, and the address bar stays a truthful patch.
+
 Stream that scene, and put something like this in the description:
 
 > This instrument is playing itself. To play it yourself: open
