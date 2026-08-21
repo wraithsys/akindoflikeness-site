@@ -866,7 +866,9 @@ function stepEntry(delta) {
    "the instrument should be beautiful and it already is a lot of the time
    but almost exclusively in FM 1:1 with a preset like" — this one. A URL
    that carries its own patch still wins; this is only what no-patch means. */
-const DEFAULT_PATCH = "0:0,1:0.750,18:93.500,2:3.270,20:0.850,3:0.240,4:0.480,5:0.440,19:12.500,7:0.070,6:1.000,8:0.110,9:0.740,11:0.300,14:0.300,17:0.800,21:0.120";
+// The sub is parked (Billy, 2026-08-21: "the only thing i dont like is the
+// sub") — the mechanism stays, the default is silence. Dial param 21 to hear it.
+const DEFAULT_PATCH = "0:0,1:0.750,18:93.500,2:3.270,20:0.850,3:0.240,4:0.480,5:0.440,19:12.500,7:0.070,6:1.000,8:0.110,9:0.740,11:0.300,14:0.300,17:0.800";
 
 function wire() {
   let saved = readHash();
