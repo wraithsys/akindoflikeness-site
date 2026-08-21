@@ -158,7 +158,14 @@ ol.log li[data-verdict="bin"] .ch::after { content: " ✕"; color: var(--faint);
 ol.log .ch { color: var(--straw); min-width: 8ch; }
 ol.log .nn { color: var(--ink); }
 ol.log .word { color: var(--sap); font-family: var(--face-ui); }
-ol.log .del {
+ol.seqs { list-style: none; margin: 0; padding: 0; }
+li.seq { padding: 0.5rem 0.2rem; border-bottom: 1px solid var(--rule); }
+.seqhead { display: flex; gap: 0.9rem; align-items: baseline; font-family: var(--face-data); font-size: 16px; }
+.seqhead .ch { color: var(--straw); }
+.seqhead .nn { color: var(--faint); }
+.chain { color: var(--dim); font-family: var(--face-data); font-size: 16px; margin-top: 0.2rem; line-height: 1.9; }
+
+ol.log .del, ol.seqs .del {
   margin-left: auto;
   background: none;
   border: 0;
@@ -167,7 +174,7 @@ ol.log .del {
   font-size: 16px;
   cursor: pointer;
 }
-ol.log .del:hover { color: var(--straw); }
+ol.log .del:hover, ol.seqs .del:hover { color: var(--straw); }
 
 .hint { color: var(--faint); font-size: 16px; }
 :focus-visible { outline: 2px solid var(--sap); outline-offset: 2px; }
@@ -179,8 +186,8 @@ ol.log .del:hover { color: var(--straw); }
   <h1>HARMONY TASTINGS</h1>
   <p class="lede">Toggle keys on and off; the chord sounds and names itself.
   KEEP what's beautiful, BIN what's sour — a word helps. This browser
-  remembers everything by itself; SAVE writes the log into the page so it
-  follows you across devices and Claude can read it.</p>
+  remembers everything by itself; SAVE names the log as a TRAVERSAL — one
+  exploration — writes it into the page, and clears the deck for the next.</p>
 </header>
 
 <div class="kbwrap">
@@ -230,20 +237,26 @@ ol.log .del:hover { color: var(--straw); }
   <button class="clear" id="clear">Clear</button>
 </div>
 
-<script type="application/json" id="seed">{"bakedAt":1787271753118,"keys":[],"log":[{"v":"keep","when":"2026-08-21 00:00","name":"Dm6/9","notes":"D3 F3 A3 B3 E4"},{"v":"keep","when":"2026-08-21 00:00","name":"Dmadd9","notes":"D3 A3 E4 F4"},{"v":"keep","when":"2026-08-21 00:00","name":"Cmaj7(no5)/E","notes":"E3 C4 B4"},{"v":"keep","when":"2026-08-21 00:00","name":"C♯maj7(no5)/C","notes":"C4 C♯4 F4","word":"I LOVE THIS"},{"v":"keep","when":"2026-08-21 00:00","name":"Csus4/G","notes":"G3 C4 F4"},{"v":"keep","when":"2026-08-21 00:00","name":"Fm/G♯","notes":"G♯3 C4 F4"},{"v":"keep","when":"2026-08-21 00:00","name":"Esus7","notes":"E3 B3 D4 B4","word":"I'd make up a term for this like suspended 7th referring E-D"},{"v":"keep","when":"2026-08-21 00:00","name":"D♯augMaj7","notes":"D♯3 G3 D4 B4"},{"v":"keep","when":"2026-08-21 00:00","name":"Gmaj9(no5)/F♯","notes":"F♯4 G4 A4 B4","word":"penguin stack :P"},{"v":"keep","when":"2026-08-21 00:00","name":"F♯maj7(no5)/F","notes":"F3 A♯3 F4 F♯4 A♯4"},{"v":"keep","when":"2026-08-21 00:00","name":"F♯maj7/F","notes":"F3 A♯3 C♯4 F4 F♯4 A♯4"},{"v":"keep","when":"2026-08-21 00:00","name":"F♯maj7♯11(no5)/F","notes":"F3 A♯3 C4 F4 F♯4 A♯4"},{"v":"keep","when":"2026-08-21 00:00","name":"F♯maj7♯9(no5)/F","notes":"F3 A3 A♯3 F4 F♯4 A♯4"},{"v":"keep","when":"2026-08-21 00:00","name":"D♯madd9","notes":"D♯3 A♯3 F4 F♯4 A♯4"},{"v":"keep","when":"2026-08-21 00:00","name":"D♯7sus2","notes":"D♯3 A♯3 C♯4 F4 A♯4"},{"v":"keep","when":"2026-08-21 00:00","name":"D♯9♯11sus7","notes":"D♯3 A♯3 C♯4 F4 A4"}]}</script>
+<script type="application/json" id="seed">{"bakedAt": 1787272910050, "keys": [65, 66, 70, 51, 63, 58], "log": [{"v": "keep", "when": "2026-08-21 00:00", "name": "Dm6/9", "notes": "D3 F3 A3 B3 E4"}, {"v": "keep", "when": "2026-08-21 00:00", "name": "Dmadd9", "notes": "D3 A3 E4 F4"}, {"v": "keep", "when": "2026-08-21 00:00", "name": "Cmaj7(no5)/E", "notes": "E3 C4 B4"}, {"v": "keep", "when": "2026-08-21 00:00", "name": "C♯maj7(no5)/C", "notes": "C4 C♯4 F4", "word": "I LOVE THIS"}, {"v": "keep", "when": "2026-08-21 00:00", "name": "Csus4/G", "notes": "G3 C4 F4"}, {"v": "keep", "when": "2026-08-21 00:00", "name": "Fm/G♯", "notes": "G♯3 C4 F4"}, {"v": "keep", "when": "2026-08-21 00:00", "name": "Esus7", "notes": "E3 B3 D4 B4", "word": "I'd make up a term for this like suspended 7th referring E-D"}, {"v": "keep", "when": "2026-08-21 00:00", "name": "D♯augMaj7", "notes": "D♯3 G3 D4 B4"}, {"v": "keep", "when": "2026-08-21 00:00", "name": "Gmaj9(no5)/F♯", "notes": "F♯4 G4 A4 B4", "word": "penguin stack :P"}, {"v": "keep", "when": "2026-08-21 00:00", "name": "F♯maj7(no5)/F", "notes": "F3 A♯3 F4 F♯4 A♯4"}, {"v": "keep", "when": "2026-08-21 00:00", "name": "F♯maj7/F", "notes": "F3 A♯3 C♯4 F4 F♯4 A♯4"}, {"v": "keep", "when": "2026-08-21 00:00", "name": "F♯maj7♯11(no5)/F", "notes": "F3 A♯3 C4 F4 F♯4 A♯4"}, {"v": "keep", "when": "2026-08-21 00:00", "name": "F♯maj7♯9(no5)/F", "notes": "F3 A3 A♯3 F4 F♯4 A♯4"}, {"v": "keep", "when": "2026-08-21 00:00", "name": "D♯madd9", "notes": "D♯3 A♯3 F4 F♯4 A♯4"}, {"v": "keep", "when": "2026-08-21 00:00", "name": "D♯7sus2", "notes": "D♯3 A♯3 C♯4 F4 A♯4"}, {"v": "keep", "when": "2026-08-21 00:00", "name": "D♯9♯11sus7", "notes": "D♯3 A♯3 C♯4 F4 A4"}, {"v": "keep", "when": "2026-08-21 00:36", "name": "F♯maj7(no5)/F", "notes": "F4 F♯4 A♯4", "word": "Basis"}, {"v": "keep", "when": "2026-08-21 00:37", "name": "D♯madd9", "notes": "D♯4 F4 F♯4 A♯4", "word": "Extension"}, {"v": "keep", "when": "2026-08-21 00:37", "name": "F♯maj7(no5)/A♯", "notes": "A♯3 F4 F♯4 A♯4", "word": "I'd take the A# down an octave aswell stacked"}, {"v": "keep", "when": "2026-08-21 00:37", "name": "D♯madd9", "notes": "D♯3 A♯3 F4 F♯4 A♯4", "word": "That's home"}, {"v": "keep", "when": "2026-08-21 00:38", "name": "5-note cluster", "notes": "D♯3 G3 A♯3 F4 F♯4 A♯4", "word": "Confusing but leggible"}, {"v": "keep", "when": "2026-08-21 00:39", "name": "4-note cluster", "notes": "G3 A♯3 F4 F♯4 A♯4", "word": "Ocatve flipping in my head"}, {"v": "keep", "when": "2026-08-21 00:39", "name": "F♯maj9/C♯", "notes": "C♯3 G♯3 A♯3 F4 F♯4 A♯4", "word": "The question"}, {"v": "keep", "when": "2026-08-21 00:40", "name": "6-note cluster", "notes": "D3 G3 A3 F4 F♯4 A♯4", "word": "Delayed response"}, {"v": "keep", "when": "2026-08-21 00:40", "name": "D♯m9", "notes": "D♯3 A♯3 C♯4 D♯4 F4 F♯4 A♯4", "word": "Answer"}, {"v": "keep", "when": "2026-08-21 00:41", "name": "D♯madd9", "notes": "D♯3 A♯3 D♯4 F4 F♯4 A♯4", "word": "Closed"}], "seqs": []}</script>
 
 <h2>The log</h2>
 <ol class="log" id="log"></ol>
-<p class="hint empty">Nothing kept yet. KEEP or BIN a chord and it lands here;
-SAVE writes the log into the page itself.</p>
+<p class="hint empty">Nothing in this traversal yet. KEEP or BIN a chord and
+it lands here; SAVE names the whole run and stores it below.</p>
+
+<h2>Traversals</h2>
+<ol class="seqs" id="seqs"></ol>
+<p class="hint noseqs">None saved yet. SAVE bundles the log above into a named
+traversal — an exploration, in the order you walked it.</p>
 
 <script>
 "use strict";
 
 /* Classic artifact. Truth lives in `state`; this browser mirrors it to
-   localStorage on every change, and SAVE bakes it into the page itself
-   (a new published version) so it follows Billy across devices and Claude
-   can read it back. */
+   localStorage on every change. The working log is a session's tasting;
+   SAVE names it as a TRAVERSAL — "an exploration ... a traversal i
+   enjoyed" (Billy, 2026-08-21) — bakes it into the page's seed and
+   clears the log for the next one. */
 
 const $ = (id) => document.getElementById(id);
 
@@ -265,7 +278,8 @@ const CHORDS = [
   ["", [0,4,7]], ["m", [0,3,7]], ["dim", [0,3,6]], ["aug", [0,4,8]],
   ["sus2", [0,2,7]], ["sus4", [0,5,7]], ["5", [0,7]],
   // "sus7": Billy's own term (2026-08-21) for root+5th+♭7 — "I'd make up a
-  // term for this like suspended 7th referring E-D". His vocabulary wins.
+  // term for this like suspended 7th referring E-D". His vocabulary wins;
+  // the books would write 7(no3).
   ["sus7", [0,7,10]],
   ["7", [0,4,7,10]], ["maj7", [0,4,7,11]], ["m7", [0,3,7,10]],
   ["mMaj7", [0,3,7,11]], ["m7♭5", [0,3,6,10]], ["dim7", [0,3,6,9]],
@@ -326,39 +340,56 @@ function detect(midis) {
 const LSKEY = "harmony-tastings-v1";
 
 function entryKey(e) { return [e.when, e.v, e.name, e.notes, e.word || ""].join("|"); }
+function seqKey(s) { return [s.when, s.name].join("|"); }
+
+function normalise(x) {
+  return {
+    keys: (x && x.keys) || [],
+    log: (x && x.log) || [],
+    seqs: (x && x.seqs) || [],
+    savedAt: (x && (x.savedAt || x.bakedAt)) || 0,
+  };
+}
 
 function readSeed() {
-  try { return JSON.parse($("seed").textContent); }
-  catch { return { bakedAt: 0, keys: [], log: [] }; }
+  try { return normalise(JSON.parse($("seed").textContent)); }
+  catch { return normalise(null); }
 }
 
 function readLocal() {
-  try { return JSON.parse(localStorage.getItem(LSKEY)) || null; }
-  catch { return null; }
+  try {
+    const v = JSON.parse(localStorage.getItem(LSKEY));
+    return v ? normalise(v) : null;
+  } catch { return null; }
 }
 
-/* The page's baked truth and this browser's buffer, reconciled: the union
-   of both logs, minus anything the NEWER side has deleted; keys from the
-   newer side. */
-function merge(seed, local) {
-  if (!local) return { keys: seed.keys.slice(), log: seed.log.slice(), savedAt: seed.bakedAt || 0 };
-  const localNewer = (local.savedAt || 0) >= (seed.bakedAt || 0);
-  const newer = localNewer ? local : seed;
-  const older = localNewer ? seed : local;
-  const newerKeys = new Set(newer.log.map(entryKey));
-  const log = newer.log.slice();
-  // An older entry the newer side never saw (made on another device after
-  // the newer side's last sync) is kept, not treated as deleted, when the
-  // newer side has never contained it. Heuristic: newer side's bakedAt/
-  // savedAt predates the entry's own timestamp.
-  const horizon = localNewer ? (seed.bakedAt || 0) : (local.savedAt || 0);
-  for (const e of older.log) {
-    if (!newerKeys.has(entryKey(e))) {
-      const t = Date.parse((e.when || "").replace(" ", "T")) || 0;
-      if (t > horizon) log.push(e);
+/* The page's baked truth and this browser's buffer, reconciled: the newer
+   side wins, but items the newer side has NEVER seen (made elsewhere after
+   its horizon) are kept rather than treated as deleted. */
+function mergeList(newerList, olderList, horizon, keyFn) {
+  const seen = new Set(newerList.map(keyFn));
+  const out = newerList.slice();
+  for (const item of olderList) {
+    if (!seen.has(keyFn(item))) {
+      const t = Date.parse((item.when || "").replace(" ", "T")) || 0;
+      if (t > horizon) out.push(item);
     }
   }
-  return { keys: newer.keys.slice(), log, savedAt: newer.savedAt || newer.bakedAt || 0 };
+  return out;
+}
+
+function merge(seed, local) {
+  if (!local) return { keys: seed.keys.slice(), log: seed.log.slice(), seqs: seed.seqs.slice(), savedAt: seed.savedAt };
+  const localNewer = local.savedAt >= seed.savedAt;
+  const newer = localNewer ? local : seed;
+  const older = localNewer ? seed : local;
+  const horizon = older === seed ? seed.savedAt : local.savedAt;
+  return {
+    keys: newer.keys.slice(),
+    log: mergeList(newer.log, older.log, horizon, entryKey),
+    seqs: mergeList(newer.seqs, older.seqs, horizon, seqKey),
+    savedAt: newer.savedAt,
+  };
 }
 
 const state = merge(readSeed(), readLocal());
@@ -474,6 +505,41 @@ function renderLog() {
   if (hint) hint.hidden = state.log.length > 0;
 }
 
+function renderSeqs() {
+  const ol = $("seqs");
+  ol.textContent = "";
+  for (const s of state.seqs) {
+    const li = document.createElement("li");
+    li.className = "seq";
+    const head = document.createElement("div");
+    head.className = "seqhead";
+    const nm = document.createElement("span");
+    nm.className = "ch"; nm.textContent = s.name;
+    const meta = document.createElement("span");
+    meta.className = "nn";
+    meta.textContent = s.when + " · " + s.entries.length + (s.entries.length === 1 ? " chord" : " chords");
+    head.append(nm, meta);
+    const del = document.createElement("button");
+    del.className = "del"; del.textContent = "✕"; del.title = "Remove this traversal";
+    del.addEventListener("click", () => {
+      if (!window.confirm('Remove the traversal "' + s.name + '"? SAVE afterwards makes it permanent.')) return;
+      state.seqs = state.seqs.filter((x) => x !== s);
+      persistLocal(); renderSeqs();
+      setStatus("unsaved changes");
+    });
+    head.append(del);
+    const chain = document.createElement("div");
+    chain.className = "chain";
+    chain.textContent = s.entries
+      .map((e) => (e.v === "bin" ? "✕" : "") + e.name + (e.word ? " “" + e.word + "”" : ""))
+      .join("  →  ");
+    li.append(head, chain);
+    ol.append(li);
+  }
+  const hint = document.querySelector(".hint.noseqs");
+  if (hint) hint.hidden = state.seqs.length > 0;
+}
+
 /* ── gestures ─────────────────────────────────────────────────── */
 
 for (const b of document.querySelectorAll(".kb button")) {
@@ -506,7 +572,7 @@ function logEntry(v) {
   });
   $("word").value = "";
   persistLocal(); renderLog();
-  setStatus("unsaved — SAVE bakes it into the page");
+  setStatus("unsaved — SAVE names this traversal and stores it");
 }
 
 $("keep").addEventListener("click", () => logEntry("keep"));
@@ -518,9 +584,26 @@ $("clear").addEventListener("click", () => {
   persistLocal(); renderKeys(); analyse();
 });
 
-/* ── save: bake the state into the page itself ────────────────── */
+/* ── save: name the traversal, bake everything into the page ──── */
 
 $("save").addEventListener("click", async () => {
+  // Bundle the working log as a named traversal. With an empty log, SAVE
+  // just persists edits (deleted entries or traversals).
+  let toSave = { seqs: state.seqs, log: [] };
+  if (state.log.length) {
+    const first = state.log[0].name, last = state.log[state.log.length - 1].name;
+    const suggestion = first === last ? first : first + " → " + last;
+    const name = window.prompt("Name this traversal:", suggestion);
+    if (name === null) { setStatus("save cancelled"); return; }
+    toSave = {
+      seqs: state.seqs.concat([{
+        name: name.trim() || suggestion,
+        when: new Date().toISOString().slice(0, 16).replace("T", " "),
+        entries: state.log.slice(),
+      }]),
+      log: [],
+    };
+  }
   setStatus("saving…");
   try {
     const artifact = window.claude && (await window.claude.use("artifact"));
@@ -532,14 +615,17 @@ $("save").addEventListener("click", async () => {
     let src = await r.text();
     // Never re-publish an injected runtime block.
     src = src.replace(/<!-- frame-runtime -->[\s\S]*?<!-- \/frame-runtime -->/, "");
-    const baked = JSON.stringify({ bakedAt: Date.now(), keys: state.keys, log: state.log })
-      .replace(/</g, "\\u003c");
+    const baked = JSON.stringify({
+      bakedAt: Date.now(),
+      keys: state.keys,
+      log: toSave.log,
+      seqs: toSave.seqs,
+    }).replace(/</g, "\\u003c");
     const marker = '<script type="application/json" id="seed">';
     const a = src.indexOf(marker);
     if (a < 0) throw new Error("seed-missing");
     const b = src.indexOf("<\/script>", a);
     const out = src.slice(0, a + marker.length) + baked + src.slice(b);
-    persistLocal();
     await artifact.publish(out); // on success the view reloads to the saved version
   } catch (err) {
     const code = err && err.code;
@@ -554,11 +640,13 @@ $("save").addEventListener("click", async () => {
 
 renderKeys();
 renderLog();
+renderSeqs();
 analyse();
 {
   const seed = readSeed(), local = readLocal();
-  if (local && (local.savedAt || 0) > (seed.bakedAt || 0)
-      && JSON.stringify(local.log) !== JSON.stringify(seed.log)) {
+  if (local && local.savedAt > seed.savedAt
+      && (JSON.stringify(local.log) !== JSON.stringify(seed.log)
+        || JSON.stringify(local.seqs) !== JSON.stringify(seed.seqs))) {
     setStatus("this browser is ahead of the page — SAVE to sync");
   }
 }
