@@ -1,0 +1,24 @@
+observations: 132 features: 16
+
+WEIGHTS (standardized; + raises rating):
+  +0.601  common_tones
+  -0.535  jump_frac
+  +0.457  soprano_return
+  -0.452  plain_major_frac
+  +0.395  semitone_bass
+  -0.348  return_end
+  +0.295  wholetone_bass
+  -0.270  wobble3
+  -0.172  colour
+  -0.146  lands_home
+  -0.128  wear
+  -0.103  late_spike
+  -0.087  arrival_palette
+  +0.075  length
+  -0.055  teleport
+  -0.001  exposure
+  +3.735  (intercept = mean tendency)
+
+LEAVE-ONE-OUT: within-1 113/132 (85%), exact 36 (27%)
+mean |error| 0.93; predict-the-mean baseline within-1: 74%
+global mean rating 3.73
