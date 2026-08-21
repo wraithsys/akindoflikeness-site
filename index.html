@@ -417,7 +417,7 @@
       <noscript><img class="wordmark" src="/assets/img/akol-wordmark.png" alt="AKOL" width="1185" height="236"></noscript>
     </h1>
     <div class="ground-row">
-      <button class="ground-switch" id="ground-tpl" aria-label="Cycle the starfield template">FIELD · IMPLIED</button>
+      <button class="ground-switch" id="ground-tpl" aria-label="Cycle the ground template">FIELD · DOME IMPLIED</button>
       <button class="ground-switch" id="ground-inv" aria-pressed="true" aria-label="Toggle ground inversion">INV ON</button>
     </div>
   </figure>
@@ -622,6 +622,7 @@
   /* -------- the eight saved templates, workbench/presets/starfield/ -------- */
   const DRIFT_ANGLE=2.3999632;
   const TPL=[
+    {name:'DOME IMPLIED', dome:2},
     {name:'IMPLIED',      motes:360, drift:0.026,wobble:0.056,curve:0.33, period:16,  warp:0.06, lens:0.34, lensMax:0.8, edge:0.39, duty:0.63,floor:1.0, gain:0.49, subj:0.322,ring:false,seed:790n},
     {name:'BLACK HOLE',   motes:800, drift:0.03, wobble:0.017,curve:0.4,  period:145, warp:0.08, lens:0.3,  lensMax:1.0, edge:0.5,  duty:0.93,floor:1.0, gain:0.25, subj:0.21, ring:true, seed:210n},
     {name:'EXHAUST',      motes:3000,drift:0.0,  wobble:0.039,curve:1.16, period:85,  warp:0.092,lens:0.88, lensMax:0.98,edge:0.48, duty:0.79,floor:0.51,gain:0.855,subj:0.245,ring:false,seed:980n},
@@ -632,7 +633,6 @@
     {name:'SUPERMASSIVE', motes:2420,drift:0.057,wobble:0.0,  curve:1.2,  period:233, warp:0.028,lens:0.38, lensMax:0.93,edge:0.675,duty:1.0, floor:0.7, gain:0.665,subj:0.24, ring:false,seed:790n},
     {name:'DOME',         dome:0},
     {name:'DOME LEMON',   dome:1},
-    {name:'DOME IMPLIED', dome:2},
     {name:'DOME MESH-ON', dome:3},
     {name:'DOME SLOW',    dome:4},
     {name:'DOME SPARSE',  dome:5},
@@ -716,7 +716,15 @@
   const DOMES=[
     {name:'DOME',    mer:64,par:48,shells:5,gap:0.25,     focal:0.8,      camZ:0.1,       yaw:0.017,     pitch:0.018,roll:0.011,     drift:0.17,      floor:0.12,gain:0.05,      stroke:1.25,      sparks:0,   grain:0,          flare:0,        seed:890n,tip:1,lens:0.3,      lensMax:0.1,      well:0.308,     horizon:0.79,      pinch:0.45,      drag:0.43,mirror:1},
     {name:'LEMON',   mer:64,par:48,shells:5,gap:0.2163086,focal:0.6,      camZ:0,         yaw:0.02387028,pitch:0.042,roll:0.08752806,drift:0.38,      floor:0,   gain:0.34729478,stroke:2.7238655, sparks:0,   grain:0,          flare:0,        seed:422n,tip:1,lens:2.0,      lensMax:0.8,      well:0.15846397,horizon:0.654043,  pinch:0.86932385,drag:0,   mirror:1},
-    {name:'IMPLIED', mer:24,par:12,shells:3,gap:0.08,     focal:1.35,     camZ:0.18,      yaw:0.012,     pitch:0.007,roll:0.004,     drift:0.22,      floor:0.12,gain:0.78,      stroke:1.15,      sparks:0.55,grain:0.08,       flare:0.35,     seed:13n, tip:0,lens:0,        lensMax:0,        well:0,         horizon:0,         pinch:0,         drag:0,   mirror:0},
+    // IMPLIED, rebuilt to Billy's spec 2026-08-21: inside a floating sphere —
+    // light yaw only (no pitch/roll tumble), a slow vertical bob for hanging
+    // in space, and at the apex a black hole warping its surroundings. The
+    // hole is the code's tuned well (pinch = gravity gather, horizon = event
+    // horizon, lens ∝ 1/d, frame-drag, photon-belt ghost — the GR terms),
+    // NOT the saved .ron's tip 0, which predates the well and contradicts
+    // the spec. The preset's cross-flare and sparks are not in the spec and
+    // are not inherited; lattice geometry, brightness, grain and yaw are.
+    {name:'IMPLIED', mer:24,par:12,shells:3,gap:0.08,     focal:1.35,     camZ:0.18,      yaw:0.012,     pitch:0,    roll:0,         drift:0.22,      floor:0.12,gain:0.78,      stroke:1.15,      sparks:0,   grain:0.08,       flare:0,        seed:13n, tip:1,lens:0.3,      lensMax:0.1,      well:0.308,     horizon:0.79,      pinch:0.45,      drag:0.43,mirror:1, apexY:0.2, bob:0.035},
     {name:'MESH-ON', mer:17,par:2, shells:5,gap:0.25,     focal:1.3133897,camZ:0.08009711,yaw:0.04535113,pitch:0.12, roll:0.03150862,drift:0.43042073,floor:0,   gain:0.42378926,stroke:0.78551555,sparks:0,   grain:0.031086205,flare:0,        seed:428n,tip:1,lens:1.9519475,lensMax:1.1186663,well:0.2693426, horizon:0.57352066,pinch:0.8948926, drag:0,   mirror:1},
     {name:'SLOW',    mer:4, par:48,shells:5,gap:0.2163086,focal:0.6,      camZ:0,         yaw:0.02387028,pitch:0.042,roll:0.08752806,drift:0.38,      floor:0,   gain:0.34729478,stroke:1.4042861, sparks:0,   grain:0.093436375,flare:0.0804623,seed:288n,tip:1,lens:2.0,      lensMax:0.8,      well:0.3110748, horizon:0.654043,  pinch:0.86932385,drag:0,   mirror:1},
     {name:'SPARSE',  mer:4, par:48,shells:5,gap:0.2163086,focal:0.6,      camZ:0,         yaw:0.02387028,pitch:0.042,roll:0.08752806,drift:0.38,      floor:0,   gain:0.34729478,stroke:1.4042861, sparks:0,   grain:0.09202354, flare:0,        seed:288n,tip:1,lens:2.0,      lensMax:0.8,      well:0.15846397,horizon:0.654043,  pinch:0.86932385,drag:0,   mirror:1},
@@ -787,7 +795,12 @@
       domeRoll+=TAU*(p.roll+dr)*dt;
     }
     domeLast=t;
-    const cx=W*0.5, cyy=H*0.5, scale=Math.min(W,H)*0.48;
+    // floating: the whole scene rides a slow vertical bob
+    const bob=(p.bob||0)*H*Math.sin(t*0.21);
+    const cx=W*0.5, cyy=H*0.5+bob, scale=Math.min(W,H)*0.48;
+    // the black hole sits at the sphere's apex when the preset says so,
+    // else at centre; it is part of the scene, so it bobs with it
+    const wx=cx, wy=p.apexY!=null?H*p.apexY+bob:cyy;
     const wellR=Math.max(H*p.well,0.05*H);
     const mix=Math.max(0,Math.min(1,p.tip));
     const segs=p.tip>0.01?80:48, buckets=new Map();
@@ -824,7 +837,7 @@
     // stroke breaks.
     function wellWarp(x,y){
       if(mix<0.001) return [x,y];
-      const ox0=x-cx, oy0=y-cyy, d0=Math.hypot(ox0,oy0);
+      const ox0=x-wx, oy0=y-wy, d0=Math.hypot(ox0,oy0);
       if(d0<0.5) return p.horizon*mix>0.001?null:[x,y];
       const r=Math.max(wellR,1);
       let dirx=ox0/d0, diry=oy0/d0;
@@ -832,9 +845,9 @@
       let px=x, py=y;
       if(pinch>0.001){
         const u=d0/r, f=Math.max(1-pinch*(u*u)/(1+u*u),0.05);
-        px=cx+dirx*d0*f; py=cyy+diry*d0*f;
+        px=wx+dirx*d0*f; py=wy+diry*d0*f;
       }
-      const ox=px-cx, oy=py-cyy, d=Math.max(Math.hypot(ox,oy),0.5);
+      const ox=px-wx, oy=py-wy, d=Math.max(Math.hypot(ox,oy),0.5);
       dirx=ox/d; diry=oy/d;
       if(p.horizon*mix>0.001 && d<r*p.horizon*mix) return null; // swallow
       const lens=p.lens*mix;
@@ -851,7 +864,7 @@
     }
     function belt(x,y){
       if(p.mirror*mix<0.01) return false;
-      const d=Math.hypot(x-cx,y-cyy);
+      const d=Math.hypot(x-wx,y-wy);
       return d>wellR*Math.max(p.horizon*mix,0.15) && d<wellR*1.7;
     }
     for(let shell=0;shell<p.shells;shell++){
@@ -880,7 +893,7 @@
             if(prev){
               seg(prev[0],prev[1],s[0],s[1],s[2],dim,false,1);
               if(belt(s[0],s[1])||belt(prev[0],prev[1]))
-                seg(2*cx-prev[0],2*cyy-prev[1],2*cx-s[0],2*cyy-s[1],s[2],dim,false,0.45*p.mirror*mix);
+                seg(2*wx-prev[0],2*wy-prev[1],2*wx-s[0],2*wy-s[1],s[2],dim,false,0.45*p.mirror*mix);
             }
             prev=s;
           } else prev=null;
@@ -897,7 +910,7 @@
             if(prev){
               seg(prev[0],prev[1],s[0],s[1],s[2],dim,major,1);
               if(belt(s[0],s[1])||belt(prev[0],prev[1]))
-                seg(2*cx-prev[0],2*cyy-prev[1],2*cx-s[0],2*cyy-s[1],s[2],dim,major,0.45*p.mirror*mix);
+                seg(2*wx-prev[0],2*wy-prev[1],2*wx-s[0],2*wy-s[1],s[2],dim,major,0.45*p.mirror*mix);
             }
             prev=s;
           } else prev=null;
