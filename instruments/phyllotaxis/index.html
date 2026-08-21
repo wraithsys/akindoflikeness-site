@@ -1944,13 +1944,13 @@ if (IS_LIVE) document.body.classList.add("live");
 if (VOICE_PINNED) entry = 0;
 
 /* ── plucks: the flirting notes ───────────────────────────────────
-   THE WHEN's fourth word, first sounding: "plucks accent current
-   harmony, coming in faster, dying sooner, flirting with neighbours."
-   A WebAudio overlay on the engine — it reads lastVoicing and never
-   writes anything back, which is the pluck law from the taste work:
-   a pluck never enters the harmony's memory (Parncutt, ratified).
-   ?live only, while it earns its place; kill with ?pluck=0, density
-   1..3 with ?pluck=N. */
+   THE WHEN's fourth word: "plucks accent current harmony, coming in
+   faster, dying sooner, flirting with neighbours." A WebAudio overlay
+   that reads lastVoicing and never writes back — a pluck never enters
+   the harmony's memory. First pass was naked and his verdict was "too
+   dry": so the plucks live mostly WET now, in a small room of their
+   own (generated impulse), a breath of dry left in for the attack.
+   ?live only; ?pluck=0 kills, ?pluck=1..3 density. */
 
 const pluck = {
   bus: null, weylX: 0.382, on: IS_LIVE && LIVE.get("pluck") !== "0",
@@ -1958,18 +1958,41 @@ const pluck = {
   lastMoveT: 0, timer: 0,
 };
 
+function pluckIR(seconds) {
+  // Exponentially decaying noise, darkening as it dies — the classic
+  // synthetic room, four lines instead of a sample to ship.
+  const n = Math.floor(ctx.sampleRate * seconds);
+  const buf = ctx.createBuffer(2, n, ctx.sampleRate);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = buf.getChannelData(ch);
+    let z = 0;
+    for (let i = 0; i < n; i++) {
+      const t = i / n;
+      z += ((Math.random() * 2 - 1) - z) * (0.55 - 0.42 * t);
+      d[i] = z * Math.pow(1 - t, 2.6);
+    }
+  }
+  return buf;
+}
+
 function pluckInit() {
   if (!pluck.on || !ctx) return;
   pluck.bus = ctx.createGain();
   pluck.bus.gain.value = 0.0;
   const lp = ctx.createBiquadFilter();
   lp.type = "lowpass"; lp.frequency.value = 6200;
-  pluck.bus.connect(lp); lp.connect(ctx.destination);
+  pluck.bus.connect(lp);
+  const dry = ctx.createGain(); dry.gain.value = 0.16;
+  lp.connect(dry); dry.connect(ctx.destination);
+  const pre = ctx.createDelay(0.1); pre.delayTime.value = 0.026;
+  const conv = ctx.createConvolver(); conv.buffer = pluckIR(3.4);
+  const wet = ctx.createGain(); wet.gain.value = 1.0;
+  lp.connect(pre); pre.connect(conv); conv.connect(wet); wet.connect(ctx.destination);
   pluckArm();
 }
 
-/* One voice: sine + quiet octave, 4ms in, gone in about a second. The
-   engine glows; the pluck is a mark — same species split as the sky. */
+/* One voice: sine + quiet octave, 4ms in, gone in about a second —
+   the room carries what the note lets go of. */
 function pluckNote(hz, when, vel, decay) {
   const g = ctx.createGain();
   g.gain.setValueAtTime(0, when);
@@ -1985,7 +2008,7 @@ function pluckNote(hz, when, vel, decay) {
 
 function pluckArm() {
   // Golden-ratio clock, like every other schedule here: never a grid,
-  // never a cluster. Density 2 ≈ one gesture every 6–14 seconds.
+  // never a cluster.
   pluck.weylX = (pluck.weylX + 0.6180339887) % 1;
   const gap = (4 + pluck.weylX * 12) / pluck.density * 2;
   pluck.timer = setTimeout(pluckFire, gap * 1000);
@@ -2002,7 +2025,7 @@ function pluckFire() {
   const root = +rootIn.value;
   const body = lastVoicing.cents.filter((c) => c >= 0 && c <= 1900);
   if (!body.length) return;
-  pluck.bus.gain.setTargetAtTime(0.16 * master, ctx.currentTime, 0.05);
+  pluck.bus.gain.setTargetAtTime(0.15 * master, ctx.currentTime, 0.05);
   const tone = body[Math.floor(Math.random() * body.length)];
   const oct = Math.random() < 0.6 ? 2 : 4;             // above the field
   const at = ctx.currentTime + 0.02;
@@ -2027,6 +2050,8 @@ function pluckFire() {
     pluckNote(hzOf(other), at + 0.07, 0.45, 0.3);
   }
 }
+
+
 
 
 wire();
