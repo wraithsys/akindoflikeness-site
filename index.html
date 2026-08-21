@@ -669,8 +669,15 @@
   // is a tax), like the motes.
   const SUNP=[];
   { const ss=0xCA11AB1En;
-    for(let i=0;i<110;i++) SUNP.push([hash01(ss,BigInt(i*8)),hash01(ss,BigInt(i*8+1)),
-                                      hash01(ss,BigInt(i*8+2)),hash01(ss,BigInt(i*8+3))]); }
+    for(let i=0;i<170;i++) SUNP.push([hash01(ss,BigInt(i*8)),hash01(ss,BigInt(i*8+1)),
+                                      hash01(ss,BigInt(i*8+2)),hash01(ss,BigInt(i*8+3)),
+                                      hash01(ss,BigInt(i*8+4)),hash01(ss,BigInt(i*8+5))]); }
+  // Prominence seeds: foot angle, leap, span, phase, period — hashed once.
+  const FLARES=[];
+  { const fs=0x50DA1An;
+    for(let i=0;i<7;i++) FLARES.push([hash01(fs,BigInt(i*8)),hash01(fs,BigInt(i*8+1)),
+                                      hash01(fs,BigInt(i*8+2)),hash01(fs,BigInt(i*8+3)),
+                                      hash01(fs,BigInt(i*8+4))]); }
   // Void grain (house.rs): seed-static, no time term — render once, blit.
   let grainKey='', grainC=null;
   function grainLayer(p,invert){
