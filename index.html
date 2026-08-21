@@ -215,6 +215,13 @@
        (0,0,0) and differencing that against the video is a no-op. */
     mix-blend-mode: difference;
   }
+  .hero .mirror {
+    /* The AKOL Mirror piece in the static mark's place: a transparent overlay
+       the full width of the band — box in the centre third, a mirror either
+       flank. Same difference trick as the mark it replaces; the canvas is
+       empty where the wordmark is not. */
+    mix-blend-mode: difference;
+  }
   .tagline { padding: var(--s1) 0; }
   figure img {
     display: block;
@@ -384,7 +391,10 @@
   <figure class="hero">
     <canvas id="hero-c" role="img" aria-label="A phase-modulated figure, computed live and shaped by the pointer."></canvas>
     <noscript><img class="poster" src="/assets/img/hero-poster.png" alt="" width="720" height="203"></noscript>
-    <h1><img class="wordmark" src="/assets/img/akol-wordmark.png" alt="AKOL" width="1185" height="236"></h1>
+    <h1>
+      <canvas class="mirror" id="mirror-c" role="img" aria-label="AKOL — the wordmark drawn coarsely pixelated, reflected in a mirror on either side, breathing on its own."></canvas>
+      <noscript><img class="wordmark" src="/assets/img/akol-wordmark.png" alt="AKOL" width="1185" height="236"></noscript>
+    </h1>
   </figure>
   <div class="hr"></div>
   <div class="pad"><p class="tagline">tools / art / systems</p></div>
@@ -461,7 +471,7 @@
   <div class="pad">
     <footer>
       <span>akindoflikeness.net</span>
-      <span><a href="/mirror">mirror</a> · <a href="https://github.com/wraithsys" target="_blank" rel="noopener">github</a> · <a href="https://akindoflikeness.bandcamp.com" target="_blank" rel="noopener">bandcamp</a></span>
+      <span><a href="https://github.com/wraithsys" target="_blank" rel="noopener">github</a> · <a href="https://akindoflikeness.bandcamp.com" target="_blank" rel="noopener">bandcamp</a></span>
     </footer>
     <div class="colophon">wordmark set in Horizon — body Modern DOS &amp; readouts European Teletext, Jayvee Enaguas, CC0 1.0</div>
   </div>
@@ -538,6 +548,58 @@
   document.addEventListener('visibilitychange', ()=>{
     if(!document.hidden && !reduced) requestAnimationFrame(frame);
   });
+})();
+</script>
+
+<script>
+/* The wordmark, live: the AKOL Mirror piece (artifact, 2026-08-17) where the
+ * static mark used to sit. The mark is drawn into a coarse transparent buffer
+ * and blitted three times across the band: straight into the centre third,
+ * flopped into the two flanks — the reflections are of the ANIMATED draw,
+ * recomputed every frame. It breathes on its own: one slow sine coarsens the
+ * pixels, another shifts the box. Deliberately not pointer-reactive — the
+ * phase figure behind it keeps that job. Difference blending is inherited
+ * from the mark it replaces. */
+(function(){
+  const c=document.getElementById('mirror-c'); if(!c||!c.getContext) return;
+  const g=c.getContext('2d');
+  const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const mark=new Image(); mark.src='/assets/img/akol-wordmark.png';
+  const ob=document.createElement('canvas'), og=ob.getContext('2d');
+
+  let W=0,H=0;
+  function resize(){ const r=c.getBoundingClientRect(); W=r.width; H=r.height; }
+  addEventListener('resize',resize); resize();
+
+  let t=0;
+  function frame(){
+    t+=0.016;
+    const px=0.35+0.25*(0.5+0.5*Math.sin(t*0.3));   // slow breath: coarseness
+    const py=0.5+0.12*Math.sin(t*0.5);              // slow breath: box position
+
+    // pixel cell breathes. box buffer is a third of the band wide -> pixelation.
+    const cell=3+Math.round(px*22);
+    const bw=Math.max(2,Math.round(W/3/cell)), bh=Math.max(2,Math.round(H/cell));
+    ob.width=bw; ob.height=bh; og.imageSmoothingEnabled=false;
+
+    // draw AKOL into the low-res box buffer, transparent ground, alive
+    const sway=(py-0.5)*bh*0.6;
+    const drift=Math.sin(t*0.7)*bw*0.02;
+    const ar=mark.naturalWidth/mark.naturalHeight||5;
+    const dw=bw*0.86, dh=dw/ar;
+    og.drawImage(mark,(bw-dw)/2+drift,(bh-dh)/2+sway,dw,dh);
+
+    // composite at buffer scale; the CSS stretch keeps it pixelated
+    c.width=bw*3; c.height=bh;
+    g.drawImage(ob,bw,0);                              // the box
+    g.save(); g.translate(bw,0); g.scale(-1,1);
+    g.drawImage(ob,0,0); g.restore();                  // left mirror
+    g.save(); g.translate(3*bw,0); g.scale(-1,1);
+    g.drawImage(ob,0,0); g.restore();                  // right mirror
+    if(!reduced) requestAnimationFrame(frame);
+  }
+  function start(){ if(reduced) frame(); else requestAnimationFrame(frame); }
+  if(mark.complete) start(); else mark.onload=start;
 })();
 </script>
 
