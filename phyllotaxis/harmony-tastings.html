@@ -237,6 +237,13 @@ ol.log .del:hover, ol.seqs .del:hover { color: var(--straw); }
   <button class="clear" id="clear">Clear</button>
 </div>
 
+<div class="verdicts" id="namebar" hidden>
+  <span class="hint">name this traversal:</span>
+  <input id="seqname" autocomplete="off" style="width:26ch">
+  <button class="keep" id="confirmsave">Store</button>
+  <button id="cancelsave">Cancel</button>
+</div>
+
 <script type="application/json" id="seed">{"bakedAt": 1787272910050, "keys": [65, 66, 70, 51, 63, 58], "log": [{"v": "keep", "when": "2026-08-21 00:00", "name": "Dm6/9", "notes": "D3 F3 A3 B3 E4"}, {"v": "keep", "when": "2026-08-21 00:00", "name": "Dmadd9", "notes": "D3 A3 E4 F4"}, {"v": "keep", "when": "2026-08-21 00:00", "name": "Cmaj7(no5)/E", "notes": "E3 C4 B4"}, {"v": "keep", "when": "2026-08-21 00:00", "name": "C♯maj7(no5)/C", "notes": "C4 C♯4 F4", "word": "I LOVE THIS"}, {"v": "keep", "when": "2026-08-21 00:00", "name": "Csus4/G", "notes": "G3 C4 F4"}, {"v": "keep", "when": "2026-08-21 00:00", "name": "Fm/G♯", "notes": "G♯3 C4 F4"}, {"v": "keep", "when": "2026-08-21 00:00", "name": "Esus7", "notes": "E3 B3 D4 B4", "word": "I'd make up a term for this like suspended 7th referring E-D"}, {"v": "keep", "when": "2026-08-21 00:00", "name": "D♯augMaj7", "notes": "D♯3 G3 D4 B4"}, {"v": "keep", "when": "2026-08-21 00:00", "name": "Gmaj9(no5)/F♯", "notes": "F♯4 G4 A4 B4", "word": "penguin stack :P"}, {"v": "keep", "when": "2026-08-21 00:00", "name": "F♯maj7(no5)/F", "notes": "F3 A♯3 F4 F♯4 A♯4"}, {"v": "keep", "when": "2026-08-21 00:00", "name": "F♯maj7/F", "notes": "F3 A♯3 C♯4 F4 F♯4 A♯4"}, {"v": "keep", "when": "2026-08-21 00:00", "name": "F♯maj7♯11(no5)/F", "notes": "F3 A♯3 C4 F4 F♯4 A♯4"}, {"v": "keep", "when": "2026-08-21 00:00", "name": "F♯maj7♯9(no5)/F", "notes": "F3 A3 A♯3 F4 F♯4 A♯4"}, {"v": "keep", "when": "2026-08-21 00:00", "name": "D♯madd9", "notes": "D♯3 A♯3 F4 F♯4 A♯4"}, {"v": "keep", "when": "2026-08-21 00:00", "name": "D♯7sus2", "notes": "D♯3 A♯3 C♯4 F4 A♯4"}, {"v": "keep", "when": "2026-08-21 00:00", "name": "D♯9♯11sus7", "notes": "D♯3 A♯3 C♯4 F4 A4"}, {"v": "keep", "when": "2026-08-21 00:36", "name": "F♯maj7(no5)/F", "notes": "F4 F♯4 A♯4", "word": "Basis"}, {"v": "keep", "when": "2026-08-21 00:37", "name": "D♯madd9", "notes": "D♯4 F4 F♯4 A♯4", "word": "Extension"}, {"v": "keep", "when": "2026-08-21 00:37", "name": "F♯maj7(no5)/A♯", "notes": "A♯3 F4 F♯4 A♯4", "word": "I'd take the A# down an octave aswell stacked"}, {"v": "keep", "when": "2026-08-21 00:37", "name": "D♯madd9", "notes": "D♯3 A♯3 F4 F♯4 A♯4", "word": "That's home"}, {"v": "keep", "when": "2026-08-21 00:38", "name": "5-note cluster", "notes": "D♯3 G3 A♯3 F4 F♯4 A♯4", "word": "Confusing but leggible"}, {"v": "keep", "when": "2026-08-21 00:39", "name": "4-note cluster", "notes": "G3 A♯3 F4 F♯4 A♯4", "word": "Ocatve flipping in my head"}, {"v": "keep", "when": "2026-08-21 00:39", "name": "F♯maj9/C♯", "notes": "C♯3 G♯3 A♯3 F4 F♯4 A♯4", "word": "The question"}, {"v": "keep", "when": "2026-08-21 00:40", "name": "6-note cluster", "notes": "D3 G3 A3 F4 F♯4 A♯4", "word": "Delayed response"}, {"v": "keep", "when": "2026-08-21 00:40", "name": "D♯m9", "notes": "D♯3 A♯3 C♯4 D♯4 F4 F♯4 A♯4", "word": "Answer"}, {"v": "keep", "when": "2026-08-21 00:41", "name": "D♯madd9", "notes": "D♯3 A♯3 D♯4 F4 F♯4 A♯4", "word": "Closed"}], "seqs": []}</script>
 
 <h2>The log</h2>
@@ -521,11 +528,18 @@ function renderSeqs() {
     head.append(nm, meta);
     const del = document.createElement("button");
     del.className = "del"; del.textContent = "✕"; del.title = "Remove this traversal";
+    // window.confirm is blocked in the sandboxed frame: arm on the first
+    // click, delete on the second, disarm after a moment.
     del.addEventListener("click", () => {
-      if (!window.confirm('Remove the traversal "' + s.name + '"? SAVE afterwards makes it permanent.')) return;
-      state.seqs = state.seqs.filter((x) => x !== s);
-      persistLocal(); renderSeqs();
-      setStatus("unsaved changes");
+      if (del.dataset.armed) {
+        state.seqs = state.seqs.filter((x) => x !== s);
+        persistLocal(); renderSeqs();
+        setStatus("unsaved changes");
+        return;
+      }
+      del.dataset.armed = "1";
+      del.textContent = "sure?";
+      setTimeout(() => { del.dataset.armed = ""; del.textContent = "✕"; }, 2500);
     });
     head.append(del);
     const chain = document.createElement("div");
@@ -586,24 +600,48 @@ $("clear").addEventListener("click", () => {
 
 /* ── save: name the traversal, bake everything into the page ──── */
 
-$("save").addEventListener("click", async () => {
-  // Bundle the working log as a named traversal. With an empty log, SAVE
-  // just persists edits (deleted entries or traversals).
-  let toSave = { seqs: state.seqs, log: [] };
-  if (state.log.length) {
-    const first = state.log[0].name, last = state.log[state.log.length - 1].name;
-    const suggestion = first === last ? first : first + " → " + last;
-    const name = window.prompt("Name this traversal:", suggestion);
-    if (name === null) { setStatus("save cancelled"); return; }
-    toSave = {
-      seqs: state.seqs.concat([{
-        name: name.trim() || suggestion,
-        when: new Date().toISOString().slice(0, 16).replace("T", " "),
-        entries: state.log.slice(),
-      }]),
-      log: [],
-    };
+/* window.prompt is blocked in the sandboxed frame (it returns null, which
+   read as "cancelled") — the name is asked for inline instead. */
+
+function suggestion() {
+  const first = state.log[0].name, last = state.log[state.log.length - 1].name;
+  return first === last ? first : first + " → " + last;
+}
+
+$("save").addEventListener("click", () => {
+  if (!state.log.length) {
+    // Nothing to bundle: SAVE just persists edits (deletions).
+    doSave({ seqs: state.seqs, log: [] });
+    return;
   }
+  $("namebar").hidden = false;
+  $("seqname").value = suggestion();
+  $("seqname").focus();
+  $("seqname").select();
+  setStatus("");
+});
+
+$("cancelsave").addEventListener("click", () => {
+  $("namebar").hidden = true;
+});
+
+function confirmSave() {
+  const name = $("seqname").value.trim() || suggestion();
+  $("namebar").hidden = true;
+  doSave({
+    seqs: state.seqs.concat([{
+      name,
+      when: new Date().toISOString().slice(0, 16).replace("T", " "),
+      entries: state.log.slice(),
+    }]),
+    log: [],
+  });
+}
+
+$("confirmsave").addEventListener("click", confirmSave);
+$("seqname").addEventListener("keydown", (e) => { if (e.key === "Enter") confirmSave(); });
+
+async function doSave(toSave) {
   setStatus("saving…");
   try {
     const artifact = window.claude && (await window.claude.use("artifact"));
@@ -634,7 +672,7 @@ $("save").addEventListener("click", async () => {
       ? "read-only here — kept in this browser only"
       : "couldn't save to the page — kept in this browser");
   }
-});
+}
 
 /* ── boot ─────────────────────────────────────────────────────── */
 
