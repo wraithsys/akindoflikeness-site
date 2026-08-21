@@ -630,7 +630,13 @@
     {name:'NO PULSE',     motes:3000,drift:0.12, wobble:0.12, curve:1.0,  period:10,  warp:0.0,  lens:0.835,lensMax:1.5, edge:0.0,  duty:0.51,floor:1.0, gain:1.0,  subj:0.24, ring:false,seed:790n},
     {name:'PUMP',         motes:770, drift:0.106,wobble:0.12, curve:1.2,  period:147, warp:0.0,  lens:0.08, lensMax:0.28,edge:0.45, duty:0.62,floor:0.71,gain:0.405,subj:0.48, ring:false,seed:710n},
     {name:'SUPERMASSIVE', motes:2420,drift:0.057,wobble:0.0,  curve:1.2,  period:233, warp:0.028,lens:0.38, lensMax:0.93,edge:0.675,duty:1.0, floor:0.7, gain:0.665,subj:0.24, ring:false,seed:790n},
-    {name:'DOME', dome:true},
+    {name:'DOME',         dome:0},
+    {name:'DOME LEMON',   dome:1},
+    {name:'DOME IMPLIED', dome:2},
+    {name:'DOME MESH-ON', dome:3},
+    {name:'DOME SLOW',    dome:4},
+    {name:'DOME SPARSE',  dome:5},
+    {name:'DOME WELL',    dome:6},
     {name:'NONE'},
   ];
   // Per-mote hashes, computed once per template on first use (BigInt at
@@ -693,21 +699,69 @@
     }
   }
 
-  /* ---- THE DOME (the-dome @ a6ed79c, src/dome.rs, default params) ----
+  /* ---- THE DOME (the-dome @ a6ed79c, src/dome.rs + presets/) ----
    * You stand at the centre of a giant sphere: concentric lat/long lattices
    * tumble slowly, structure read off motion and depth falloff. Same tech as
    * the starfield where it counts — the well is starfield lensing (∝ 1/d,
    * capped) plus Funnel's concave pinch, a swallowed horizon (the hole is
    * inferred, never outlined) and tangential frame-drag; lines skimming the
-   * horizon cast a 180° photon-belt ghost. Numbers are the last saved state
-   * of the dome before it was dropped (the-dome f4aa007). Sparks, grain and
-   * flare sit at their shipped zeros; the cobalt tint stays home — greys
-   * come through this site's ink ladder. Segments are batched into paths by
-   * quantised brightness and width so ~27k of them a frame stay cheap. */
-  const DOME={meridians:64,parallels:48,shells:5,shellGap:0.25,focal:0.8,camZ:0.1,
-    yawRps:0.017,pitchRps:0.018,rollRps:0.011,drift:0.17,floor:0.12,gain:0.05,
-    stroke:1.25,lens:0.3,lensMax:0.1,well:0.308,horizon:0.79,
-    pinch:0.45,drag:0.43,mirror:1.0};
+   * horizon cast a 180° photon-belt ghost. The roster is the code's Default
+   * (the last tuned state before f4aa007 dropped the dome) plus the six
+   * saved presets, params verbatim — their audio/mesh/seq sides ignored.
+   * The dome's own `implied` predates the well (tip 0, and the bench drops
+   * to 48 segments). Grain, flare and sparks are ported in monochrome —
+   * cobalt, magenta and amber stay home; greys come through this site's
+   * ink ladder. Grain is seed-static, so it renders once per preset and is
+   * blitted. Segments batch into paths by quantised brightness and width. */
+  const DOMES=[
+    {name:'DOME',    mer:64,par:48,shells:5,gap:0.25,     focal:0.8,      camZ:0.1,       yaw:0.017,     pitch:0.018,roll:0.011,     drift:0.17,      floor:0.12,gain:0.05,      stroke:1.25,      sparks:0,   grain:0,          flare:0,        seed:890n,tip:1,lens:0.3,      lensMax:0.1,      well:0.308,     horizon:0.79,      pinch:0.45,      drag:0.43,mirror:1},
+    {name:'LEMON',   mer:64,par:48,shells:5,gap:0.2163086,focal:0.6,      camZ:0,         yaw:0.02387028,pitch:0.042,roll:0.08752806,drift:0.38,      floor:0,   gain:0.34729478,stroke:2.7238655, sparks:0,   grain:0,          flare:0,        seed:422n,tip:1,lens:2.0,      lensMax:0.8,      well:0.15846397,horizon:0.654043,  pinch:0.86932385,drag:0,   mirror:1},
+    {name:'IMPLIED', mer:24,par:12,shells:3,gap:0.08,     focal:1.35,     camZ:0.18,      yaw:0.012,     pitch:0.007,roll:0.004,     drift:0.22,      floor:0.12,gain:0.78,      stroke:1.15,      sparks:0.55,grain:0.08,       flare:0.35,     seed:13n, tip:0,lens:0,        lensMax:0,        well:0,         horizon:0,         pinch:0,         drag:0,   mirror:0},
+    {name:'MESH-ON', mer:17,par:2, shells:5,gap:0.25,     focal:1.3133897,camZ:0.08009711,yaw:0.04535113,pitch:0.12, roll:0.03150862,drift:0.43042073,floor:0,   gain:0.42378926,stroke:0.78551555,sparks:0,   grain:0.031086205,flare:0,        seed:428n,tip:1,lens:1.9519475,lensMax:1.1186663,well:0.2693426, horizon:0.57352066,pinch:0.8948926, drag:0,   mirror:1},
+    {name:'SLOW',    mer:4, par:48,shells:5,gap:0.2163086,focal:0.6,      camZ:0,         yaw:0.02387028,pitch:0.042,roll:0.08752806,drift:0.38,      floor:0,   gain:0.34729478,stroke:1.4042861, sparks:0,   grain:0.093436375,flare:0.0804623,seed:288n,tip:1,lens:2.0,      lensMax:0.8,      well:0.3110748, horizon:0.654043,  pinch:0.86932385,drag:0,   mirror:1},
+    {name:'SPARSE',  mer:4, par:48,shells:5,gap:0.2163086,focal:0.6,      camZ:0,         yaw:0.02387028,pitch:0.042,roll:0.08752806,drift:0.38,      floor:0,   gain:0.34729478,stroke:1.4042861, sparks:0,   grain:0.09202354, flare:0,        seed:288n,tip:1,lens:2.0,      lensMax:0.8,      well:0.15846397,horizon:0.654043,  pinch:0.86932385,drag:0,   mirror:1},
+    {name:'WELL',    mer:13,par:48,shells:5,gap:0.145,    focal:0.6,      camZ:0,         yaw:0.054,     pitch:0.042,roll:0.045,     drift:0.38,      floor:0.01,gain:0.39,      stroke:0.71,      sparks:0,   grain:0.062,      flare:0,        seed:175n,tip:1,lens:2.0,      lensMax:0.8,      well:0.23,      horizon:0.34,      pinch:0.81,      drag:0.43,mirror:1},
+  ];
+  const DBAYER=[[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]];
+  // Void grain (house.rs): seed-static, no time term — render once, blit.
+  let grainKey='', grainC=null;
+  function grainLayer(p,invert){
+    if(p.grain<=0) return;
+    const key=p.seed+'|'+p.grain+'|'+Math.round(W)+'|'+Math.round(H)+'|'+invert;
+    if(key!==grainKey){
+      grainKey=key;
+      grainC=document.createElement('canvas');
+      grainC.width=Math.max(1,Math.ceil(W)); grainC.height=Math.max(1,Math.ceil(H));
+      const cg=grainC.getContext('2d');
+      const cols=Math.ceil(W/2), rows=Math.ceil(H/2);
+      for(let iy=0;iy<rows;iy++)for(let ix=0;ix<cols;ix++){
+        const n=hash01(p.seed,BigInt(iy*65536+ix));
+        if(p.grain*(0.55+0.45*n)>DBAYER[iy&3][ix&3]/16){
+          cg.fillStyle=invert?inkInv(0.35+0.25*n):ink(0.35+0.25*n);
+          cg.fillRect(ix*2,iy*2,1,1);
+        }
+      }
+    }
+    g.drawImage(grainC,0,0);
+  }
+  // house.rs glow, monochrome: three soft rings and a core.
+  function glowDot(x,y,r,strength,invert){
+    g.fillStyle=invert?'#000':'#fff';
+    for(const ks of [[0.08,4.2],[0.16,2.6],[0.35,1.55]]){
+      g.globalAlpha=Math.min(1,ks[0]*strength);
+      g.beginPath(); g.arc(x,y,r*ks[1],0,TAU); g.fill();
+    }
+    g.globalAlpha=Math.max(0.3,Math.min(1,strength));
+    g.beginPath(); g.arc(x,y,r,0,TAU); g.fill();
+    g.globalAlpha=1;
+  }
+  function sparksFor(p){
+    if(p.sp) return p.sp;
+    const n=Math.floor(18*p.sparks), a=p.sp=[];
+    for(let i=0;i<n;i++)
+      a.push([hash01(p.seed,BigInt(i+77)),hash01(p.seed,BigInt(i+991)),hash01(p.seed,BigInt(i+1301))]);
+    return a;
+  }
   let domeYaw=NaN,domePitch=0,domeRoll=0,domeLast=NaN;
   function rot3(yaw,pitch,roll){
     const sy=Math.sin(yaw),cy=Math.cos(yaw),sp=Math.sin(pitch),cp=Math.cos(pitch),
@@ -718,24 +772,35 @@
       [-sp, cp*sr, cp*cr]
     ];
   }
-  function domeDraw(t,invert){
+  function domeDraw(t,p,invert){
     g.fillStyle=invert?'#fff':'#000'; g.fillRect(0,0,W,H);
-    const p=DOME;
     // integrated orientation with slow drift — alive at rest
     const dt=isNaN(domeLast)?0:Math.min(Math.max(t-domeLast,0),0.1);
     const dy=Math.sin(t*0.07)*p.drift*0.015;
     const dp=Math.cos(t*0.053+1.7)*p.drift*0.011;
     const dr=Math.sin(t*0.031+0.4)*p.drift*0.008;
     if(isNaN(domeYaw)){
-      domeYaw=t*p.yawRps*TAU; domePitch=t*p.pitchRps*TAU; domeRoll=t*p.rollRps*TAU;
+      domeYaw=t*p.yaw*TAU; domePitch=t*p.pitch*TAU; domeRoll=t*p.roll*TAU;
     }else{
-      domeYaw+=TAU*(p.yawRps+dy)*dt;
-      domePitch+=TAU*(p.pitchRps+dp)*dt;
-      domeRoll+=TAU*(p.rollRps+dr)*dt;
+      domeYaw+=TAU*(p.yaw+dy)*dt;
+      domePitch+=TAU*(p.pitch+dp)*dt;
+      domeRoll+=TAU*(p.roll+dr)*dt;
     }
     domeLast=t;
-    const cx=W*0.5, cyy=H*0.5, scale=Math.min(W,H)*0.48, wellR=H*p.well;
-    const segs=80, buckets=new Map();
+    const cx=W*0.5, cyy=H*0.5, scale=Math.min(W,H)*0.48;
+    const wellR=Math.max(H*p.well,0.05*H);
+    const mix=Math.max(0,Math.min(1,p.tip));
+    const segs=p.tip>0.01?80:48, buckets=new Map();
+    grainLayer(p,invert);
+    if(p.flare>0.01){
+      // the screencast's soft cross, implied not outlined — in grey here
+      const hx=W*0.42*p.flare, hy=H*0.018*p.flare;
+      g.fillStyle=invert?'#000':'#fff';
+      g.globalAlpha=28/255; g.fillRect(cx-hx,cyy-hy/2,hx*2,hy);
+      g.globalAlpha=18/255; g.fillRect(cx-hy*0.6,cyy-hx*1.15/2,hy*1.2,hx*1.15);
+      g.globalAlpha=1;
+      glowDot(cx,cyy,3+6*p.flare,0.35*p.flare,invert);
+    }
     function seg(ax,ay,bx,by,depth,dim,major,inkMul){
       if(inkMul<0.02) return;
       let bright=(p.floor+p.gain*depth)*dim*inkMul;
@@ -754,30 +819,43 @@
       const depth=Math.max(0,Math.min(1,(z-0.08)/(1+p.camZ)));
       return [cx+vx*inv*scale, cyy-vy*inv*scale, depth];
     }
-    // starfield lens + Funnel pinch + swallowed horizon + frame-drag;
-    // null means the point fell in the well and the stroke breaks.
+    // starfield lens + Funnel pinch + swallowed horizon + frame-drag, all
+    // scaled by the tip mix; null means the point fell in the well and the
+    // stroke breaks.
     function wellWarp(x,y){
+      if(mix<0.001) return [x,y];
       const ox0=x-cx, oy0=y-cyy, d0=Math.hypot(ox0,oy0);
-      if(d0<0.5) return null;
+      if(d0<0.5) return p.horizon*mix>0.001?null:[x,y];
       const r=Math.max(wellR,1);
       let dirx=ox0/d0, diry=oy0/d0;
-      const u=d0/r, f=Math.max(1-p.pinch*(u*u)/(1+u*u),0.05);
-      let px=cx+dirx*d0*f, py=cyy+diry*d0*f;
+      const pinch=p.pinch*mix;
+      let px=x, py=y;
+      if(pinch>0.001){
+        const u=d0/r, f=Math.max(1-pinch*(u*u)/(1+u*u),0.05);
+        px=cx+dirx*d0*f; py=cyy+diry*d0*f;
+      }
       const ox=px-cx, oy=py-cyy, d=Math.max(Math.hypot(ox,oy),0.5);
       dirx=ox/d; diry=oy/d;
-      if(d<r*p.horizon) return null;               // swallow — inferred, never drawn
-      const push=Math.min(p.lens*r*r/d,p.lensMax*r);
-      px+=dirx*push; py+=diry*push;
-      const fall=Math.min(r/d,1);
-      px+=-diry*p.drag*r*fall*fall; py+=dirx*p.drag*r*fall*fall;
+      if(p.horizon*mix>0.001 && d<r*p.horizon*mix) return null; // swallow
+      const lens=p.lens*mix;
+      if(lens>0.001){
+        const push=Math.min(lens*r*r/d,p.lensMax*r);
+        px+=dirx*push; py+=diry*push;
+      }
+      const drag=p.drag*mix;
+      if(drag>0.001){
+        const fall=Math.min(r/d,1);
+        px+=-diry*drag*r*fall*fall; py+=dirx*drag*r*fall*fall;
+      }
       return [px,py];
     }
     function belt(x,y){
+      if(p.mirror*mix<0.01) return false;
       const d=Math.hypot(x-cx,y-cyy);
-      return d>wellR*Math.max(p.horizon,0.15) && d<wellR*1.7;
+      return d>wellR*Math.max(p.horizon*mix,0.15) && d<wellR*1.7;
     }
     for(let shell=0;shell<p.shells;shell++){
-      const radius=1-shell*p.shellGap;
+      const radius=1-shell*p.gap;
       if(radius<0.35) continue;
       // outer shells lead the tumble slightly — entity, not rigid body
       const lead=shell*0.07;
@@ -792,8 +870,8 @@
         const w=wellWarp(pr[0],pr[1]);
         return w?[w[0],w[1],pr[2]]:null;
       };
-      for(let mi=0;mi<p.meridians;mi++){          // meridians
-        const lon=TAU*mi/p.meridians, co=Math.cos(lon), so=Math.sin(lon);
+      for(let mi=0;mi<p.mer;mi++){                // meridians
+        const lon=TAU*mi/p.mer, co=Math.cos(lon), so=Math.sin(lon);
         let prev=null;
         for(let i=0;i<=segs;i++){
           const lat=-Math.PI/2+Math.PI*i/segs, cl=Math.cos(lat), sl=Math.sin(lat);
@@ -802,14 +880,14 @@
             if(prev){
               seg(prev[0],prev[1],s[0],s[1],s[2],dim,false,1);
               if(belt(s[0],s[1])||belt(prev[0],prev[1]))
-                seg(2*cx-prev[0],2*cyy-prev[1],2*cx-s[0],2*cyy-s[1],s[2],dim,false,0.45*p.mirror);
+                seg(2*cx-prev[0],2*cyy-prev[1],2*cx-s[0],2*cyy-s[1],s[2],dim,false,0.45*p.mirror*mix);
             }
             prev=s;
           } else prev=null;
         }
       }
-      for(let par=1;par<p.parallels;par++){       // parallels
-        const lat=-Math.PI/2+Math.PI*par/p.parallels, cl=Math.cos(lat), sl=Math.sin(lat);
+      for(let par=1;par<p.par;par++){             // parallels
+        const lat=-Math.PI/2+Math.PI*par/p.par, cl=Math.cos(lat), sl=Math.sin(lat);
         const major=par%3===0||shell===0;
         let prev=null;
         for(let i=0;i<=segs;i++){
@@ -819,7 +897,7 @@
             if(prev){
               seg(prev[0],prev[1],s[0],s[1],s[2],dim,major,1);
               if(belt(s[0],s[1])||belt(prev[0],prev[1]))
-                seg(2*cx-prev[0],2*cyy-prev[1],2*cx-s[0],2*cyy-s[1],s[2],dim,major,0.45*p.mirror);
+                seg(2*cx-prev[0],2*cyy-prev[1],2*cx-s[0],2*cyy-s[1],s[2],dim,major,0.45*p.mirror*mix);
             }
             prev=s;
           } else prev=null;
@@ -831,6 +909,26 @@
       g.lineWidth=b.w;
       g.stroke(b.path);
     }
+    // magenta/amber sparks in the Rust; lights are white in this house
+    if(p.sparks>0.01){
+      const m=rot3(domeYaw,domePitch,domeRoll), sp=sparksFor(p);
+      for(let i=0;i<sp.length;i++){
+        const lon=sp[i][0]*TAU, lat=(sp[i][1]-0.5)*Math.PI*0.85;
+        const cl=Math.cos(lat), sl=Math.sin(lat), co=Math.cos(lon), so=Math.sin(lon);
+        const vx=cl*co, vy=sl, vz=cl*so;
+        const rx=m[0][0]*vx+m[0][1]*vy+m[0][2]*vz;
+        const ry=m[1][0]*vx+m[1][1]*vy+m[1][2]*vz;
+        const rz=m[2][0]*vx+m[2][1]*vy+m[2][2]*vz;
+        const pr=project(rx,ry,rz);
+        if(!pr) continue;
+        const w2=wellWarp(pr[0],pr[1]);
+        if(!w2) continue;
+        // pulse slowly — alive at rest
+        const pulse=0.5+0.5*Math.sin(t*(0.4+sp[i][2])+i);
+        if(pulse*pr[2]<0.35) continue;
+        glowDot(w2[0],w2[1],1.1+1.8*pr[2]*p.sparks,0.25+0.55*pulse*pr[2]*p.sparks,invert);
+      }
+    }
   }
 
   /* ---------------- the switches ---------------- */
@@ -839,7 +937,8 @@
   const invBtn=document.getElementById('ground-inv');
   function frame(){
     t+=0.016;
-    if(TPL[ti].dome) domeDraw(t,inv); else starDraw(t,TPL[ti],inv);
+    const p=TPL[ti];
+    if(p.dome!=null) domeDraw(t,DOMES[p.dome],inv); else starDraw(t,p,inv);
     if(!reduced) requestAnimationFrame(frame);
   }
   if(tplBtn) tplBtn.addEventListener('click',()=>{
