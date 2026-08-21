@@ -672,10 +672,25 @@
   // ink ceiling but brightens where the sun passes, which is what finally
   // makes every dome preset read. Per-particle jitter is hashed once at init
   // (BigInt per frame is a tax), like the motes and sparks.
+  // Rebuilt 2026-08-21 (Billy: "plainly just 6 orbs in greyscale gradient
+  // with a decaying opacity ... plenty of room for a bit of detail, grainy
+  // little solar flares"): the disc now goes through the house Bayer —
+  // dither_circle's sibling, density not alpha — solid core, grained limb,
+  // speckled corona, slow granulation mottling the surface, prominences
+  // arcing off the limb. And the stream gained a cross-section: each
+  // particle keeps a hashed lane, wide where it tears off the star,
+  // pinched at the horizon — the trail funnels.
   const SUNP=[];
   { const ss=0xCA11AB1En;
-    for(let i=0;i<110;i++) SUNP.push([hash01(ss,BigInt(i*8)),hash01(ss,BigInt(i*8+1)),
-                                      hash01(ss,BigInt(i*8+2)),hash01(ss,BigInt(i*8+3))]); }
+    for(let i=0;i<170;i++) SUNP.push([hash01(ss,BigInt(i*8)),hash01(ss,BigInt(i*8+1)),
+                                      hash01(ss,BigInt(i*8+2)),hash01(ss,BigInt(i*8+3)),
+                                      hash01(ss,BigInt(i*8+4)),hash01(ss,BigInt(i*8+5))]); }
+  // Prominence seeds: foot angle, leap, span, phase, period — hashed once.
+  const FLARES=[];
+  { const fs=0x50DA1An;
+    for(let i=0;i<7;i++) FLARES.push([hash01(fs,BigInt(i*8)),hash01(fs,BigInt(i*8+1)),
+                                      hash01(fs,BigInt(i*8+2)),hash01(fs,BigInt(i*8+3)),
+                                      hash01(fs,BigInt(i*8+4))]); }
   // Void grain (house.rs): seed-static, no time term — render once, blit.
   let grainKey='', grainC=null;
   function grainLayer(p,invert){
@@ -899,23 +914,73 @@
     // the star and its stream, drawn over the lattice they light. Particles
     // flow star -> horizon; the s^1.35 radius mapping means constant flow in
     // s reads as infall accelerating toward the hole. Hotter as they fall
-    // (brighter near the horizon), swallowed just short of it.
+    // (brighter near the horizon), swallowed just short of it. Each particle
+    // rides a hashed lane across the stream — the spread matches the star's
+    // radius where it tears off and pinches toward the horizon, so the
+    // trail funnels: torn away wide, wound in tight.
+    const sunVisR=Math.max(3,wellR*0.10);
     g.fillStyle=invert?'#000':'#fff';
     for(let i=0;i<SUNP.length;i++){
       const q=SUNP[i];
       const s=(q[0]+t*(0.055+0.03*q[1]))%1;
-      const pos=streamP(Math.min(1,s+(q[2]-0.5)*0.06));
+      const ss=Math.min(1,s+(q[2]-0.5)*0.06);
+      const pos=streamP(ss);
       if(pos[2]<rHor*1.02) continue;                       // swallowed
+      const ahead=streamP(Math.min(1,ss+0.03));
+      let nx=ahead[1]-pos[1], ny=pos[0]-ahead[0];          // normal to the flow
+      const nl=Math.hypot(nx,ny)||1; nx/=nl; ny/=nl;
+      const lane=(q[4]-0.5)*2+Math.sin(t*(0.4+0.6*q[5])+q[3]*TAU)*0.25;
+      const spread=sunVisR*(0.85*Math.pow(1-ss,1.5)+0.05);
       const flick=0.7+0.3*Math.sin(t*(1.5+2.5*q[1])+q[3]*TAU);
       g.globalAlpha=Math.min(1,(0.38+0.62*s)*flick);
-      g.fillRect(Math.round(pos[0]),Math.round(pos[1]),s>0.8?2:1,s>0.8?2:1);
+      g.fillRect(Math.round(pos[0]+nx*lane*spread),
+                 Math.round(pos[1]+ny*lane*spread),s>0.8?2:1,s>0.8?2:1);
     }
     g.globalAlpha=1;
-    // the star itself: a teardrop, three cores shrinking down its own stream —
-    // being stretched, not merely trailing
-    for(let k=0;k<4;k++){
-      const pos=streamP(k*0.075);
-      glowDot(pos[0],pos[1],Math.max(2.2,wellR*0.085)*(1-0.2*k),(1.15-0.24*k),invert);
+    // the star itself, in the 1-bit language now: a Bayer-dithered disc —
+    // solid core, grained limb, a speckled corona where the alpha rings
+    // were — tidally stretched along its own stream (being pulled, not
+    // merely round). Granulation mottles the surface on a slow churn; the
+    // per-pixel hash is the cheap float one, not hash01 — BigInt at this
+    // rate is a tax, and nothing here needs to match the Rust bit-exact.
+    const sc=streamP(0);
+    let ex=streamP(0.05)[0]-sc[0], ey=streamP(0.05)[1]-sc[1];
+    const el=Math.hypot(ex,ey)||1; ex/=el; ey/=el;
+    const scx=Math.round(sc[0]), scy=Math.round(sc[1]);
+    const srr=Math.ceil(sunVisR*1.6);
+    for(let iy=-srr;iy<=srr;iy++)for(let ix=-srr;ix<=srr;ix++){
+      const lx=ix*ex+iy*ey, ly=iy*ex-ix*ey;               // +lx is downstream
+      const d=Math.hypot(lx*(lx>0?0.62:1),ly)/sunVisR;    // the tidal snout
+      if(d>1.55) continue;
+      const hn=Math.sin(ix*12.9898+iy*78.233)*43758.5453, h=hn-Math.floor(hn);
+      let dens;
+      if(d<0.6) dens=1-((h>0.55&&d>0.22)?0.5*Math.max(0,Math.sin(t*0.6+h*TAU)):0);
+      else if(d<1.0) dens=0.1+0.9*(1.0-d)/0.4;
+      else dens=(1.55-d)/0.55*0.30*(0.6+0.4*Math.sin(t*0.9+h*TAU));
+      if(dens>DBAYER[iy&3][ix&3]/16) g.fillRect(scx+ix,scy+iy,1,1);
+    }
+    // grainy little solar flares: prominence loops off the limb, each a
+    // dithered run of pixels that grows, arcs over and sinks back on its
+    // own slow period — dropout keeps them filaments, never strokes.
+    for(let fi=0;fi<FLARES.length;fi++){
+      const F=FLARES[fi];
+      const rise=Math.max(0,Math.sin(t*(0.08+0.12*F[4])+F[3]*TAU));
+      if(rise<0.06) continue;
+      const a0=F[0]*TAU+t*0.02;                           // feet ride the surface
+      const arc=0.4+0.7*F[2];
+      const hMax=sunVisR*(0.25+0.55*F[1])*rise;
+      const STEPS=Math.max(7,Math.round((arc*sunVisR+hMax)*1.4));
+      for(let si=0;si<=STEPS;si++){
+        const f=si/STEPS;
+        const hn2=Math.sin(si*91.17+fi*57.31)*24634.6345, h2=hn2-Math.floor(hn2);
+        const hn3=Math.sin(si*37.73+fi*17.07)*11713.9127, h3=hn3-Math.floor(hn3);
+        if(h2>0.35+0.30*rise) continue;                   // grainy dropout
+        const aa=a0+(f-0.5)*arc;
+        // roughened: the arc wavers, so it stays a filament, never a ring
+        const rr2=sunVisR*0.98+Math.sin(f*Math.PI)*hMax+(h3-0.5)*hMax*0.5;
+        g.fillRect(scx+Math.round(Math.cos(aa)*rr2+(h2-0.5)*2),
+                   scy+Math.round(Math.sin(aa)*rr2*0.94+(h3-0.5)*2),1,1);
+      }
     }
     // magenta/amber sparks in the Rust; lights are white in this house
     if(p.sparks>0.01){
