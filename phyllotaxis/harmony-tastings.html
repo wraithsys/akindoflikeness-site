@@ -230,7 +230,7 @@ ol.log .del:hover { color: var(--straw); }
   <button class="clear" id="clear">Clear</button>
 </div>
 
-<script type="application/json" id="seed">{"bakedAt":0,"keys":[],"log":[]}</script>
+<script type="application/json" id="seed">{"bakedAt":1787271753118,"keys":[],"log":[{"v":"keep","when":"2026-08-21 00:00","name":"Dm6/9","notes":"D3 F3 A3 B3 E4"},{"v":"keep","when":"2026-08-21 00:00","name":"Dmadd9","notes":"D3 A3 E4 F4"},{"v":"keep","when":"2026-08-21 00:00","name":"Cmaj7(no5)/E","notes":"E3 C4 B4"},{"v":"keep","when":"2026-08-21 00:00","name":"C♯maj7(no5)/C","notes":"C4 C♯4 F4","word":"I LOVE THIS"},{"v":"keep","when":"2026-08-21 00:00","name":"Csus4/G","notes":"G3 C4 F4"},{"v":"keep","when":"2026-08-21 00:00","name":"Fm/G♯","notes":"G♯3 C4 F4"},{"v":"keep","when":"2026-08-21 00:00","name":"Esus7","notes":"E3 B3 D4 B4","word":"I'd make up a term for this like suspended 7th referring E-D"},{"v":"keep","when":"2026-08-21 00:00","name":"D♯augMaj7","notes":"D♯3 G3 D4 B4"},{"v":"keep","when":"2026-08-21 00:00","name":"Gmaj9(no5)/F♯","notes":"F♯4 G4 A4 B4","word":"penguin stack :P"},{"v":"keep","when":"2026-08-21 00:00","name":"F♯maj7(no5)/F","notes":"F3 A♯3 F4 F♯4 A♯4"},{"v":"keep","when":"2026-08-21 00:00","name":"F♯maj7/F","notes":"F3 A♯3 C♯4 F4 F♯4 A♯4"},{"v":"keep","when":"2026-08-21 00:00","name":"F♯maj7♯11(no5)/F","notes":"F3 A♯3 C4 F4 F♯4 A♯4"},{"v":"keep","when":"2026-08-21 00:00","name":"F♯maj7♯9(no5)/F","notes":"F3 A3 A♯3 F4 F♯4 A♯4"},{"v":"keep","when":"2026-08-21 00:00","name":"D♯madd9","notes":"D♯3 A♯3 F4 F♯4 A♯4"},{"v":"keep","when":"2026-08-21 00:00","name":"D♯7sus2","notes":"D♯3 A♯3 C♯4 F4 A♯4"},{"v":"keep","when":"2026-08-21 00:00","name":"D♯9♯11sus7","notes":"D♯3 A♯3 C♯4 F4 A4"}]}</script>
 
 <h2>The log</h2>
 <ol class="log" id="log"></ol>
@@ -264,6 +264,9 @@ function ivName(semis) {
 const CHORDS = [
   ["", [0,4,7]], ["m", [0,3,7]], ["dim", [0,3,6]], ["aug", [0,4,8]],
   ["sus2", [0,2,7]], ["sus4", [0,5,7]], ["5", [0,7]],
+  // "sus7": Billy's own term (2026-08-21) for root+5th+♭7 — "I'd make up a
+  // term for this like suspended 7th referring E-D". His vocabulary wins.
+  ["sus7", [0,7,10]],
   ["7", [0,4,7,10]], ["maj7", [0,4,7,11]], ["m7", [0,3,7,10]],
   ["mMaj7", [0,3,7,11]], ["m7♭5", [0,3,6,10]], ["dim7", [0,3,6,9]],
   ["6", [0,4,7,9]], ["m6", [0,3,7,9]],
@@ -271,12 +274,12 @@ const CHORDS = [
   ["add9", [0,2,4,7]], ["madd9", [0,2,3,7]], ["add11", [0,4,5,7]],
   ["sus2sus4", [0,2,5,7]],
   ["9", [0,2,4,7,10]], ["maj9", [0,2,4,7,11]], ["m9", [0,2,3,7,10]],
-  ["6/9", [0,2,4,7,9]],
+  ["6/9", [0,2,4,7,9]], ["m6/9", [0,2,3,7,9]],
   ["11", [0,2,4,5,7,10]], ["m11", [0,2,3,5,7,10]],
   ["13", [0,2,4,7,9,10]],
-  ["7♭9", [0,1,4,7,10]], ["7♯9", [0,3,4,7,10]],
+  ["7♭9", [0,1,4,7,10]], ["7♯9", [0,3,4,7,10]], ["maj7♯9", [0,3,4,7,11]],
   ["7♭5", [0,4,6,10]], ["aug7", [0,4,8,10]], ["augMaj7", [0,4,8,11]],
-  ["maj7♯11", [0,4,6,7,11]],
+  ["maj7♯11", [0,4,6,7,11]], ["9♯11sus7", [0,2,6,7,10]],
 ];
 
 function detect(midis) {
@@ -298,6 +301,20 @@ function detect(midis) {
       if (tpl.join(",") === key) {
         const slash = root === bassPc ? "" : "/" + NOTE[bassPc];
         return NOTE[root] + suffix + slash;
+      }
+    }
+  }
+  // Shells: the same chords with the fifth omitted, which is how Billy
+  // actually plays them (his first sixteen tastings taught this pass).
+  for (const root of roots) {
+    const rel = pcs.map((p) => (p - root + 12) % 12).sort((a, b) => a - b);
+    const key = rel.join(",");
+    for (const [suffix, tpl] of CHORDS) {
+      if (!tpl.includes(7) || tpl.length < 4) continue;
+      const tpl2 = tpl.filter((x) => x !== 7);
+      if (tpl2.join(",") === key) {
+        const slash = root === bassPc ? "" : "/" + NOTE[bassPc];
+        return NOTE[root] + suffix + "(no5)" + slash;
       }
     }
   }
