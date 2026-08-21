@@ -53,6 +53,7 @@
      that asks for it, so the browser never fetches it at all. -->
 <link rel="preload" href="/assets/fonts/modern-dos-8x16.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="/assets/fonts/european-teletext.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="preload" href="/assets/fonts/panoptic-monospace-bold.otf" as="font" type="font/otf" crossorigin>
 
 <!--
   Fonts, imagery and the wordmark are real files under /assets, not data URIs.
@@ -93,6 +94,13 @@
   @font-face {
     font-family: "European Teletext";
     src: url("/assets/fonts/european-teletext.ttf") format("truetype");
+    font-display: block;
+  }
+  @font-face {
+    /* The wordmark face: public domain (Josiah Bishop), so unlike Horizon it
+       is allowed to ship as a font file. See assets/fonts/NOTICE.md. */
+    font-family: "Panoptic Monospace";
+    src: url("/assets/fonts/panoptic-monospace-bold.otf") format("opentype");
     font-display: block;
   }
 
@@ -215,9 +223,8 @@
     mix-blend-mode: difference;
   }
   .hero .mirror {
-    /* The AKOL Mirror piece in the static mark's place: a transparent overlay
-       the full width of the band — box in the centre third, a mirror either
-       flank. Same difference trick as the mark it replaces; the canvas is
+    /* The wordmark layer: a transparent overlay the full width of the band.
+       Same difference trick as the static mark it replaced; the canvas is
        empty where the wordmark is not, and over the inverted field's white
        the mark flips to black. */
     mix-blend-mode: difference;
@@ -406,7 +413,7 @@
   <figure class="hero">
     <canvas id="ground-c" aria-hidden="true"></canvas>
     <h1>
-      <canvas class="mirror" id="mirror-c" role="img" aria-label="akindoflikeness — the wordmark drawn coarsely pixelated, drifting up and down on its own."></canvas>
+      <canvas class="mirror" id="mirror-c" role="img" aria-label="akindoflikeness — the wordmark drawn coarsely pixelated; the pointer sets how coarse."></canvas>
       <noscript><img class="wordmark" src="/assets/img/akol-wordmark.png" alt="AKOL" width="1185" height="236"></noscript>
     </h1>
     <div class="ground-row">
@@ -491,21 +498,22 @@
       <span>akindoflikeness.net</span>
       <span><a href="https://github.com/wraithsys" target="_blank" rel="noopener">github</a> · <a href="https://akindoflikeness.bandcamp.com" target="_blank" rel="noopener">bandcamp</a></span>
     </footer>
-    <div class="colophon">wordmark set in Horizon — body Modern DOS &amp; readouts European Teletext, Jayvee Enaguas, CC0 1.0</div>
+    <div class="colophon">wordmark set in Panoptic Monospace, Josiah Bishop, public domain — body Modern DOS &amp; readouts European Teletext, Jayvee Enaguas, CC0 1.0</div>
   </div>
 
 </div>
 
 <script>
-/* The wordmark, live — un-mirrored: one copy, going up and down.
- * "akindoflikeness" is set in Modern DOS (the site's own face; Horizon
- * exists here only as licensed artwork and cannot be rendered live),
- * rasterised once at 64px — four times the face's native 16 grid — then
- * drawn into a coarse transparent buffer each frame. One slow sine
- * breathes the pixel cell, another bobs the mark. The buffer is sized by
- * target column count rather than a fixed cell, so fifteen characters
- * stay chunky on a desktop and still legible on a phone. Deliberately
- * not pointer-reactive. */
+/* The wordmark, live: one copy, static, justified to the middle of the
+ * band. "akindoflikeness" is set in Panoptic Monospace (public domain —
+ * the first face allowed to be rendered live in the wordmark register;
+ * see assets/fonts/NOTICE.md), rasterised once at 64px, then drawn into
+ * a coarse transparent buffer each frame. The mouse-over control is
+ * back: pointer X sets the coarseness, eased, and its range runs past
+ * the idle breath at both ends; with no pointer the coarseness breathes
+ * on one slow sine. The buffer is sized by target column count rather
+ * than a fixed cell, so fifteen characters stay chunky on a desktop and
+ * still legible on a phone. */
 (function(){
   const c=document.getElementById('mirror-c'); if(!c||!c.getContext) return;
   const g=c.getContext('2d');
@@ -514,7 +522,7 @@
   const markC=document.createElement('canvas'), mg=markC.getContext('2d');
   let ar=7.5;
   function buildMark(){
-    const fs=64, font=fs+'px "Modern DOS",ui-monospace,monospace';
+    const fs=64, font=fs+'px "Panoptic Monospace",ui-monospace,monospace';
     mg.font=font;
     const w=Math.ceil(mg.measureText('akindoflikeness').width);
     markC.width=w+8; markC.height=Math.round(fs*1.1);
@@ -527,24 +535,36 @@
   function resize(){ const r=c.getBoundingClientRect(); W=r.width; H=r.height; }
   addEventListener('resize',resize); resize();
 
+  // pointer state, eased, like the retired phase figure had
+  let mx=0.45, tx=0.45, moving=0;
+  const hero=c.closest('.hero');
+  if(hero){
+    hero.addEventListener('pointermove',e=>{
+      const r=hero.getBoundingClientRect();
+      tx=(e.clientX-r.left)/r.width; moving=1;
+    });
+    hero.addEventListener('pointerleave',()=>moving=0);
+  }
+
   let t=0;
   function frame(){
     t+=0.016;
-    const px=0.35+0.25*(0.5+0.5*Math.sin(t*0.3));   // slow breath: coarseness
-    const py=0.5+0.25*Math.sin(t*0.5);              // the bob: up and down
+    if(!moving) tx=0.35+0.25*(0.5+0.5*Math.sin(t*0.3));   // idle breath
+    mx+=(tx-mx)*0.06;
 
-    const cell=Math.max(2,Math.round(W/(90+px*50)));
+    // pointer X coarsens: hover reaches past the idle range at both ends
+    const cell=Math.max(2,Math.round(W/(70+mx*90)));
     const bw=Math.max(2,Math.round(W/cell)), bh=Math.max(2,Math.round(H/cell));
     c.width=bw; c.height=bh;               // clears; the CSS stretch keeps pixels
     g.imageSmoothingEnabled=false;
 
     const dw=bw*0.82, dh=dw/ar;
-    g.drawImage(markC,(bw-dw)/2,(bh-dh)/2+(py-0.5)*bh,dw,dh);
+    g.drawImage(markC,(bw-dw)/2,(bh-dh)/2,dw,dh);   // static, middle
     if(!reduced) requestAnimationFrame(frame);
   }
   function start(){ if(reduced) frame(); else requestAnimationFrame(frame); }
   if(document.fonts&&document.fonts.load){
-    document.fonts.load('64px "Modern DOS"').catch(()=>0).then(()=>{buildMark();start();});
+    document.fonts.load('64px "Panoptic Monospace"').catch(()=>0).then(()=>{buildMark();start();});
   }else{ buildMark(); start(); }
 })();
 </script>
