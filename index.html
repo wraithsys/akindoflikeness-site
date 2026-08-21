@@ -630,6 +630,7 @@
     {name:'NO PULSE',     motes:3000,drift:0.12, wobble:0.12, curve:1.0,  period:10,  warp:0.0,  lens:0.835,lensMax:1.5, edge:0.0,  duty:0.51,floor:1.0, gain:1.0,  subj:0.24, ring:false,seed:790n},
     {name:'PUMP',         motes:770, drift:0.106,wobble:0.12, curve:1.2,  period:147, warp:0.0,  lens:0.08, lensMax:0.28,edge:0.45, duty:0.62,floor:0.71,gain:0.405,subj:0.48, ring:false,seed:710n},
     {name:'SUPERMASSIVE', motes:2420,drift:0.057,wobble:0.0,  curve:1.2,  period:233, warp:0.028,lens:0.38, lensMax:0.93,edge:0.675,duty:1.0, floor:0.7, gain:0.665,subj:0.24, ring:false,seed:790n},
+    {name:'DOME', dome:true},
     {name:'NONE'},
   ];
   // Per-mote hashes, computed once per template on first use (BigInt at
@@ -692,13 +693,153 @@
     }
   }
 
+  /* ---- THE DOME (the-dome @ a6ed79c, src/dome.rs, default params) ----
+   * You stand at the centre of a giant sphere: concentric lat/long lattices
+   * tumble slowly, structure read off motion and depth falloff. Same tech as
+   * the starfield where it counts — the well is starfield lensing (∝ 1/d,
+   * capped) plus Funnel's concave pinch, a swallowed horizon (the hole is
+   * inferred, never outlined) and tangential frame-drag; lines skimming the
+   * horizon cast a 180° photon-belt ghost. Numbers are the last saved state
+   * of the dome before it was dropped (the-dome f4aa007). Sparks, grain and
+   * flare sit at their shipped zeros; the cobalt tint stays home — greys
+   * come through this site's ink ladder. Segments are batched into paths by
+   * quantised brightness and width so ~27k of them a frame stay cheap. */
+  const DOME={meridians:64,parallels:48,shells:5,shellGap:0.25,focal:0.8,camZ:0.1,
+    yawRps:0.017,pitchRps:0.018,rollRps:0.011,drift:0.17,floor:0.12,gain:0.05,
+    stroke:1.25,lens:0.3,lensMax:0.1,well:0.308,horizon:0.79,
+    pinch:0.45,drag:0.43,mirror:1.0};
+  let domeYaw=NaN,domePitch=0,domeRoll=0,domeLast=NaN;
+  function rot3(yaw,pitch,roll){
+    const sy=Math.sin(yaw),cy=Math.cos(yaw),sp=Math.sin(pitch),cp=Math.cos(pitch),
+          sr=Math.sin(roll),cr=Math.cos(roll);
+    return [
+      [cy*cp, cy*sp*sr-sy*cr, cy*sp*cr+sy*sr],
+      [sy*cp, sy*sp*sr+cy*cr, sy*sp*cr-cy*sr],
+      [-sp, cp*sr, cp*cr]
+    ];
+  }
+  function domeDraw(t,invert){
+    g.fillStyle=invert?'#fff':'#000'; g.fillRect(0,0,W,H);
+    const p=DOME;
+    // integrated orientation with slow drift — alive at rest
+    const dt=isNaN(domeLast)?0:Math.min(Math.max(t-domeLast,0),0.1);
+    const dy=Math.sin(t*0.07)*p.drift*0.015;
+    const dp=Math.cos(t*0.053+1.7)*p.drift*0.011;
+    const dr=Math.sin(t*0.031+0.4)*p.drift*0.008;
+    if(isNaN(domeYaw)){
+      domeYaw=t*p.yawRps*TAU; domePitch=t*p.pitchRps*TAU; domeRoll=t*p.rollRps*TAU;
+    }else{
+      domeYaw+=TAU*(p.yawRps+dy)*dt;
+      domePitch+=TAU*(p.pitchRps+dp)*dt;
+      domeRoll+=TAU*(p.rollRps+dr)*dt;
+    }
+    domeLast=t;
+    const cx=W*0.5, cyy=H*0.5, scale=Math.min(W,H)*0.48, wellR=H*p.well;
+    const segs=80, buckets=new Map();
+    function seg(ax,ay,bx,by,depth,dim,major,inkMul){
+      if(inkMul<0.02) return;
+      let bright=(p.floor+p.gain*depth)*dim*inkMul;
+      if(major) bright*=1.15;
+      bright=Math.max(0,Math.min(1,bright));
+      const w=p.stroke*(0.55+0.7*depth)*(major?1.2:1);
+      const key=Math.round(bright*40)+'|'+Math.round(w*4);
+      let b=buckets.get(key);
+      if(!b){ b={path:new Path2D(),bright,w}; buckets.set(key,b); }
+      b.path.moveTo(ax,ay); b.path.lineTo(bx,by);
+    }
+    function project(vx,vy,vz){
+      const z=vz-p.camZ;
+      if(z<=0.08) return null;
+      const inv=p.focal/z;
+      const depth=Math.max(0,Math.min(1,(z-0.08)/(1+p.camZ)));
+      return [cx+vx*inv*scale, cyy-vy*inv*scale, depth];
+    }
+    // starfield lens + Funnel pinch + swallowed horizon + frame-drag;
+    // null means the point fell in the well and the stroke breaks.
+    function wellWarp(x,y){
+      const ox0=x-cx, oy0=y-cyy, d0=Math.hypot(ox0,oy0);
+      if(d0<0.5) return null;
+      const r=Math.max(wellR,1);
+      let dirx=ox0/d0, diry=oy0/d0;
+      const u=d0/r, f=Math.max(1-p.pinch*(u*u)/(1+u*u),0.05);
+      let px=cx+dirx*d0*f, py=cyy+diry*d0*f;
+      const ox=px-cx, oy=py-cyy, d=Math.max(Math.hypot(ox,oy),0.5);
+      dirx=ox/d; diry=oy/d;
+      if(d<r*p.horizon) return null;               // swallow — inferred, never drawn
+      const push=Math.min(p.lens*r*r/d,p.lensMax*r);
+      px+=dirx*push; py+=diry*push;
+      const fall=Math.min(r/d,1);
+      px+=-diry*p.drag*r*fall*fall; py+=dirx*p.drag*r*fall*fall;
+      return [px,py];
+    }
+    function belt(x,y){
+      const d=Math.hypot(x-cx,y-cyy);
+      return d>wellR*Math.max(p.horizon,0.15) && d<wellR*1.7;
+    }
+    for(let shell=0;shell<p.shells;shell++){
+      const radius=1-shell*p.shellGap;
+      if(radius<0.35) continue;
+      // outer shells lead the tumble slightly — entity, not rigid body
+      const lead=shell*0.07;
+      const m=rot3(domeYaw+lead,domePitch-lead*0.6,domeRoll+lead*0.4);
+      const dim=1-shell*0.18;
+      const ap=(vx,vy,vz)=>{
+        const rx=m[0][0]*vx+m[0][1]*vy+m[0][2]*vz;
+        const ry=m[1][0]*vx+m[1][1]*vy+m[1][2]*vz;
+        const rz=m[2][0]*vx+m[2][1]*vy+m[2][2]*vz;
+        const pr=project(rx,ry,rz);
+        if(!pr) return null;
+        const w=wellWarp(pr[0],pr[1]);
+        return w?[w[0],w[1],pr[2]]:null;
+      };
+      for(let mi=0;mi<p.meridians;mi++){          // meridians
+        const lon=TAU*mi/p.meridians, co=Math.cos(lon), so=Math.sin(lon);
+        let prev=null;
+        for(let i=0;i<=segs;i++){
+          const lat=-Math.PI/2+Math.PI*i/segs, cl=Math.cos(lat), sl=Math.sin(lat);
+          const s=ap(radius*cl*co,radius*sl,radius*cl*so);
+          if(s){
+            if(prev){
+              seg(prev[0],prev[1],s[0],s[1],s[2],dim,false,1);
+              if(belt(s[0],s[1])||belt(prev[0],prev[1]))
+                seg(2*cx-prev[0],2*cyy-prev[1],2*cx-s[0],2*cyy-s[1],s[2],dim,false,0.45*p.mirror);
+            }
+            prev=s;
+          } else prev=null;
+        }
+      }
+      for(let par=1;par<p.parallels;par++){       // parallels
+        const lat=-Math.PI/2+Math.PI*par/p.parallels, cl=Math.cos(lat), sl=Math.sin(lat);
+        const major=par%3===0||shell===0;
+        let prev=null;
+        for(let i=0;i<=segs;i++){
+          const lon=TAU*i/segs, co=Math.cos(lon), so=Math.sin(lon);
+          const s=ap(radius*cl*co,radius*sl,radius*cl*so);
+          if(s){
+            if(prev){
+              seg(prev[0],prev[1],s[0],s[1],s[2],dim,major,1);
+              if(belt(s[0],s[1])||belt(prev[0],prev[1]))
+                seg(2*cx-prev[0],2*cyy-prev[1],2*cx-s[0],2*cyy-s[1],s[2],dim,major,0.45*p.mirror);
+            }
+            prev=s;
+          } else prev=null;
+        }
+      }
+    }
+    for(const b of buckets.values()){
+      g.strokeStyle=invert?inkInv(b.bright):ink(b.bright);
+      g.lineWidth=b.w;
+      g.stroke(b.path);
+    }
+  }
+
   /* ---------------- the switches ---------------- */
   let ti=0, inv=true, t=0;
   const tplBtn=document.getElementById('ground-tpl');
   const invBtn=document.getElementById('ground-inv');
   function frame(){
     t+=0.016;
-    starDraw(t,TPL[ti],inv);
+    if(TPL[ti].dome) domeDraw(t,inv); else starDraw(t,TPL[ti],inv);
     if(!reduced) requestAnimationFrame(frame);
   }
   if(tplBtn) tplBtn.addEventListener('click',()=>{
