@@ -222,15 +222,19 @@
        the mark flips to black. */
     mix-blend-mode: difference;
   }
-  .ground-switch {
-    /* The judging happens on the page: this cycles the candidate grounds.
-       A state readout, so European Teletext, on its native 16px. Difference
-       blend keeps it legible over the inverted field's white. */
+  .ground-row {
+    /* The judging happens on the page: one readout cycles the starfield
+       templates, the other flips the ground. State readouts, so European
+       Teletext, on its native 16px. Difference blend keeps them legible
+       over the inverted ground's white. */
     position: absolute; right: 20px; bottom: 14px;
+    display: flex; gap: 24px;
+    mix-blend-mode: difference;
+  }
+  .ground-switch {
     background: none; border: 0; padding: 2px 4px; cursor: pointer;
     font-family: "European Teletext", monospace; font-size: 16px;
     letter-spacing: .08em; color: var(--field);
-    mix-blend-mode: difference;
   }
   .ground-switch:hover, .ground-switch:focus-visible { color: var(--light); }
   .tagline { padding: var(--s1) 0; }
@@ -402,10 +406,13 @@
   <figure class="hero">
     <canvas id="ground-c" aria-hidden="true"></canvas>
     <h1>
-      <canvas class="mirror" id="mirror-c" role="img" aria-label="AKOL — the wordmark drawn coarsely pixelated, reflected in a mirror on either side, breathing on its own."></canvas>
+      <canvas class="mirror" id="mirror-c" role="img" aria-label="akindoflikeness — the wordmark drawn coarsely pixelated, drifting up and down on its own."></canvas>
       <noscript><img class="wordmark" src="/assets/img/akol-wordmark.png" alt="AKOL" width="1185" height="236"></noscript>
     </h1>
-    <button class="ground-switch" id="ground-switch" aria-label="Cycle the ground behind the wordmark">GROUND · FIELD INV</button>
+    <div class="ground-row">
+      <button class="ground-switch" id="ground-tpl" aria-label="Cycle the starfield template">FIELD · IMPLIED</button>
+      <button class="ground-switch" id="ground-inv" aria-pressed="true" aria-label="Toggle ground inversion">INV ON</button>
+    </div>
   </figure>
   <div class="hr"></div>
   <div class="pad"><p class="tagline">tools / art / systems</p></div>
@@ -490,20 +497,31 @@
 </div>
 
 <script>
-/* The wordmark, live: the AKOL Mirror piece (artifact, 2026-08-17) where the
- * static mark used to sit. The mark is drawn into a coarse transparent buffer
- * and blitted three times across the band: straight into the centre third,
- * flopped into the two flanks — the reflections are of the ANIMATED draw,
- * recomputed every frame. It breathes on its own: one slow sine coarsens the
- * pixels, another shifts the box. Deliberately not pointer-reactive. The
- * phase figure that used to run behind it is retired; the ground canvas
- * below carries the environment instead. */
+/* The wordmark, live — un-mirrored: one copy, going up and down.
+ * "akindoflikeness" is set in Modern DOS (the site's own face; Horizon
+ * exists here only as licensed artwork and cannot be rendered live),
+ * rasterised once at 64px — four times the face's native 16 grid — then
+ * drawn into a coarse transparent buffer each frame. One slow sine
+ * breathes the pixel cell, another bobs the mark. The buffer is sized by
+ * target column count rather than a fixed cell, so fifteen characters
+ * stay chunky on a desktop and still legible on a phone. Deliberately
+ * not pointer-reactive. */
 (function(){
   const c=document.getElementById('mirror-c'); if(!c||!c.getContext) return;
   const g=c.getContext('2d');
   const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const mark=new Image(); mark.src='/assets/img/akol-wordmark.png';
-  const ob=document.createElement('canvas'), og=ob.getContext('2d');
+
+  const markC=document.createElement('canvas'), mg=markC.getContext('2d');
+  let ar=7.5;
+  function buildMark(){
+    const fs=64, font=fs+'px "Modern DOS",ui-monospace,monospace';
+    mg.font=font;
+    const w=Math.ceil(mg.measureText('akindoflikeness').width);
+    markC.width=w+8; markC.height=Math.round(fs*1.1);
+    mg.font=font; mg.fillStyle='#fff'; mg.textBaseline='middle';
+    mg.fillText('akindoflikeness',4,markC.height/2);
+    ar=markC.width/markC.height;
+  }
 
   let W=0,H=0;
   function resize(){ const r=c.getBoundingClientRect(); W=r.width; H=r.height; }
@@ -513,52 +531,41 @@
   function frame(){
     t+=0.016;
     const px=0.35+0.25*(0.5+0.5*Math.sin(t*0.3));   // slow breath: coarseness
-    const py=0.5+0.12*Math.sin(t*0.5);              // slow breath: box position
+    const py=0.5+0.25*Math.sin(t*0.5);              // the bob: up and down
 
-    // pixel cell breathes. box buffer is a third of the band wide -> pixelation.
-    const cell=3+Math.round(px*22);
-    const bw=Math.max(2,Math.round(W/3/cell)), bh=Math.max(2,Math.round(H/cell));
-    ob.width=bw; ob.height=bh; og.imageSmoothingEnabled=false;
+    const cell=Math.max(2,Math.round(W/(90+px*50)));
+    const bw=Math.max(2,Math.round(W/cell)), bh=Math.max(2,Math.round(H/cell));
+    c.width=bw; c.height=bh;               // clears; the CSS stretch keeps pixels
+    g.imageSmoothingEnabled=false;
 
-    // draw AKOL into the low-res box buffer, transparent ground, alive
-    const sway=(py-0.5)*bh*0.6;
-    const drift=Math.sin(t*0.7)*bw*0.02;
-    const ar=mark.naturalWidth/mark.naturalHeight||5;
-    const dw=bw*0.86, dh=dw/ar;
-    og.drawImage(mark,(bw-dw)/2+drift,(bh-dh)/2+sway,dw,dh);
-
-    // composite at buffer scale; the CSS stretch keeps it pixelated
-    c.width=bw*3; c.height=bh;
-    g.drawImage(ob,bw,0);                              // the box
-    g.save(); g.translate(bw,0); g.scale(-1,1);
-    g.drawImage(ob,0,0); g.restore();                  // left mirror
-    g.save(); g.translate(3*bw,0); g.scale(-1,1);
-    g.drawImage(ob,0,0); g.restore();                  // right mirror
+    const dw=bw*0.82, dh=dw/ar;
+    g.drawImage(markC,(bw-dw)/2,(bh-dh)/2+(py-0.5)*bh,dw,dh);
     if(!reduced) requestAnimationFrame(frame);
   }
   function start(){ if(reduced) frame(); else requestAnimationFrame(frame); }
-  if(mark.complete) start(); else mark.onload=start;
+  if(document.fonts&&document.fonts.load){
+    document.fonts.load('64px "Modern DOS"').catch(()=>0).then(()=>{buildMark();start();});
+  }else{ buildMark(); start(); }
 })();
 </script>
 
 <script>
-/* The ground: the space the mirror hangs in, ported from hostile-visualiser.
+/* The ground: the starfield, ported from the hostile-visualiser workbench.
  *
- * FIELD is src/field.rs, the `implied` exhibit's numbers verbatim — drift on
- * the golden-angle bearing, three-layer parallax, 16 s curvature breath,
- * local shear, lensing round the subject (deflection ∝ 1/d, capped), edge
- * shimmer. The field rides the ceiling (TASTE law 6): every mote at ink 1.0,
- * depth carried by size and speed, not brightness. FIELD INV — the recorded
- * AKOL-hero verdict — is the same field flipped: white ground, and the
- * difference-blended mark above goes black against it.
+ * The draw is workbench/src/sketches/starfield.rs — golden-angle drift,
+ * three-layer parallax, curvature breath, local shear, lensing round the
+ * subject (∝ 1/d, capped), edge shimmer — and the templates are the eight
+ * saved exhibits in workbench/presets/starfield/, numbers verbatim. The
+ * bench brightness formula rides along: value = (floor + gain·depth) ·
+ * (1 + low·0.25), through the ink ceiling. The audio lows the bench feeds
+ * it are stood in for by one slow sine; pulse sits at zero. The subject
+ * the field lenses around is the wordmark's box; BLACK HOLE's stand-in
+ * subject ring is kept, because the exhibit shows it.
  *
- * PHYLLO is src/phyllo.rs: the four judged exhibits (SHIMMER, RITUAL, SPAWN,
- * EMERGENT), numbers verbatim. The golden angle appears nowhere (law 4); the
- * lattice breathes instead of snapping; lights stay the exception. The audio
- * lows the visualiser feeds these are stood in for by one slow sine.
- *
- * The switch bottom-right cycles the candidates — the judging happens on the
- * page, not in the code. */
+ * The readouts bottom-right cycle the templates and flip the ground — the
+ * judging happens on the page, not in the code. Inverted is the default
+ * (the recorded hero verdict); the difference-blended mark above goes
+ * black against its white. */
 (function(){
   const c=document.getElementById('ground-c'); if(!c||!c.getContext) return;
   const g=c.getContext('2d',{alpha:false});
@@ -592,122 +599,97 @@
   // The stand-in for the low band: one slow sine, gentle, never still.
   const low=t=>0.5+0.4*Math.sin(t*0.11);
 
-  /* ---------------- FIELD (field.rs, `implied`) ---------------- */
-  const MOTES=280, DRIFT=0.026, DRIFT_ANGLE=2.3999632, WOBBLE=0.056,
-        CURVE=0.33, CURVE_PERIOD=16.0, WARP=0.06,
-        LENS=0.34, LENS_MAX=0.80, EDGE=0.39, SHIMMER_DUTY=0.63;
-  const FSEED=1185n^0xF1E1Dn;           // seed ^ 0xF1E1D, as field.rs does
-  const mote=[];
-  for(let i=0;i<MOTES;i++){
-    const h=k=>hash01(FSEED,BigInt(i*16+k));
-    mote.push({h0:h(0),h1:h(1),h2:h(2),h3:h(3),h4:h(4)});
+  /* -------- the eight saved templates, workbench/presets/starfield/ -------- */
+  const DRIFT_ANGLE=2.3999632;
+  const TPL=[
+    {name:'IMPLIED',      motes:360, drift:0.026,wobble:0.056,curve:0.33, period:16,  warp:0.06, lens:0.34, lensMax:0.8, edge:0.39, duty:0.63,floor:1.0, gain:0.49, subj:0.322,ring:false,seed:790n},
+    {name:'BLACK HOLE',   motes:800, drift:0.03, wobble:0.017,curve:0.4,  period:145, warp:0.08, lens:0.3,  lensMax:1.0, edge:0.5,  duty:0.93,floor:1.0, gain:0.25, subj:0.21, ring:true, seed:210n},
+    {name:'EXHAUST',      motes:3000,drift:0.0,  wobble:0.039,curve:1.16, period:85,  warp:0.092,lens:0.88, lensMax:0.98,edge:0.48, duty:0.79,floor:0.51,gain:0.855,subj:0.245,ring:false,seed:980n},
+    {name:'FUNNEL',       motes:1500,drift:0.12, wobble:0.079,curve:-1.2, period:100, warp:0.2,  lens:0.84, lensMax:1.45,edge:0.68, duty:0.62,floor:0.65,gain:0.14, subj:0.117,ring:false,seed:810n},
+    {name:'GRAVITATIONAL',motes:410, drift:0.0,  wobble:0.12, curve:0.0,  period:5,   warp:0.077,lens:0.29, lensMax:0.82,edge:0.0,  duty:1.0, floor:1.0, gain:1.0,  subj:0.23, ring:false,seed:490n},
+    {name:'NO PULSE',     motes:3000,drift:0.12, wobble:0.12, curve:1.0,  period:10,  warp:0.0,  lens:0.835,lensMax:1.5, edge:0.0,  duty:0.51,floor:1.0, gain:1.0,  subj:0.24, ring:false,seed:790n},
+    {name:'PUMP',         motes:770, drift:0.106,wobble:0.12, curve:1.2,  period:147, warp:0.0,  lens:0.08, lensMax:0.28,edge:0.45, duty:0.62,floor:0.71,gain:0.405,subj:0.48, ring:false,seed:710n},
+    {name:'SUPERMASSIVE', motes:2420,drift:0.057,wobble:0.0,  curve:1.2,  period:233, warp:0.028,lens:0.38, lensMax:0.93,edge:0.675,duty:1.0, floor:0.7, gain:0.665,subj:0.24, ring:false,seed:790n},
+    {name:'NONE'},
+  ];
+  // Per-mote hashes, computed once per template on first use (BigInt at
+  // init only, never per frame).
+  function motesFor(p){
+    if(p.m) return p.m;
+    const s=p.seed^0xF1E1Dn, m=p.m=[];
+    for(let i=0;i<p.motes;i++){
+      const h=k=>hash01(s,BigInt(i*16+k));
+      m.push({h0:h(0),h1:h(1),h2:h(2),h3:h(3),h4:h(4)});
+    }
+    return m;
   }
-  function fieldDraw(t,invert){
+  function starDraw(t,p,invert){
     g.fillStyle=invert?'#fff':'#000'; g.fillRect(0,0,W,H);
-    const curve=CURVE*Math.sin(t/CURVE_PERIOD*TAU)*(1+low(t)*0.5);
+    if(!p.motes) return;                          // NONE
+    const lo=low(t);
+    const curve=p.curve*Math.sin(t/Math.max(p.period,0.1)*TAU)*(1+lo*0.5);
     const ddx=Math.cos(DRIFT_ANGLE), ddy=Math.sin(DRIFT_ANGLE);
-    const pivx=W*0.5, pivy=H*0.5, R=H*0.28;      // the mark's box is the subject
-    g.fillStyle=invert?inkInv(1):ink(1);
-    for(let i=0;i<MOTES;i++){
-      const m=mote[i];
-      const depth=Math.floor(m.h0*3)/3, near=0.35+0.65*depth, phase=m.h1*TAU;
+    const pivx=W*0.5, pivy=H*0.5, R=H*p.subj;     // the mark's box is the subject
+    const m=motesFor(p);
+    for(let i=0;i<p.motes;i++){
+      const q=m[i];
+      const depth=Math.floor(q.h0*3)/3, near=0.35+0.65*depth, phase=q.h1*TAU;
       // (1) drift, wrapped; edge factor before any displacement
-      let fx=(m.h2+t*DRIFT*near*ddx)%1; if(fx<0)fx+=1;
-      let fy=(m.h3+t*DRIFT*near*ddy)%1; if(fy<0)fy+=1;
+      let fx=(q.h2+t*p.drift*near*ddx)%1; if(fx<0)fx+=1;
+      let fy=(q.h3+t*p.drift*near*ddy)%1; if(fy<0)fy+=1;
       const e=Math.max(0,Math.min(1-Math.abs(fx-0.5)*2,1-Math.abs(fy-0.5)*2));
-      const edge=Math.max(0,Math.min(1,1-e/EDGE));
+      const edge=p.edge>0?Math.max(0,Math.min(1,1-e/p.edge)):0;
       // (2) parallax wobble
-      fx+=Math.sin(t/34*TAU+phase)*WOBBLE*near;
-      fy+=Math.sin(t/21*TAU+phase)*WOBBLE*near;
+      fx+=Math.sin(t/34*TAU+phase)*p.wobble*near;
+      fy+=Math.sin(t/21*TAU+phase)*p.wobble*near;
       // (3) curvature of the whole field
       let ux=fx-0.5, uy=fy-0.5;
       const k=1+curve*(ux*ux+uy*uy); ux*=k; uy*=k;
       // (4) local shear
       const nx=ux*6.283, ny=uy*6.283;
-      ux+=Math.sin(nx+t*0.11)*Math.cos(ny*1.3-t*0.07)*WARP;
-      uy+=Math.sin(ny*0.8-t*0.09)*Math.cos(nx*1.7+t*0.13)*WARP;
+      ux+=Math.sin(nx+t*0.11)*Math.cos(ny*1.3-t*0.07)*p.warp;
+      uy+=Math.sin(ny*0.8-t*0.09)*Math.cos(nx*1.7+t*0.13)*p.warp;
       let px=W*0.5+ux*W, py=H*0.5+uy*H;
       // (5) lensing around the subject, capped
       const ox=px-pivx, oy=py-pivy, d=Math.hypot(ox,oy);
       if(d>0.5){
-        const push=Math.min(LENS*R*R/d,LENS_MAX*R);
+        const push=Math.min(p.lens*R*R/d,p.lensMax*R);
         px+=ox/d*push; py+=oy/d*push;
       }
       // (6) edge shimmer
       if(edge>0){
-        const blink=0.5+0.5*Math.sin(t*(1.3+1.7*m.h4)+phase);
-        if(blink<edge*SHIMMER_DUTY) continue;
+        const blink=0.5+0.5*Math.sin(t*(1.3+1.7*q.h4)+phase);
+        if(blink<edge*p.duty) continue;
       }
+      const value=(p.floor+p.gain*depth)*(1+lo*0.25);
       const sz=(depth>0.6?2:1)*Math.max(W/1920,1);
+      g.fillStyle=invert?inkInv(value):ink(value);
       g.fillRect(Math.round(px),Math.round(py),sz,sz);
     }
-  }
-
-  /* ------------- PHYLLO (phyllo.rs, the four exhibits) ------------- */
-  const DRESS=[
-    {name:'SHIMMER', points:400, angle:142.7, drive:3.0, spread:0.03,  rate:1600, dot:3.1, fall:0.0,  ringOver:1.0, lights:34, spin:0.3,  seed:610n},
-    {name:'RITUAL',  points:3100,angle:143.5, drive:0.35,spread:0.0061,rate:1250, dot:5.2, fall:0.83, ringOver:5.2, lights:6,  spin:-0.03,seed:300n},
-    {name:'SPAWN',   points:850, angle:119.5, drive:0.0, spread:0.0113,rate:1600, dot:1.0, fall:0.465,ringOver:5.6, lights:10, spin:0.3,  seed:3n},
-    {name:'EMERGENT',points:1550,angle:133.2, drive:0.35,spread:0.012, rate:400,  dot:9.5, fall:1.0,  ringOver:1.0, lights:0,  spin:0.05, seed:0n},
-  ];
-  for(const d of DRESS){                 // per-floret jitter, precomputed
-    d.jit=new Float32Array(d.points);
-    for(let i=0;i<d.points;i++) d.jit[i]=hash01(d.seed,BigInt(i));
-  }
-  // The lattice breathes: grow, rest a quarter of the fill time, retract.
-  function grownCount(now,points,rate){
-    if(rate<=0||points===0) return points;
-    const fill=Math.max(points/rate,1e-6), rest=fill*0.25;
-    let t=now%(2*fill+rest); if(t<0)t+=2*fill+rest;
-    const frac=t<=fill ? t/fill : t<=fill+rest ? 1 : 1-(t-fill-rest)/fill;
-    return Math.round(Math.max(0,Math.min(1,frac))*points);
-  }
-  function phylloDraw(t,d){
-    g.fillStyle='#000'; g.fillRect(0,0,W,H);
-    const cx=W*0.5, cy=H*0.5, scale=H*d.spread, s=Math.max(H/1080,0.5);
-    const grown=grownCount(t,d.points,d.rate);
-    const angle=(d.angle+d.drive*(low(t)-0.5)*2)*Math.PI/180;
-    const spin=t*d.spin*TAU;
-    for(let i=0;i<grown;i++){
-      const a=i*angle+spin, r=scale*Math.sqrt(i);
-      const x=cx+Math.cos(a)*r, y=cy+Math.sin(a)*r;
-      if(x<-d.dot*2||y<-d.dot*2||x>W+d.dot*2||y>H+d.dot*2) continue;
-      // age against the full lattice, so retract reads as a retreat
-      const age=1-i/d.points;
-      const size=d.dot*Math.max(1-d.fall*age,0.15)*(0.8+0.4*d.jit[i])*s;
-      const isLight=d.lights>0 && i+Math.min(d.lights,grown)>=grown;
-      g.beginPath();
-      if(isLight){
-        g.fillStyle='#fff'; g.arc(x,y,Math.max(size,1.5),0,TAU); g.fill();
-      }else if(size>d.ringOver*s){
-        g.strokeStyle=ink(0.35+0.65*age); g.lineWidth=1;
-        g.arc(x,y,size,0,TAU); g.stroke();
-      }else{
-        g.fillStyle=ink(0.25+0.75*age); g.arc(x,y,Math.max(size,0.5),0,TAU); g.fill();
-      }
+    if(p.ring){
+      g.strokeStyle=invert?inkInv(0.9):ink(0.9); g.lineWidth=1;
+      g.beginPath(); g.arc(pivx,pivy,R,0,TAU); g.stroke();
     }
   }
 
-  /* ---------------- the switch ---------------- */
-  const GROUNDS=[
-    {label:'FIELD INV', draw:t=>fieldDraw(t,true)},
-    {label:'FIELD',     draw:t=>fieldDraw(t,false)},
-    {label:'PHYLLO SHIMMER',  draw:t=>phylloDraw(t,DRESS[0])},
-    {label:'PHYLLO RITUAL',   draw:t=>phylloDraw(t,DRESS[1])},
-    {label:'PHYLLO SPAWN',    draw:t=>phylloDraw(t,DRESS[2])},
-    {label:'PHYLLO EMERGENT', draw:t=>phylloDraw(t,DRESS[3])},
-    {label:'NONE', draw:()=>{g.fillStyle='#000'; g.fillRect(0,0,W,H);}},
-  ];
-  let gi=0, t=0;
-  const btn=document.getElementById('ground-switch');
+  /* ---------------- the switches ---------------- */
+  let ti=0, inv=true, t=0;
+  const tplBtn=document.getElementById('ground-tpl');
+  const invBtn=document.getElementById('ground-inv');
   function frame(){
     t+=0.016;
-    GROUNDS[gi].draw(t);
+    starDraw(t,TPL[ti],inv);
     if(!reduced) requestAnimationFrame(frame);
   }
-  if(btn) btn.addEventListener('click',()=>{
-    gi=(gi+1)%GROUNDS.length;
-    btn.textContent='GROUND · '+GROUNDS[gi].label;
+  if(tplBtn) tplBtn.addEventListener('click',()=>{
+    ti=(ti+1)%TPL.length;
+    tplBtn.textContent='FIELD · '+TPL[ti].name;
+    if(reduced) frame();
+  });
+  if(invBtn) invBtn.addEventListener('click',()=>{
+    inv=!inv;
+    invBtn.textContent=inv?'INV ON':'INV OFF';
+    invBtn.setAttribute('aria-pressed',String(inv));
     if(reduced) frame();
   });
   if(reduced) frame(); else requestAnimationFrame(frame);
