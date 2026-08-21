@@ -53,7 +53,8 @@
      that asks for it, so the browser never fetches it at all. -->
 <link rel="preload" href="/assets/fonts/modern-dos-8x16.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="/assets/fonts/european-teletext.ttf" as="font" type="font/ttf" crossorigin>
-<link rel="preload" href="/assets/fonts/panoptic-monospace-bold.otf" as="font" type="font/otf" crossorigin>
+<!-- Panoptic is no longer preloaded: with the live wordmark out of the band,
+     no rule matches it, so the browser never fetches it at all. -->
 
 <!--
   Fonts, imagery and the wordmark are real files under /assets, not data URIs.
@@ -222,12 +223,11 @@
        (0,0,0) and differencing that against the video is a no-op. */
     mix-blend-mode: difference;
   }
-  .hero .mirror {
-    /* The wordmark layer: a transparent overlay the full width of the band.
-       Same difference trick as the static mark it replaced; the canvas is
-       empty where the wordmark is not, and over the inverted field's white
-       the mark flips to black. */
-    mix-blend-mode: difference;
+  .unseen {
+    /* The h1 without the pixels: the band belongs to the scene now, but the
+       document keeps its name for readers and crawlers. */
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip-path: inset(50%); white-space: nowrap; margin: 0;
   }
   .ground-row {
     /* The judging happens on the page: one readout cycles the starfield
@@ -411,15 +411,14 @@
   <div class="hr"></div>
 
   <figure class="hero">
-    <canvas id="ground-c" aria-hidden="true"></canvas>
-    <h1>
-      <canvas class="mirror" id="mirror-c" role="img" aria-label="akindoflikeness — the wordmark typed out, held, then dissolved, on a loop; the pointer sets how coarsely it is pixelated."></canvas>
-      <noscript><img class="wordmark" src="/assets/img/akol-wordmark.png" alt="AKOL" width="1185" height="236"></noscript>
-    </h1>
+    <canvas id="ground-c" role="img" aria-label="A wireframe dome wrapped around a black hole; a white star is stretched into a glowing stream feeding it."></canvas>
+    <!-- The wordmark left the band (his call, 2026-08-21) — the h1 keeps the
+         name for the document, unseen; the noscript mark is the baked fallback. -->
+    <h1 class="unseen">akindoflikeness</h1>
+    <noscript><img class="wordmark" src="/assets/img/akol-wordmark.png" alt="AKOL" width="1185" height="236"></noscript>
     <div class="ground-row">
       <button class="ground-switch" id="ground-tpl" aria-label="Cycle the ground template">FIELD · DOME IMPLIED</button>
       <button class="ground-switch" id="ground-inv" aria-pressed="true" aria-label="Toggle ground inversion">INV ON</button>
-      <button class="ground-switch" id="mark-blend" aria-label="Cycle how the wordmark blends with the ground">BLEND · DIFFERENCE</button>
     </div>
   </figure>
   <div class="hr"></div>
@@ -505,173 +504,6 @@
 </div>
 
 <script>
-/* The wordmark, live, on a loop: typed out, held, then torn down.
- * "akindoflikeness" is set in Panoptic Monospace (public domain — the
- * first face allowed to be rendered live in the wordmark register; see
- * assets/fonts/NOTICE.md), rasterised once at 64px, then drawn into a
- * coarse transparent buffer each frame. The pass runs dark → typed in
- * letter by letter behind a block cursor → held → glitched out, and
- * every duration is re-rolled per pass around a ~10s total, so it never
- * quite repeats and never nags. The cursor blinks on the classic ~1.06s
- * terminal cadence and holds solid while letters land, the way a real
- * terminal resets its blink on a keystroke.
- *
- * The mouse-over control stays: pointer X sets the coarseness, eased,
- * its range past the idle breath at both ends; with no pointer the
- * coarseness breathes on one slow sine. The glitch-out multiplies that
- * cell up and dissolves through the house Bayer matrix — ordered dither,
- * never an alpha fade (house.rs) — with a few horizontal slice tears
- * re-rolled on a stutter, not per frame.
- *
- * The BLEND readout bottom-right cycles how the mark meets the ground:
- * the judging happens on the page. DIFFERENCE is the recorded hero
- * verdict and stays the default. Exclusion and screen are not offered
- * because on a pure-white mark they collapse into difference and normal
- * respectively — the cycle only holds modes that actually differ. */
-(function(){
-  const c=document.getElementById('mirror-c'); if(!c||!c.getContext) return;
-  const g=c.getContext('2d');
-  const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const BAYER=[0,8,2,10, 12,4,14,6, 3,11,1,9, 15,7,13,5];
-  const WORD='akindoflikeness', N=WORD.length, PAD=4;
-
-  const markC=document.createElement('canvas'), mg=markC.getContext('2d');
-  const compC=document.createElement('canvas'), cg=compC.getContext('2d');
-  let ar=7.5, charW=0;
-  function buildMark(){
-    const fs=64, font=fs+'px "Panoptic Monospace",ui-monospace,monospace';
-    mg.font=font;
-    const w=Math.ceil(mg.measureText(WORD).width);
-    markC.width=w+PAD*2; markC.height=Math.round(fs*1.1);
-    mg.font=font; mg.fillStyle='#fff'; mg.textBaseline='middle';
-    mg.fillText(WORD,PAD,markC.height/2);
-    ar=markC.width/markC.height;
-    charW=w/N;                       // monospace: every glyph the same width
-  }
-
-  let W=0,H=0;
-  function resize(){ const r=c.getBoundingClientRect(); W=r.width; H=r.height; }
-  addEventListener('resize',resize); resize();
-
-  // pointer state, eased, like the retired phase figure had
-  let mx=0.45, tx=0.45, moving=0;
-  const hero=c.closest('.hero');
-  if(hero){
-    hero.addEventListener('pointermove',e=>{
-      const r=hero.getBoundingClientRect();
-      tx=(e.clientX-r.left)/r.width; moving=1;
-    });
-    hero.addEventListener('pointerleave',()=>moving=0);
-  }
-
-  // one pass of the loop, durations re-rolled each time round
-  const rnd=(a,b)=>a+Math.random()*(b-a);
-  const PHASES=['rest','type','cursorHold','hold','glitch'];
-  let phase='rest', pt=0, pass=null, typed=0, keyT=-9;
-  function roll(first){
-    const delays=Array.from({length:N},()=>rnd(0.07,0.13));
-    pass={
-      rest: first?rnd(0.3,0.7):rnd(0.9,1.6),   // arrive nearly straight into the typing
-      delays, type:delays.reduce((a,b)=>a+b,0),
-      cursorHold:rnd(1.4,2.4),                 // cursor lingers after the last letter
-      hold:rnd(3.2,4.6),                       // then the mark stands alone
-      glitch:rnd(0.85,1.35),
-      gCoarse:rnd(2.4,3.8),                    // how far past the pointer range the tear-down goes
-      tears:null, tearAt:-1,
-    };
-  }
-
-  let t=0;
-  function frame(){
-    t+=0.016; pt+=0.016;
-    if(!moving) tx=0.35+0.25*(0.5+0.5*Math.sin(t*0.3));   // idle breath
-    mx+=(tx-mx)*0.06;
-
-    // walk the pass
-    let dur=pass[phase==='type'?'type':phase];
-    while(pt>=dur){
-      pt-=dur;
-      const i=PHASES.indexOf(phase);
-      if(i===PHASES.length-1){ roll(false); phase='rest'; typed=0; }
-      else phase=PHASES[i+1];
-      dur=pass[phase==='type'?'type':phase];
-    }
-    if(phase==='type'){
-      let acc=0, n=0;
-      for(;n<N && pt>=acc+pass.delays[n];) acc+=pass.delays[n++];
-      if(n>typed) keyT=t;                     // a keystroke resets the blink
-      typed=n;
-    } else if(phase==='rest') typed=0;
-    else typed=N;
-
-    // pointer X coarsens: hover reaches past the idle range at both ends
-    const gp=phase==='glitch'?Math.min(1,pt/pass.glitch):0;
-    const cellMul=1+gp*(pass.gCoarse-1);
-    const cell=Math.max(2,Math.round(W/(70+mx*90)*cellMul));
-    const bw=Math.max(2,Math.round(W/cell)), bh=Math.max(2,Math.round(H/cell));
-    c.width=bw; c.height=bh;               // clears; the CSS stretch keeps pixels
-    g.imageSmoothingEnabled=false;
-
-    const dw=bw*0.82, dh=dw/ar, dx=(bw-dw)/2, dy=(bh-dh)/2;
-    const n=reduced?N:typed;
-    const srcW=n===N?markC.width:PAD+n*charW;
-
-    if(phase==='glitch' && !reduced){
-      // compose, then tear: bands shifted on an ~80ms stutter, then the
-      // Bayer dissolve — cells drop in dither order until nothing is left
-      compC.width=bw; compC.height=bh; cg.imageSmoothingEnabled=false;
-      cg.drawImage(markC,0,0,srcW,markC.height, dx,dy,dw*srcW/markC.width,dh);
-      const tick=Math.floor(pt/0.08);
-      if(tick!==pass.tearAt){
-        pass.tearAt=tick;
-        pass.tears=Array.from({length:2+(Math.random()*3|0)},()=>({
-          y:Math.random(), h:0.04+Math.random()*0.12,
-          dx:(Math.random()<0.5?-1:1)*(0.02+Math.random()*0.08)*(0.4+gp),
-        }));
-      }
-      g.drawImage(compC,0,0);
-      for(const tr of pass.tears){
-        const y0=Math.round(tr.y*bh), hh=Math.max(1,Math.round(tr.h*bh));
-        g.clearRect(0,y0,bw,hh);
-        g.drawImage(compC,0,y0,bw,hh, Math.round(tr.dx*bw),y0,bw,hh);
-      }
-      const img=g.getImageData(0,0,bw,bh), d=img.data, keep=(1-gp)*16;
-      for(let y=0;y<bh;y++)for(let x=0;x<bw;x++){
-        if(keep<=BAYER[(y&3)*4+(x&3)]) d[(y*bw+x)*4+3]=0;
-      }
-      g.putImageData(img,0,0);
-    } else {
-      if(n>0) g.drawImage(markC,0,0,srcW,markC.height, dx,dy,dw*srcW/markC.width,dh);
-      // the block cursor: solid under the fingers, blinking at rest
-      const cursorOn=!reduced && (phase==='rest'||phase==='type'||phase==='cursorHold')
-        && ((t-keyT)%1.06)<0.53;
-      if(cursorOn){
-        const cw=dw*charW/markC.width;
-        g.fillStyle='#fff';
-        g.fillRect(dx+dw*(PAD+n*charW)/markC.width, dy+dh*0.12, cw, dh*0.76);
-      }
-    }
-    if(!reduced) requestAnimationFrame(frame);
-  }
-  function start(){ roll(true); if(reduced) frame(); else requestAnimationFrame(frame); }
-  if(document.fonts&&document.fonts.load){
-    document.fonts.load('64px "Panoptic Monospace"').catch(()=>0).then(()=>{buildMark();start();});
-  }else{ buildMark(); start(); }
-
-  // the BLEND readout: same register as the ground switches, judged on the page
-  const MODES=[['DIFFERENCE','difference'],['OVERLAY','overlay'],
-               ['SOFT-LIGHT','soft-light'],['NORMAL','normal']];
-  const blendBtn=document.getElementById('mark-blend');
-  let bi=0;
-  if(blendBtn) blendBtn.addEventListener('click',()=>{
-    bi=(bi+1)%MODES.length;
-    c.style.mixBlendMode=MODES[bi][1];
-    blendBtn.textContent='BLEND · '+MODES[bi][0];
-  });
-})();
-</script>
-
-<script>
 /* The ground: the starfield, ported from the hostile-visualiser workbench.
  *
  * The draw is workbench/src/sketches/starfield.rs — golden-angle drift,
@@ -686,8 +518,9 @@
  *
  * The readouts bottom-right cycle the templates and flip the ground — the
  * judging happens on the page, not in the code. Inverted is the default
- * (the recorded hero verdict); the difference-blended mark above goes
- * black against its white. */
+ * (the recorded hero verdict). The wordmark left the band 2026-08-21 (his
+ * call — "it's no longer doing it for me"); the scene is the hero now, and
+ * the subject box the field lenses around stays where the mark stood. */
 (function(){
   const c=document.getElementById('ground-c'); if(!c||!c.getContext) return;
   const g=c.getContext('2d',{alpha:false});
@@ -832,6 +665,17 @@
     {name:'WELL',    mer:13,par:48,shells:5,gap:0.145,    focal:0.6,      camZ:0,         yaw:0.054,     pitch:0,roll:0,drift:0.38,      floor:0.01,gain:0.39,      stroke:0.71,      sparks:0,grain:0.062,      flare:0,seed:175n,tip:1,lens:2.0,      lensMax:0.8,      well:0.23,      horizon:0.34,      pinch:0.81,      drag:0.85,mirror:1, apexY:0.2, bob:0.035},
   ];
   const DBAYER=[[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]];
+  // THE SUN (Billy, 2026-08-21): a star mid-disruption, orbiting the hole and
+  // stretched into a stream that feeds it — the scale reference the band was
+  // missing, and its light source. Lights are white in this house, so the star
+  // and its stream are the band's only true white; the lattice stays under the
+  // ink ceiling but brightens where the sun passes, which is what finally
+  // makes every dome preset read. Per-particle jitter is hashed once at init
+  // (BigInt per frame is a tax), like the motes and sparks.
+  const SUNP=[];
+  { const ss=0xCA11AB1En;
+    for(let i=0;i<110;i++) SUNP.push([hash01(ss,BigInt(i*8)),hash01(ss,BigInt(i*8+1)),
+                                      hash01(ss,BigInt(i*8+2)),hash01(ss,BigInt(i*8+3))]); }
   // Void grain (house.rs): seed-static, no time term — render once, blit.
   let grainKey='', grainC=null;
   function grainLayer(p,invert){
@@ -905,6 +749,20 @@
     const wellR=Math.max(H*p.well,0.05*H);
     const mix=Math.max(0,Math.min(1,p.tip));
     const segs=p.tip>0.01?80:48, buckets=new Map();
+    // the sun's state this frame: an eccentric orbit in the disk plane (seen
+    // at an angle, so y is squashed), breathing between apoapsis and
+    // periapsis, precessing slowly; the stream winds from it into the horizon
+    // along the same sense as the frame-drag
+    const rHor=wellR*Math.max(p.horizon*mix,0.15);
+    const sunR=wellR*(1.75+0.5*Math.sin(t*0.037+1.3));
+    const sunA=t*TAU/41+Math.sin(t*0.021)*0.7;
+    const sunX=wx+Math.cos(sunA)*sunR, sunY=wy+Math.sin(sunA)*sunR*0.56;
+    const sunReach=wellR*2.3;
+    const streamP=(s)=>{
+      const rr=sunR+(rHor*0.92-sunR)*Math.pow(s,1.35);
+      const aa=sunA+(0.9+p.drag*2.0)*Math.pow(s,1.7);
+      return [wx+Math.cos(aa)*rr, wy+Math.sin(aa)*rr*0.56, rr];
+    };
     grainLayer(p,invert);
     if(p.flare>0.01){
       // the screencast's soft cross, implied not outlined — in grey here
@@ -921,6 +779,12 @@
       // thicker and a bit more luminous". Applied to every dome preset.
       let bright=(p.floor+p.gain*depth)*dim*inkMul*1.35;
       if(major) bright*=1.15;
+      // the sun lights what it passes: a local lift, falling off with
+      // distance, still clamped through the ink ladder — the presets' own
+      // numbers stay verbatim, the scene just gains a light
+      const sdx=(ax+bx)*0.5-sunX, sdy=(ay+by)*0.5-sunY;
+      const sd=Math.hypot(sdx,sdy);
+      if(sd<sunReach){ const L=1-sd/sunReach; bright*=1+2.6*L*L; }
       bright=Math.max(0,Math.min(1,bright));
       const w=p.stroke*(0.55+0.7*depth)*(major?1.2:1)*1.3;
       const key=Math.round(bright*40)+'|'+Math.round(w*4);
@@ -1031,6 +895,27 @@
       g.strokeStyle=invert?inkInv(b.bright):ink(b.bright);
       g.lineWidth=b.w;
       g.stroke(b.path);
+    }
+    // the star and its stream, drawn over the lattice they light. Particles
+    // flow star -> horizon; the s^1.35 radius mapping means constant flow in
+    // s reads as infall accelerating toward the hole. Hotter as they fall
+    // (brighter near the horizon), swallowed just short of it.
+    g.fillStyle=invert?'#000':'#fff';
+    for(let i=0;i<SUNP.length;i++){
+      const q=SUNP[i];
+      const s=(q[0]+t*(0.055+0.03*q[1]))%1;
+      const pos=streamP(Math.min(1,s+(q[2]-0.5)*0.06));
+      if(pos[2]<rHor*1.02) continue;                       // swallowed
+      const flick=0.7+0.3*Math.sin(t*(1.5+2.5*q[1])+q[3]*TAU);
+      g.globalAlpha=Math.min(1,(0.38+0.62*s)*flick);
+      g.fillRect(Math.round(pos[0]),Math.round(pos[1]),s>0.8?2:1,s>0.8?2:1);
+    }
+    g.globalAlpha=1;
+    // the star itself: a teardrop, three cores shrinking down its own stream —
+    // being stretched, not merely trailing
+    for(let k=0;k<4;k++){
+      const pos=streamP(k*0.075);
+      glowDot(pos[0],pos[1],Math.max(2.2,wellR*0.085)*(1-0.2*k),(1.15-0.24*k),invert);
     }
     // magenta/amber sparks in the Rust; lights are white in this house
     if(p.sparks>0.01){
