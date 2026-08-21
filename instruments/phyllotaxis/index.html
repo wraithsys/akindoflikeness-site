@@ -1954,7 +1954,7 @@ if (VOICE_PINNED) entry = 0;
 
 const pluck = {
   bus: null, weylX: 0.382, on: IS_LIVE && LIVE.get("pluck") !== "0",
-  density: Math.min(3, Math.max(1, +LIVE.get("pluck") || 2)),
+  density: Math.min(3, Math.max(1, +LIVE.get("pluck") || 1)),
   lastMoveT: 0, timer: 0,
 };
 
