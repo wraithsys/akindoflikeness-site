@@ -195,12 +195,11 @@
     overflow: hidden;
     height: min(64vh, 560px);
   }
-  .hero canvas, .hero .poster {
+  .hero canvas {
     position: absolute; inset: 0;
     display: block; width: 100%; height: 100%;
     image-rendering: pixelated;
   }
-  .hero .poster { object-fit: cover; }
   .hero .wordmark {
     position: absolute;
     left: 50%;
@@ -219,9 +218,21 @@
     /* The AKOL Mirror piece in the static mark's place: a transparent overlay
        the full width of the band — box in the centre third, a mirror either
        flank. Same difference trick as the mark it replaces; the canvas is
-       empty where the wordmark is not. */
+       empty where the wordmark is not, and over the inverted field's white
+       the mark flips to black. */
     mix-blend-mode: difference;
   }
+  .ground-switch {
+    /* The judging happens on the page: this cycles the candidate grounds.
+       A state readout, so European Teletext, on its native 16px. Difference
+       blend keeps it legible over the inverted field's white. */
+    position: absolute; right: 20px; bottom: 14px;
+    background: none; border: 0; padding: 2px 4px; cursor: pointer;
+    font-family: "European Teletext", monospace; font-size: 16px;
+    letter-spacing: .08em; color: var(--field);
+    mix-blend-mode: difference;
+  }
+  .ground-switch:hover, .ground-switch:focus-visible { color: var(--light); }
   .tagline { padding: var(--s1) 0; }
   figure img {
     display: block;
@@ -389,12 +400,12 @@
   <div class="hr"></div>
 
   <figure class="hero">
-    <canvas id="hero-c" role="img" aria-label="A phase-modulated figure, computed live and shaped by the pointer."></canvas>
-    <noscript><img class="poster" src="/assets/img/hero-poster.png" alt="" width="720" height="203"></noscript>
+    <canvas id="ground-c" aria-hidden="true"></canvas>
     <h1>
       <canvas class="mirror" id="mirror-c" role="img" aria-label="AKOL — the wordmark drawn coarsely pixelated, reflected in a mirror on either side, breathing on its own."></canvas>
       <noscript><img class="wordmark" src="/assets/img/akol-wordmark.png" alt="AKOL" width="1185" height="236"></noscript>
     </h1>
+    <button class="ground-switch" id="ground-switch" aria-label="Cycle the ground behind the wordmark">GROUND · FIELD INV</button>
   </figure>
   <div class="hr"></div>
   <div class="pad"><p class="tagline">tools / art / systems</p></div>
@@ -479,87 +490,14 @@
 </div>
 
 <script>
-/* Landing hero: the phase figure, computed live. Base motion runs on its own;
- * the pointer shapes it. 1-bit, coarse buffer scaled up, no symmetry — a single
- * open sweep with a fading wake. Retired the datamosh video; the poster in the
- * <noscript> is the baked fallback. */
-(function(){
-  const c = document.getElementById('hero-c');
-  if(!c || !c.getContext) return;
-  const g = c.getContext('2d', { alpha:false });
-  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const BAYER=[0,8,2,10, 12,4,14,6, 3,11,1,9, 15,7,13,5];
-  const CELL=4;
-  let W=0,H=0,bw=0,bh=0;
-
-  function resize(){
-    const r=c.getBoundingClientRect(); W=r.width; H=r.height;
-    bw=Math.max(1,Math.round(W/CELL)); bh=Math.max(1,Math.round(H/CELL));
-    c.width=bw; c.height=bh;              // small buffer; CSS stretches, pixelated
-  }
-  addEventListener('resize', resize); resize();
-
-  // pointer state, eased; a gentle default so it is alive before first touch
-  let mxv=0.62, myv=0.42, tx=0.62, ty=0.42, moving=0;
-  c.addEventListener('pointermove', e=>{
-    const r=c.getBoundingClientRect();
-    tx=(e.clientX-r.left)/r.width; ty=(e.clientY-r.top)/r.height; moving=1;
-  });
-  c.addEventListener('pointerleave', ()=>moving=0);
-
-  function figure(tt, shape, ox, oy, RX, RY, decay){
-    const spin=tt*0.14, N=1100; let fb=0;
-    g.fillStyle='#fff';
-    for(let i=0;i<N;i++){
-      const u=i/N*Math.PI*2;
-      fb=Math.sin(u*2 + spin - shape*fb*2.4);          // chew on inverted past
-      const rr=0.5+0.5*Math.sin(u*3 + spin*1.3);        // lobed, not a disc
-      const x=ox+Math.cos(u+spin)*RX*rr;
-      const y=oy+fb*RY*(0.55+0.45*rr);
-      const xi=x|0, yi=y|0;
-      if(xi<0||yi<0||xi>=bw||yi>=bh) continue;
-      const bright=decay*(0.5+0.5*Math.sin(u*3+spin));
-      if(bright*16 > BAYER[(yi&3)*4+(xi&3)]) g.fillRect(xi,yi,1,1);
-    }
-  }
-
-  let t=0;
-  function frame(){
-    t+=0.016;
-    if(!moving){ tx=0.5+0.3*Math.sin(t*0.19); ty=0.5+0.26*Math.cos(t*0.13); }
-    mxv+=(tx-mxv)*0.05; myv+=(ty-myv)*0.05;
-    const shape=Math.min(1,Math.max(0,mxv));   // pointer X: how much it tears
-    const wake =Math.min(1,Math.max(0,myv));   // pointer Y: length of the trail
-
-    g.fillStyle='#000'; g.fillRect(0,0,bw,bh);
-    const cx=bw*0.5, cy=bh*0.5;
-    const RY=Math.min(bw,bh)*0.46;
-    const RX=RY*(1.15 + 0.5*Math.min(1, bw/bh - 1));
-
-    const echoes=Math.round(wake*5);
-    for(let k=echoes;k>=0;k--){
-      const lag=k*0.55, decay=1-k/7;
-      const dx=k*bw*0.018, dy=-k*bh*0.010;     // one drift direction, asymmetric
-      figure(t-lag, shape, cx-dx, cy-dy, RX, RY, decay);
-    }
-    if(!reduced) requestAnimationFrame(frame);
-  }
-  if(reduced) frame(); else requestAnimationFrame(frame);
-  document.addEventListener('visibilitychange', ()=>{
-    if(!document.hidden && !reduced) requestAnimationFrame(frame);
-  });
-})();
-</script>
-
-<script>
 /* The wordmark, live: the AKOL Mirror piece (artifact, 2026-08-17) where the
  * static mark used to sit. The mark is drawn into a coarse transparent buffer
  * and blitted three times across the band: straight into the centre third,
  * flopped into the two flanks — the reflections are of the ANIMATED draw,
  * recomputed every frame. It breathes on its own: one slow sine coarsens the
- * pixels, another shifts the box. Deliberately not pointer-reactive — the
- * phase figure behind it keeps that job. Difference blending is inherited
- * from the mark it replaces. */
+ * pixels, another shifts the box. Deliberately not pointer-reactive. The
+ * phase figure that used to run behind it is retired; the ground canvas
+ * below carries the environment instead. */
 (function(){
   const c=document.getElementById('mirror-c'); if(!c||!c.getContext) return;
   const g=c.getContext('2d');
@@ -600,6 +538,179 @@
   }
   function start(){ if(reduced) frame(); else requestAnimationFrame(frame); }
   if(mark.complete) start(); else mark.onload=start;
+})();
+</script>
+
+<script>
+/* The ground: the space the mirror hangs in, ported from hostile-visualiser.
+ *
+ * FIELD is src/field.rs, the `implied` exhibit's numbers verbatim — drift on
+ * the golden-angle bearing, three-layer parallax, 16 s curvature breath,
+ * local shear, lensing round the subject (deflection ∝ 1/d, capped), edge
+ * shimmer. The field rides the ceiling (TASTE law 6): every mote at ink 1.0,
+ * depth carried by size and speed, not brightness. FIELD INV — the recorded
+ * AKOL-hero verdict — is the same field flipped: white ground, and the
+ * difference-blended mark above goes black against it.
+ *
+ * PHYLLO is src/phyllo.rs: the four judged exhibits (SHIMMER, RITUAL, SPAWN,
+ * EMERGENT), numbers verbatim. The golden angle appears nowhere (law 4); the
+ * lattice breathes instead of snapping; lights stay the exception. The audio
+ * lows the visualiser feeds these are stood in for by one slow sine.
+ *
+ * The switch bottom-right cycles the candidates — the judging happens on the
+ * page, not in the code. */
+(function(){
+  const c=document.getElementById('ground-c'); if(!c||!c.getContext) return;
+  const g=c.getContext('2d',{alpha:false});
+  const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const TAU=Math.PI*2;
+
+  // The house hash (modes.rs hash01), bit-exact via BigInt; only ever run at
+  // init, precomputed into plain arrays, because BigInt per frame is a tax.
+  const M64=(1n<<64n)-1n;
+  function hash01(seed,n){
+    let x=(seed*0x9E3779B97F4A7C15n+n)&M64;
+    x^=x>>30n; x=(x*0xBF58476D1CE4E5B9n)&M64;
+    x^=x>>27n; x=(x*0x94D049BB133111EBn)&M64;
+    x^=x>>31n;
+    return Number(x&0xFFFFFFn)/0xFFFFFF;
+  }
+  const INK=0.26;                       // house.rs INK_CEILING
+  const grey=q=>'rgb('+q+','+q+','+q+')';
+  const ink=v=>grey(Math.round(Math.max(0,Math.min(1,v))*INK*255));
+  const inkInv=v=>grey(255-Math.round(Math.max(0,Math.min(1,v))*INK*255));
+
+  let W=0,H=0;
+  function resize(){
+    const DPR=Math.min(devicePixelRatio||1,2);
+    const r=c.getBoundingClientRect(); W=r.width; H=r.height;
+    c.width=Math.max(1,Math.round(W*DPR)); c.height=Math.max(1,Math.round(H*DPR));
+    g.setTransform(DPR,0,0,DPR,0,0);
+  }
+  addEventListener('resize',resize); resize();
+
+  // The stand-in for the low band: one slow sine, gentle, never still.
+  const low=t=>0.5+0.4*Math.sin(t*0.11);
+
+  /* ---------------- FIELD (field.rs, `implied`) ---------------- */
+  const MOTES=280, DRIFT=0.026, DRIFT_ANGLE=2.3999632, WOBBLE=0.056,
+        CURVE=0.33, CURVE_PERIOD=16.0, WARP=0.06,
+        LENS=0.34, LENS_MAX=0.80, EDGE=0.39, SHIMMER_DUTY=0.63;
+  const FSEED=1185n^0xF1E1Dn;           // seed ^ 0xF1E1D, as field.rs does
+  const mote=[];
+  for(let i=0;i<MOTES;i++){
+    const h=k=>hash01(FSEED,BigInt(i*16+k));
+    mote.push({h0:h(0),h1:h(1),h2:h(2),h3:h(3),h4:h(4)});
+  }
+  function fieldDraw(t,invert){
+    g.fillStyle=invert?'#fff':'#000'; g.fillRect(0,0,W,H);
+    const curve=CURVE*Math.sin(t/CURVE_PERIOD*TAU)*(1+low(t)*0.5);
+    const ddx=Math.cos(DRIFT_ANGLE), ddy=Math.sin(DRIFT_ANGLE);
+    const pivx=W*0.5, pivy=H*0.5, R=H*0.28;      // the mark's box is the subject
+    g.fillStyle=invert?inkInv(1):ink(1);
+    for(let i=0;i<MOTES;i++){
+      const m=mote[i];
+      const depth=Math.floor(m.h0*3)/3, near=0.35+0.65*depth, phase=m.h1*TAU;
+      // (1) drift, wrapped; edge factor before any displacement
+      let fx=(m.h2+t*DRIFT*near*ddx)%1; if(fx<0)fx+=1;
+      let fy=(m.h3+t*DRIFT*near*ddy)%1; if(fy<0)fy+=1;
+      const e=Math.max(0,Math.min(1-Math.abs(fx-0.5)*2,1-Math.abs(fy-0.5)*2));
+      const edge=Math.max(0,Math.min(1,1-e/EDGE));
+      // (2) parallax wobble
+      fx+=Math.sin(t/34*TAU+phase)*WOBBLE*near;
+      fy+=Math.sin(t/21*TAU+phase)*WOBBLE*near;
+      // (3) curvature of the whole field
+      let ux=fx-0.5, uy=fy-0.5;
+      const k=1+curve*(ux*ux+uy*uy); ux*=k; uy*=k;
+      // (4) local shear
+      const nx=ux*6.283, ny=uy*6.283;
+      ux+=Math.sin(nx+t*0.11)*Math.cos(ny*1.3-t*0.07)*WARP;
+      uy+=Math.sin(ny*0.8-t*0.09)*Math.cos(nx*1.7+t*0.13)*WARP;
+      let px=W*0.5+ux*W, py=H*0.5+uy*H;
+      // (5) lensing around the subject, capped
+      const ox=px-pivx, oy=py-pivy, d=Math.hypot(ox,oy);
+      if(d>0.5){
+        const push=Math.min(LENS*R*R/d,LENS_MAX*R);
+        px+=ox/d*push; py+=oy/d*push;
+      }
+      // (6) edge shimmer
+      if(edge>0){
+        const blink=0.5+0.5*Math.sin(t*(1.3+1.7*m.h4)+phase);
+        if(blink<edge*SHIMMER_DUTY) continue;
+      }
+      const sz=(depth>0.6?2:1)*Math.max(W/1920,1);
+      g.fillRect(Math.round(px),Math.round(py),sz,sz);
+    }
+  }
+
+  /* ------------- PHYLLO (phyllo.rs, the four exhibits) ------------- */
+  const DRESS=[
+    {name:'SHIMMER', points:400, angle:142.7, drive:3.0, spread:0.03,  rate:1600, dot:3.1, fall:0.0,  ringOver:1.0, lights:34, spin:0.3,  seed:610n},
+    {name:'RITUAL',  points:3100,angle:143.5, drive:0.35,spread:0.0061,rate:1250, dot:5.2, fall:0.83, ringOver:5.2, lights:6,  spin:-0.03,seed:300n},
+    {name:'SPAWN',   points:850, angle:119.5, drive:0.0, spread:0.0113,rate:1600, dot:1.0, fall:0.465,ringOver:5.6, lights:10, spin:0.3,  seed:3n},
+    {name:'EMERGENT',points:1550,angle:133.2, drive:0.35,spread:0.012, rate:400,  dot:9.5, fall:1.0,  ringOver:1.0, lights:0,  spin:0.05, seed:0n},
+  ];
+  for(const d of DRESS){                 // per-floret jitter, precomputed
+    d.jit=new Float32Array(d.points);
+    for(let i=0;i<d.points;i++) d.jit[i]=hash01(d.seed,BigInt(i));
+  }
+  // The lattice breathes: grow, rest a quarter of the fill time, retract.
+  function grownCount(now,points,rate){
+    if(rate<=0||points===0) return points;
+    const fill=Math.max(points/rate,1e-6), rest=fill*0.25;
+    let t=now%(2*fill+rest); if(t<0)t+=2*fill+rest;
+    const frac=t<=fill ? t/fill : t<=fill+rest ? 1 : 1-(t-fill-rest)/fill;
+    return Math.round(Math.max(0,Math.min(1,frac))*points);
+  }
+  function phylloDraw(t,d){
+    g.fillStyle='#000'; g.fillRect(0,0,W,H);
+    const cx=W*0.5, cy=H*0.5, scale=H*d.spread, s=Math.max(H/1080,0.5);
+    const grown=grownCount(t,d.points,d.rate);
+    const angle=(d.angle+d.drive*(low(t)-0.5)*2)*Math.PI/180;
+    const spin=t*d.spin*TAU;
+    for(let i=0;i<grown;i++){
+      const a=i*angle+spin, r=scale*Math.sqrt(i);
+      const x=cx+Math.cos(a)*r, y=cy+Math.sin(a)*r;
+      if(x<-d.dot*2||y<-d.dot*2||x>W+d.dot*2||y>H+d.dot*2) continue;
+      // age against the full lattice, so retract reads as a retreat
+      const age=1-i/d.points;
+      const size=d.dot*Math.max(1-d.fall*age,0.15)*(0.8+0.4*d.jit[i])*s;
+      const isLight=d.lights>0 && i+Math.min(d.lights,grown)>=grown;
+      g.beginPath();
+      if(isLight){
+        g.fillStyle='#fff'; g.arc(x,y,Math.max(size,1.5),0,TAU); g.fill();
+      }else if(size>d.ringOver*s){
+        g.strokeStyle=ink(0.35+0.65*age); g.lineWidth=1;
+        g.arc(x,y,size,0,TAU); g.stroke();
+      }else{
+        g.fillStyle=ink(0.25+0.75*age); g.arc(x,y,Math.max(size,0.5),0,TAU); g.fill();
+      }
+    }
+  }
+
+  /* ---------------- the switch ---------------- */
+  const GROUNDS=[
+    {label:'FIELD INV', draw:t=>fieldDraw(t,true)},
+    {label:'FIELD',     draw:t=>fieldDraw(t,false)},
+    {label:'PHYLLO SHIMMER',  draw:t=>phylloDraw(t,DRESS[0])},
+    {label:'PHYLLO RITUAL',   draw:t=>phylloDraw(t,DRESS[1])},
+    {label:'PHYLLO SPAWN',    draw:t=>phylloDraw(t,DRESS[2])},
+    {label:'PHYLLO EMERGENT', draw:t=>phylloDraw(t,DRESS[3])},
+    {label:'NONE', draw:()=>{g.fillStyle='#000'; g.fillRect(0,0,W,H);}},
+  ];
+  let gi=0, t=0;
+  const btn=document.getElementById('ground-switch');
+  function frame(){
+    t+=0.016;
+    GROUNDS[gi].draw(t);
+    if(!reduced) requestAnimationFrame(frame);
+  }
+  if(btn) btn.addEventListener('click',()=>{
+    gi=(gi+1)%GROUNDS.length;
+    btn.textContent='GROUND · '+GROUNDS[gi].label;
+    if(reduced) frame();
+  });
+  if(reduced) frame(); else requestAnimationFrame(frame);
 })();
 </script>
 
