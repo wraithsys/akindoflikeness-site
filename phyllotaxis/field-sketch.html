@@ -426,6 +426,7 @@ function makePhrase(){
 
 function show(ch, mode){
   const col=SCRIABIN[ch[0]%12];
+  window.__ctxpc = ch[0]%12; window.__on = 1;
   const box=$("reading");
   box.style.setProperty("--ctxcol",col); box.style.setProperty("--ctxglow",col+"66");
   $("ctxnote").textContent=nameOf(ch[0]);
@@ -461,7 +462,7 @@ function runPhrase(ph, done){
 
 $("play").addEventListener("click",()=>{
   if(playing){ playing=false; clearTimeout(timer); setChord([]);
-    $("play").textContent="Play"; $("mode").textContent="stopped"; return; }
+    $("play").textContent="Play"; $("mode").textContent="stopped"; window.__on=0; return; }
   playing=true; $("play").textContent="Stop"; playPhrase();
 });
 $("again").addEventListener("click",()=>{
@@ -518,7 +519,7 @@ window.__pcw = new Array(12).fill(0.3);
       gl_PointSize = (depth>0.6?2.0:1.0)*u_px;
       v_col = col;
       float tw = 0.85 + 0.15*sin(u_t*(1.3+1.7*hash(4.0))+phase);
-      v_val = (0.22 + 0.78*w)*(0.55+0.45*depth)*tw*1.35;
+      v_val = (0.10 + 1.15*w)*(0.55+0.45*depth)*tw*1.5;
     }`);
   const fs2 = sh(gl.FRAGMENT_SHADER, `
     precision highp float;
@@ -553,19 +554,88 @@ window.__pcw = new Array(12).fill(0.3);
     cols[k*3+1]=parseInt(hx.slice(3,5),16)/255; cols[k*3+2]=parseInt(hx.slice(5,7),16)/255; });
   gl.uniform3fv(U("u_col"), cols);
   const uw=U("u_w"), ut=U("u_t"), ul=U("u_lens"), uc=U("u_curve");
+
+  /* The black hole. The context lamp, become geometry: pure void inside
+     the horizon, an accretion disc glowing the context note's Scriabin
+     colour around it, a soft additive tail beyond. Debt brightens the
+     ring — a sticky spot makes the hole hungrier, per the constitution. */
+  const hp = gl.createProgram();
+  const hvs = sh(gl.VERTEX_SHADER, "attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}");
+  const hfs = sh(gl.FRAGMENT_SHADER, `
+    precision highp float;
+    uniform vec2 u_res; uniform float u_t, u_R, u_pass, u_debt, u_on2; uniform vec3 u_ctx;
+    void main(){
+      vec2 c = gl_FragCoord.xy - u_res*0.5;
+      float d = length(c);
+      float ring1 = u_R*1.42;
+      if(u_pass < 0.5){
+        if(d < u_R){ gl_FragColor = vec4(0.,0.,0.,1.); return; }
+        if(d < ring1){
+          float x = (d-u_R)/(ring1-u_R);
+          float a = atan(c.y,c.x);
+          float wisp = 0.75 + 0.25*sin(a*3.0+u_t*0.7)*sin(a*5.0-u_t*0.4);
+          float bright = (1.0-x)*(0.30+0.70*u_on2)*wisp*(1.0+0.9*u_debt);
+          gl_FragColor = vec4(u_ctx*(0.10+bright*1.15), 1.0); return;
+        }
+        discard;
+      }
+      if(d < ring1) discard;
+      float g = exp(-(d-ring1)/(u_R*0.9))*(0.30+0.70*u_on2)*(0.55+0.75*u_debt);
+      if(g < 0.012) discard;
+      gl_FragColor = vec4(u_ctx*g*0.8, 1.0);
+    }`);
+  if(!hvs||!hfs){ die(); return; }
+  gl.attachShader(hp,hvs); gl.attachShader(hp,hfs); gl.linkProgram(hp);
+  if(!gl.getProgramParameter(hp,gl.LINK_STATUS)){ die(); return; }
+  const hquad = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER,hquad);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+  const HU = n=>gl.getUniformLocation(hp,n);
+  const hloc = gl.getAttribLocation(hp,"a");
   const t0 = performance.now();
   const smooth = new Array(12).fill(0.3);
+  const ctxCol = [0.4,0.5,0.4];
+  let onS = 0.15, debtS = 0;
   (function frame(){
     fit();
     const t=(performance.now()-t0)/1000;
-    for(let k=0;k<12;k++) smooth[k]+= (window.__pcw[k]-smooth[k])*0.06;
+    for(let k=0;k<12;k++) smooth[k]+= (window.__pcw[k]-smooth[k])*0.12;
+    const pc = window.__ctxpc;
+    if(pc!==undefined){
+      const hx=SCRIABIN[pc];
+      const tgt=[parseInt(hx.slice(1,3),16)/255,parseInt(hx.slice(3,5),16)/255,parseInt(hx.slice(5,7),16)/255];
+      for(let k=0;k<3;k++) ctxCol[k]+=(tgt[k]-ctxCol[k])*0.08;
+    }
+    onS += (((window.__on||0)?1:0.15)-onS)*0.05;
+    debtS += ((window.__debt||0)-debtS)*0.04;
+    gl.useProgram(p);
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc,1,gl.FLOAT,false,0,0);
     gl.uniform1fv(uw, new Float32Array(smooth));
     gl.uniform1f(ut, t);
-    gl.uniform1f(ul, 0.45 + (window.__debt||0)*0.9);   // debt deepens the lens
+    gl.uniform1f(ul, 0.45 + debtS*0.9);                // debt deepens the lens
     gl.uniform1f(uc, Math.sin(t/89.0*6.28318)*0.22);   // curvature breathes on the 89s clock
     gl.viewport(0,0,W,H);
     gl.clearColor(0.012,0.02,0.012,1); gl.clear(gl.COLOR_BUFFER_BIT);
     gl.drawArrays(gl.POINTS,0,N);
+    // the hole, over the sky it bends
+    gl.useProgram(hp);
+    gl.bindBuffer(gl.ARRAY_BUFFER,hquad);
+    gl.enableVertexAttribArray(hloc);
+    gl.vertexAttribPointer(hloc,2,gl.FLOAT,false,0,0);
+    gl.uniform2f(HU("u_res"),W,H);
+    gl.uniform1f(HU("u_t"),t);
+    gl.uniform1f(HU("u_R"), H*0.19);
+    gl.uniform1f(HU("u_debt"),debtS);
+    gl.uniform1f(HU("u_on2"),onS);
+    gl.uniform3f(HU("u_ctx"),ctxCol[0],ctxCol[1],ctxCol[2]);
+    gl.uniform1f(HU("u_pass"),0);
+    gl.drawArrays(gl.TRIANGLES,0,3);
+    gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE);
+    gl.uniform1f(HU("u_pass"),1);
+    gl.drawArrays(gl.TRIANGLES,0,3);
+    gl.disable(gl.BLEND);
     requestAnimationFrame(frame);
   })();
 })();
