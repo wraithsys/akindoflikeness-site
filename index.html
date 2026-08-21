@@ -411,7 +411,7 @@
   <div class="hr"></div>
 
   <figure class="hero">
-    <canvas id="ground-c" role="img" aria-label="A wireframe dome wrapped around a black hole; a white star is stretched into a glowing stream feeding it."></canvas>
+    <canvas id="ground-c" role="img" aria-label="A wireframe dome standing on a grid of spacetime that funnels down into a black hole; a white star rides the funnel's wall, stretched into a stream feeding the hole."></canvas>
     <!-- The wordmark left the band (his call, 2026-08-21) — the h1 keeps the
          name for the document, unseen; the noscript mark is the baked fallback. -->
     <h1 class="unseen">akindoflikeness</h1>
@@ -644,17 +644,17 @@
    * (the last tuned state before f4aa007 dropped the dome) plus the six
    * saved presets, params verbatim — their audio/mesh/seq sides ignored.
    * The dome's own `implied` predates the well (tip 0, and the bench drops
-   * to 48 segments). Grain, flare and sparks are ported in monochrome —
-   * cobalt, magenta and amber stay home; greys come through this site's
-   * ink ladder. Grain is seed-static, so it renders once per preset and is
-   * blitted. Segments batch into paths by quantised brightness and width. */
-  // Every dome preset now runs the IMPLIED model (Billy, 2026-08-21): inside
-  // a floating sphere — light yaw only, no pitch/roll tumble, a slow vertical
-  // bob — with the black hole at the apex wrapping the lattice around itself
-  // into an accretion disk (the frame-drag is a real rotation now, winding
-  // tighter toward the horizon). Each preset keeps its own geometry, density,
-  // brightness, stroke and grain, verbatim from the archive; the .ron flare
-  // and sparks stay out — the spec never describes them.
+   * to 48 segments). Grain is ported in monochrome — cobalt, magenta and
+   * amber stay home; greys come through this site's ink ladder. Grain is
+   * seed-static, so it renders once per preset and is blitted. Segments
+   * batch into paths by quantised brightness and width. */
+  // The scene got straightened out (Billy, 2026-08-21): every preset now
+  // runs one camera over one world — a hemisphere of shells planted in a
+  // spacetime floor that funnels into the hole, with the star riding the
+  // funnel's wall. See THE SHEET, AND THE STAR ON IT below for what each
+  // param drives now. Rows are unchanged from the archive, so the fields the
+  // new scene has no use for (camZ, pitch, roll, apexY, mirror, sparks,
+  // flare) are left standing rather than edited out of the record.
   const DOMES=[
     {name:'DOME',    mer:64,par:48,shells:5,gap:0.25,     focal:0.8,      camZ:0.1,       yaw:0.017,     pitch:0,roll:0,drift:0.17,      floor:0.12,gain:0.05,      stroke:1.25,      sparks:0,grain:0,          flare:0,seed:890n,tip:1,lens:0.3,      lensMax:0.1,      well:0.308,     horizon:0.79,      pinch:0.45,      drag:0.85,mirror:1, apexY:0.2, bob:0.035},
     {name:'LEMON',   mer:64,par:48,shells:5,gap:0.2163086,focal:0.6,      camZ:0,         yaw:0.02387028,pitch:0,roll:0,drift:0.38,      floor:0,   gain:0.34729478,stroke:2.7238655, sparks:0,grain:0,          flare:0,seed:422n,tip:1,lens:2.0,      lensMax:0.8,      well:0.15846397,horizon:0.654043,  pinch:0.86932385,drag:0.85,mirror:1, apexY:0.2, bob:0.035},
@@ -665,21 +665,8 @@
     {name:'WELL',    mer:13,par:48,shells:5,gap:0.145,    focal:0.6,      camZ:0,         yaw:0.054,     pitch:0,roll:0,drift:0.38,      floor:0.01,gain:0.39,      stroke:0.71,      sparks:0,grain:0.062,      flare:0,seed:175n,tip:1,lens:2.0,      lensMax:0.8,      well:0.23,      horizon:0.34,      pinch:0.81,      drag:0.85,mirror:1, apexY:0.2, bob:0.035},
   ];
   const DBAYER=[[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]];
-  // THE SUN (Billy, 2026-08-21): a star mid-disruption, orbiting the hole and
-  // stretched into a stream that feeds it — the scale reference the band was
-  // missing, and its light source. Lights are white in this house, so the star
-  // and its stream are the band's only true white; the lattice stays under the
-  // ink ceiling but brightens where the sun passes, which is what finally
-  // makes every dome preset read. Per-particle jitter is hashed once at init
-  // (BigInt per frame is a tax), like the motes and sparks.
-  // Rebuilt 2026-08-21 (Billy: "plainly just 6 orbs in greyscale gradient
-  // with a decaying opacity ... plenty of room for a bit of detail, grainy
-  // little solar flares"): the disc now goes through the house Bayer —
-  // dither_circle's sibling, density not alpha — solid core, grained limb,
-  // speckled corona, slow granulation mottling the surface, prominences
-  // arcing off the limb. And the stream gained a cross-section: each
-  // particle keeps a hashed lane, wide where it tears off the star,
-  // pinched at the horizon — the trail funnels.
+  // Per-particle jitter for the stream, hashed once at init (BigInt per frame
+  // is a tax), like the motes.
   const SUNP=[];
   { const ss=0xCA11AB1En;
     for(let i=0;i<170;i++) SUNP.push([hash01(ss,BigInt(i*8)),hash01(ss,BigInt(i*8+1)),
@@ -712,298 +699,346 @@
     }
     g.drawImage(grainC,0,0);
   }
-  // house.rs glow, monochrome: three soft rings and a core.
-  function glowDot(x,y,r,strength,invert){
-    g.fillStyle=invert?'#000':'#fff';
-    for(const ks of [[0.08,4.2],[0.16,2.6],[0.35,1.55]]){
-      g.globalAlpha=Math.min(1,ks[0]*strength);
-      g.beginPath(); g.arc(x,y,r*ks[1],0,TAU); g.fill();
-    }
-    g.globalAlpha=Math.max(0.3,Math.min(1,strength));
-    g.beginPath(); g.arc(x,y,r,0,TAU); g.fill();
-    g.globalAlpha=1;
-  }
-  function sparksFor(p){
-    if(p.sp) return p.sp;
-    const n=Math.floor(18*p.sparks), a=p.sp=[];
-    for(let i=0;i<n;i++)
-      a.push([hash01(p.seed,BigInt(i+77)),hash01(p.seed,BigInt(i+991)),hash01(p.seed,BigInt(i+1301))]);
-    return a;
-  }
-  let domeYaw=NaN,domePitch=0,domeRoll=0,domeLast=NaN;
-  function rot3(yaw,pitch,roll){
-    const sy=Math.sin(yaw),cy=Math.cos(yaw),sp=Math.sin(pitch),cp=Math.cos(pitch),
-          sr=Math.sin(roll),cr=Math.cos(roll);
-    return [
-      [cy*cp, cy*sp*sr-sy*cr, cy*sp*cr+sy*sr],
-      [sy*cp, sy*sp*sr+cy*cr, sy*sp*cr-cy*sr],
-      [-sp, cp*sr, cp*cr]
-    ];
-  }
+  // The star is the one light in the scene, so it is the one thing allowed
+  // through the ink ceiling — everything else stays under it.
+  const lume=(v,invert)=>{const q=Math.round(Math.max(0,Math.min(1,v))*255);
+    return invert?grey(255-q):grey(q);};
+
+  /* ---- THE SHEET, AND THE STAR ON IT (Billy, 2026-08-21) ----------------
+   * The old sun was a screen-space sprite: a soft radial blob and a scatter
+   * of dots painted over the lattice after the fact, in a coordinate system
+   * the lattice never knew about. It read as a sticker because it was one.
+   * It is a body now, and it lives in the same world the mesh does.
+   *
+   * The mesh got straightened out to make room for it. The dome is a dome —
+   * a hemisphere of shells — standing on a floor, and the floor is Flamm's
+   * paraboloid hung from its rim: w(r) = 2*sqrt(rs*(r-rs)), which plunges
+   * vertically at the horizon and flattens off toward the edge. That is the
+   * sinkhole, drawn rather than implied, and the star rides its wall.
+   *
+   * Everything now goes through one camera. The floor's polar grid, the
+   * dome's shells, the star's own lattice and the stream feeding the hole
+   * are all world-space points through the same project(); depth sorts them
+   * into a far pass and a near pass with the star between, so the near
+   * lines cross in front of it. That single ordering is most of what makes
+   * it sit in the scene instead of on top of it.
+   *
+   * The star is drawn the way the dome is drawn — a wireframe spheroid,
+   * same line grammar — because a body made of the environment's own
+   * material cannot read as pasted on. Tidal stretch points along the sheet
+   * at the hole and deepens at periapsis, tapering that end to a cusp that
+   * the stream leaves from. Only the core is solid white.
+   *
+   * The dither stays, differently: instead of a blurred alpha halo the
+   * star's corona is thresholded through DBAYER on the grain's own 2px
+   * lattice, so what you see is the star lighting the grain the void is
+   * already made of, not a second material laid over it.
+   *
+   * Preset params, verbatim as ever, now read: well -> throat radius,
+   * pinch -> how deep the funnel drops, drag -> how hard the sheet and the
+   * stream wind, mer/par -> spoke and ring counts on the floor as well as
+   * the dome, focal -> the lens (framing is fixed, so it buys perspective
+   * rather than zoom), gap/shells/floor/gain/stroke/grain unchanged.
+   * apexY, camZ, pitch, roll, mirror, sparks and flare fall out: the scene
+   * has a real camera and a real floor now, and the mirrored photon ghost
+   * was reading as doubled artefacts rather than as a belt. */
+  const INCL=0.58;                       // the rake — enough to read the pit
+  let domeYaw=NaN, domeLast=NaN;
   function domeDraw(t,p,invert){
     g.fillStyle=invert?'#fff':'#000'; g.fillRect(0,0,W,H);
-    // integrated orientation with slow drift — alive at rest
+    // one slow yaw plus the drift's wander — alive at rest, never tumbling
     const dt=isNaN(domeLast)?0:Math.min(Math.max(t-domeLast,0),0.1);
     const dy=Math.sin(t*0.07)*p.drift*0.015;
-    const dp=Math.cos(t*0.053+1.7)*p.drift*0.011;
-    const dr=Math.sin(t*0.031+0.4)*p.drift*0.008;
-    if(isNaN(domeYaw)){
-      domeYaw=t*p.yaw*TAU; domePitch=t*p.pitch*TAU; domeRoll=t*p.roll*TAU;
-    }else{
-      domeYaw+=TAU*(p.yaw+dy)*dt;
-      domePitch+=TAU*(p.pitch+dp)*dt;
-      domeRoll+=TAU*(p.roll+dr)*dt;
-    }
+    if(isNaN(domeYaw)) domeYaw=t*p.yaw*TAU; else domeYaw+=TAU*(p.yaw+dy)*dt;
     domeLast=t;
-    // floating: the whole scene rides a slow vertical bob
-    const bob=(p.bob||0)*H*Math.sin(t*0.21);
-    const cx=W*0.5, cyy=H*0.5+bob, scale=Math.min(W,H)*0.48;
-    // the black hole sits at the sphere's apex when the preset says so,
-    // else at centre; it is part of the scene, so it bobs with it
-    const wx=cx, wy=p.apexY!=null?H*p.apexY+bob:cyy;
-    const wellR=Math.max(H*p.well,0.05*H);
     const mix=Math.max(0,Math.min(1,p.tip));
-    const segs=p.tip>0.01?80:48, buckets=new Map();
-    // the sun's state this frame: an eccentric orbit in the disk plane (seen
-    // at an angle, so y is squashed), breathing between apoapsis and
-    // periapsis, precessing slowly; the stream winds from it into the horizon
-    // along the same sense as the frame-drag
-    const rHor=wellR*Math.max(p.horizon*mix,0.15);
-    const sunR=wellR*(1.75+0.5*Math.sin(t*0.037+1.3));
-    const sunA=t*TAU/41+Math.sin(t*0.021)*0.7;
-    const sunX=wx+Math.cos(sunA)*sunR, sunY=wy+Math.sin(sunA)*sunR*0.56;
-    const sunReach=wellR*2.3;
-    const streamP=(s)=>{
-      const rr=sunR+(rHor*0.92-sunR)*Math.pow(s,1.35);
-      const aa=sunA+(0.9+p.drag*2.0)*Math.pow(s,1.7);
-      return [wx+Math.cos(aa)*rr, wy+Math.sin(aa)*rr*0.56, rr];
-    };
-    grainLayer(p,invert);
-    if(p.flare>0.01){
-      // the screencast's soft cross, implied not outlined — in grey here
-      const hx=W*0.42*p.flare, hy=H*0.018*p.flare;
-      g.fillStyle=invert?'#000':'#fff';
-      g.globalAlpha=28/255; g.fillRect(cx-hx,cyy-hy/2,hx*2,hy);
-      g.globalAlpha=18/255; g.fillRect(cx-hy*0.6,cyy-hx*1.15/2,hy*1.2,hx*1.15);
-      g.globalAlpha=1;
-      glowDot(cx,cyy,3+6*p.flare,0.35*p.flare,invert);
+
+    /* ---- the well, in world units (the dome's outer shell is radius 1) --- */
+    const RS=0.15+0.5*p.well;                    // the horizon
+    const RMAX=2.25;                             // the sheet's rim
+    const DEEP=(0.26+0.40*p.pinch)*mix;          // how far the funnel drops
+    const wOf=r=>2*Math.sqrt(RS*Math.max(r-RS,0));
+    const wRim=wOf(RMAX);
+    const sheetY=r=>-(wRim-wOf(Math.min(Math.max(r,RS),RMAX)))*DEEP;
+    const slope=r=>Math.sqrt(RS/Math.max(r-RS,RS*0.05))*DEEP;
+    // frame-drag: the floor winds as it falls, tighter toward the throat
+    const twist=r=>p.drag*mix*2.1*Math.pow(RS/Math.max(r,RS),1.15);
+
+    /* ---- the camera: back, above, looking into the throat ---------------- */
+    const bob=(p.bob||0)*Math.sin(t*0.21);
+    const camD=4.9-1.05*p.focal;                 // focal buys perspective, not zoom
+    const LOOKY=sheetY(RS)*0.42;                 // frame the pit, not the horizon
+    const cx=W*0.5, cyy=H*0.54;
+    const scale=Math.min(W*0.315,H*0.48)*camD;   // dome radius 1 -> that span
+    const ci=Math.cos(INCL), si=Math.sin(INCL);
+    const eyeY=LOOKY+camD*si, eyeZ=-camD*ci;
+    const cy0=Math.cos(domeYaw), sy0=Math.sin(domeYaw);
+    // world -> [screen x, screen y, depth, camera z]; null behind the lens
+    function project(x,y,z){
+      const X=x*cy0-z*sy0, Zw=x*sy0+z*cy0;
+      const Yp=y+bob-eyeY, Zp=Zw-eyeZ;
+      const Yc=Yp*ci+Zp*si, Zc=-Yp*si+Zp*ci;
+      if(Zc<0.12) return null;
+      const inv=1/Zc;
+      return [cx+X*inv*scale, cyy-Yc*inv*scale,
+              Math.max(0,Math.min(1,(Zc-(camD-1.5))/3.0)), Zc];
     }
-    function seg(ax,ay,bx,by,depth,dim,major,inkMul){
+    // a point on the floor at polar (r, ang), dragged
+    const onSheet=(r,ang,lift)=>{
+      const a=ang+twist(r);
+      return project(Math.cos(a)*r, sheetY(r)+(lift||0), Math.sin(a)*r);
+    };
+
+    /* ---- the star's state this frame ------------------------------------ *
+     * An eccentric orbit that falls down the funnel wall and climbs back
+     * out: at periapsis it is deep in the steep part, skirting the throat. */
+    const dip=0.5+0.5*Math.sin(t*0.043);         // 1 at closest approach
+    const orbR=RS*(3.1-1.45*dip);
+    const orbA=t*TAU/53+Math.sin(t*0.019)*0.55+twist(orbR);
+    const tid=0.22+0.72*dip;                     // tidal stretch
+    const starR=RS*0.50;                         // smaller than the hole — not by much
+    const sy1=sheetY(orbR)+starR*0.82;           // resting on the sheet
+    const sc=[Math.cos(orbA)*orbR, sy1, Math.sin(orbA)*orbR];
+    // local frame on the floor: out along the slope, along the orbit, normal
+    const sl=slope(orbR), ln=Math.hypot(1,sl);
+    const er=[Math.cos(orbA)/ln, sl/ln, Math.sin(orbA)/ln];
+    const et=[-Math.sin(orbA),0,Math.cos(orbA)];
+    const en=[er[1]*et[2]-er[2]*et[1], er[2]*et[0]-er[0]*et[2], er[0]*et[1]-er[1]*et[0]];
+    const starP=project(sc[0],sc[1],sc[2]);
+    const starZ=starP?starP[3]:camD;
+    // the star's screen radius, for the lighting falloff and the corona
+    const starPx=starP?starR/starZ*scale:0;      // the body, unstretched
+    const sunX=starP?starP[0]:-1e4, sunY=starP?starP[1]:-1e4;
+    const sunReach=Math.max(starPx*5.5,40);
+
+    /* ---- lensing of the dome, around the throat's image ------------------ */
+    const holeC=project(0,sheetY(RS),0);
+    const holeE=project(RS,sheetY(RS),0);
+    const hx=holeC?holeC[0]:cx, hy=holeC?holeC[1]:cyy;
+    const hr=holeC&&holeE?Math.max(Math.hypot(holeE[0]-hx,holeE[1]-hy),4):Math.min(W,H)*0.1;
+    function lensWarp(s){
+      if(!s||mix<0.001) return null;
+      const ox=s[0]-hx, oy=s[1]-hy, d=Math.hypot(ox,oy);
+      if(d<1) return null;
+      if(d<hr*Math.max(p.horizon*mix,0.4)) return null;      // swallowed
+      const push=Math.min(p.lens*mix*hr*hr/d, p.lensMax*mix*hr);
+      return [s[0]+ox/d*push, s[1]+oy/d*push, s[2], s[3]];
+    }
+
+    /* ---- batched strokes, split far / near about the star --------------- */
+    const farB=new Map(), nearB=new Map();
+    function seg(a,b,dim,major,inkMul){
       if(inkMul<0.02) return;
-      // ×1.35 luminosity, ×1.3 weight — Billy, 2026-08-21: "a little
-      // thicker and a bit more luminous". Applied to every dome preset.
+      const depth=a[2];
       let bright=(p.floor+p.gain*depth)*dim*inkMul*1.35;
       if(major) bright*=1.15;
-      // the sun lights what it passes: a local lift, falling off with
-      // distance, still clamped through the ink ladder — the presets' own
-      // numbers stay verbatim, the scene just gains a light
-      const sdx=(ax+bx)*0.5-sunX, sdy=(ay+by)*0.5-sunY;
+      // the star lights what it passes — a local lift, still clamped
+      const sdx=(a[0]+b[0])*0.5-sunX, sdy=(a[1]+b[1])*0.5-sunY;
       const sd=Math.hypot(sdx,sdy);
       if(sd<sunReach){ const L=1-sd/sunReach; bright*=1+2.6*L*L; }
       bright=Math.max(0,Math.min(1,bright));
       const w=p.stroke*(0.55+0.7*depth)*(major?1.2:1)*1.3;
       const key=Math.round(bright*40)+'|'+Math.round(w*4);
-      let b=buckets.get(key);
-      if(!b){ b={path:new Path2D(),bright,w}; buckets.set(key,b); }
-      b.path.moveTo(ax,ay); b.path.lineTo(bx,by);
+      const M=(a[3]+b[3])*0.5>starZ?farB:nearB;
+      let bk=M.get(key);
+      if(!bk){ bk={path:new Path2D(),bright,w}; M.set(key,bk); }
+      bk.path.moveTo(a[0],a[1]); bk.path.lineTo(b[0],b[1]);
     }
-    function project(vx,vy,vz){
-      const z=vz-p.camZ;
-      if(z<=0.08) return null;
-      const inv=p.focal/z;
-      const depth=Math.max(0,Math.min(1,(z-0.08)/(1+p.camZ)));
-      return [cx+vx*inv*scale, cyy-vy*inv*scale, depth];
-    }
-    // starfield lens + Funnel pinch + swallowed horizon + frame-drag, all
-    // scaled by the tip mix; null means the point fell in the well and the
-    // stroke breaks.
-    function wellWarp(x,y){
-      if(mix<0.001) return [x,y];
-      const ox0=x-wx, oy0=y-wy, d0=Math.hypot(ox0,oy0);
-      if(d0<0.5) return p.horizon*mix>0.001?null:[x,y];
-      const r=Math.max(wellR,1);
-      let dirx=ox0/d0, diry=oy0/d0;
-      const pinch=p.pinch*mix;
-      let px=x, py=y;
-      if(pinch>0.001){
-        const u=d0/r, f=Math.max(1-pinch*(u*u)/(1+u*u),0.05);
-        px=wx+dirx*d0*f; py=wy+diry*d0*f;
+    function flush(M){
+      for(const b of M.values()){
+        g.strokeStyle=invert?inkInv(b.bright):ink(b.bright);
+        g.lineWidth=b.w; g.stroke(b.path);
       }
-      const ox=px-wx, oy=py-wy, d=Math.max(Math.hypot(ox,oy),0.5);
-      dirx=ox/d; diry=oy/d;
-      if(p.horizon*mix>0.001 && d<r*p.horizon*mix) return null; // swallow
-      const lens=p.lens*mix;
-      if(lens>0.001){
-        const push=Math.min(lens*r*r/d,p.lensMax*r);
-        px+=dirx*push; py+=diry*push;
-      }
-      // Frame-drag as a true rotation now (Billy, 2026-08-21): the lattice
-      // winds around the hole, tighter toward the horizon — the accretion
-      // disk. The angle falls off as (r/d)², so far lines barely turn and
-      // near ones wrap around themselves.
-      const drag=p.drag*mix;
-      if(drag>0.001){
-        const fall=Math.min(r/d,1);
-        const th=drag*fall*fall*1.6;
-        const ca=Math.cos(th), sa=Math.sin(th);
-        const rx=px-wx, ry=py-wy;
-        px=wx+rx*ca-ry*sa; py=wy+rx*sa+ry*ca;
-      }
-      return [px,py];
+      M.clear();
     }
-    function belt(x,y){
-      if(p.mirror*mix<0.01) return false;
-      const d=Math.hypot(x-wx,y-wy);
-      return d>wellR*Math.max(p.horizon*mix,0.15) && d<wellR*1.7;
+
+    grainLayer(p,invert);
+
+    /* ---- the floor: a polar grid poured into the funnel ------------------ */
+    const NS=Math.max(8,Math.min(64,p.mer*2));            // spokes
+    const NR=Math.max(11,Math.min(34,Math.round(p.par*0.62)));  // rings
+    const RSTEP=Math.pow(RMAX/RS,1/(NR-1));               // geometric: dense at the throat
+    const rAt=i=>RS*Math.pow(RSTEP,i);
+    // light piles up as the rings crowd the horizon — this is what makes the
+    // pit read as a pit rather than as a pattern
+    const crowd=r=>1+2.8*Math.pow(RS/r,2.2);
+    for(let ri=0;ri<NR;ri++){
+      const r=rAt(ri), major=ri%3===0||r<RS*1.5;
+      let prev=null;
+      const steps=Math.max(28,NS*2);
+      for(let i=0;i<=steps;i++){
+        const s=onSheet(r,TAU*i/steps);
+        if(s&&prev) seg(prev,s,1,major,crowd(r));
+        prev=s;
+      }
     }
+    for(let si2=0;si2<NS;si2++){
+      const ang=TAU*si2/NS, major=si2%4===0;
+      let prev=null;
+      for(let i=0;i<=NR*3;i++){
+        const r=RS*Math.pow(RMAX/RS,i/(NR*3));
+        const s=onSheet(r,ang);
+        if(s&&prev) seg(prev,s,1,major,crowd(r));
+        prev=s;
+      }
+    }
+
+    /* ---- the dome: hemispheres of shells standing in the floor ----------- */
+    const LAT1=0.5*Math.PI, segs=64;
     for(let shell=0;shell<p.shells;shell++){
       const radius=1-shell*p.gap;
       if(radius<0.35) continue;
-      // outer shells lead the tumble slightly — entity, not rigid body
-      const lead=shell*0.07;
-      const m=rot3(domeYaw+lead,domePitch-lead*0.6,domeRoll+lead*0.4);
       const dim=1-shell*0.18;
-      const ap=(vx,vy,vz)=>{
-        const rx=m[0][0]*vx+m[0][1]*vy+m[0][2]*vz;
-        const ry=m[1][0]*vx+m[1][1]*vy+m[1][2]*vz;
-        const rz=m[2][0]*vx+m[2][1]*vy+m[2][2]*vz;
-        const pr=project(rx,ry,rz);
-        if(!pr) return null;
-        const w=wellWarp(pr[0],pr[1]);
-        return w?[w[0],w[1],pr[2]]:null;
+      const baseY=sheetY(radius);          // the rim rides its own floor ring
+      const ap=(lat,lon)=>{
+        const cl=Math.cos(lat), sl2=Math.sin(lat);
+        return lensWarp(project(radius*cl*Math.cos(lon),baseY+radius*sl2,radius*cl*Math.sin(lon)));
       };
-      for(let mi=0;mi<p.mer;mi++){                // meridians
-        const lon=TAU*mi/p.mer, co=Math.cos(lon), so=Math.sin(lon);
+      for(let mi=0;mi<p.mer;mi++){                        // meridians
+        const lon=TAU*mi/p.mer;
         let prev=null;
         for(let i=0;i<=segs;i++){
-          const lat=-Math.PI/2+Math.PI*i/segs, cl=Math.cos(lat), sl=Math.sin(lat);
-          const s=ap(radius*cl*co,radius*sl,radius*cl*so);
-          if(s){
-            if(prev){
-              seg(prev[0],prev[1],s[0],s[1],s[2],dim,false,1);
-              if(belt(s[0],s[1])||belt(prev[0],prev[1]))
-                seg(2*wx-prev[0],2*wy-prev[1],2*wx-s[0],2*wy-s[1],s[2],dim,false,0.45*p.mirror*mix);
-            }
-            prev=s;
-          } else prev=null;
+          const s=ap(LAT1*i/segs,lon);
+          if(s&&prev) seg(prev,s,dim,false,1);
+          prev=s;
         }
       }
-      for(let par=1;par<p.par;par++){             // parallels
-        const lat=-Math.PI/2+Math.PI*par/p.par, cl=Math.cos(lat), sl=Math.sin(lat);
+      for(let par=0;par<=p.par;par++){                    // parallels
+        const lat=LAT1*par/p.par;
         const major=par%3===0||shell===0;
         let prev=null;
         for(let i=0;i<=segs;i++){
-          const lon=TAU*i/segs, co=Math.cos(lon), so=Math.sin(lon);
-          const s=ap(radius*cl*co,radius*sl,radius*cl*so);
-          if(s){
-            if(prev){
-              seg(prev[0],prev[1],s[0],s[1],s[2],dim,major,1);
-              if(belt(s[0],s[1])||belt(prev[0],prev[1]))
-                seg(2*wx-prev[0],2*wy-prev[1],2*wx-s[0],2*wy-s[1],s[2],dim,major,0.45*p.mirror*mix);
-            }
-            prev=s;
-          } else prev=null;
+          const s=ap(lat,TAU*i/segs);
+          if(s&&prev) seg(prev,s,dim,major,1);
+          prev=s;
         }
       }
     }
-    for(const b of buckets.values()){
-      g.strokeStyle=invert?inkInv(b.bright):ink(b.bright);
-      g.lineWidth=b.w;
-      g.stroke(b.path);
-    }
-    // the star and its stream, drawn over the lattice they light. Particles
-    // flow star -> horizon; the s^1.35 radius mapping means constant flow in
-    // s reads as infall accelerating toward the hole. Hotter as they fall
-    // (brighter near the horizon), swallowed just short of it. Each particle
-    // rides a hashed lane across the stream — the spread matches the star's
-    // radius where it tears off and pinches toward the horizon, so the
-    // trail funnels: torn away wide, wound in tight.
-    const sunVisR=Math.max(3,wellR*0.10);
-    g.fillStyle=invert?'#000':'#fff';
-    for(let i=0;i<SUNP.length;i++){
-      const q=SUNP[i];
-      const s=(q[0]+t*(0.055+0.03*q[1]))%1;
-      const ss=Math.min(1,s+(q[2]-0.5)*0.06);
-      const pos=streamP(ss);
-      if(pos[2]<rHor*1.02) continue;                       // swallowed
-      const ahead=streamP(Math.min(1,ss+0.03));
-      let nx=ahead[1]-pos[1], ny=pos[0]-ahead[0];          // normal to the flow
-      const nl=Math.hypot(nx,ny)||1; nx/=nl; ny/=nl;
-      const lane=(q[4]-0.5)*2+Math.sin(t*(0.4+0.6*q[5])+q[3]*TAU)*0.25;
-      const spread=sunVisR*(0.85*Math.pow(1-ss,1.5)+0.05);
-      const flick=0.7+0.3*Math.sin(t*(1.5+2.5*q[1])+q[3]*TAU);
-      g.globalAlpha=Math.min(1,(0.38+0.62*s)*flick);
-      g.fillRect(Math.round(pos[0]+nx*lane*spread),
-                 Math.round(pos[1]+ny*lane*spread),s>0.8?2:1,s>0.8?2:1);
-    }
-    g.globalAlpha=1;
-    // the star itself, in the 1-bit language now: a Bayer-dithered disc —
-    // solid core, grained limb, a speckled corona where the alpha rings
-    // were — tidally stretched along its own stream (being pulled, not
-    // merely round). Granulation mottles the surface on a slow churn; the
-    // per-pixel hash is the cheap float one, not hash01 — BigInt at this
-    // rate is a tax, and nothing here needs to match the Rust bit-exact.
-    const sc=streamP(0);
-    let ex=streamP(0.05)[0]-sc[0], ey=streamP(0.05)[1]-sc[1];
-    const el=Math.hypot(ex,ey)||1; ex/=el; ey/=el;
-    const scx=Math.round(sc[0]), scy=Math.round(sc[1]);
-    const srr=Math.ceil(sunVisR*1.6);
-    for(let iy=-srr;iy<=srr;iy++)for(let ix=-srr;ix<=srr;ix++){
-      const lx=ix*ex+iy*ey, ly=iy*ex-ix*ey;               // +lx is downstream
-      const d=Math.hypot(lx*(lx>0?0.62:1),ly)/sunVisR;    // the tidal snout
-      if(d>1.55) continue;
-      const hn=Math.sin(ix*12.9898+iy*78.233)*43758.5453, h=hn-Math.floor(hn);
-      let dens;
-      if(d<0.6) dens=1-((h>0.55&&d>0.22)?0.5*Math.max(0,Math.sin(t*0.6+h*TAU)):0);
-      else if(d<1.0) dens=0.1+0.9*(1.0-d)/0.4;
-      else dens=(1.55-d)/0.55*0.30*(0.6+0.4*Math.sin(t*0.9+h*TAU));
-      if(dens>DBAYER[iy&3][ix&3]/16) g.fillRect(scx+ix,scy+iy,1,1);
-    }
-    // grainy little solar flares: prominence loops off the limb, each a
-    // dithered run of pixels that grows, arcs over and sinks back on its
-    // own slow period — dropout keeps them filaments, never strokes.
-    for(let fi=0;fi<FLARES.length;fi++){
-      const F=FLARES[fi];
-      const rise=Math.max(0,Math.sin(t*(0.08+0.12*F[4])+F[3]*TAU));
-      if(rise<0.06) continue;
-      const a0=F[0]*TAU+t*0.02;                           // feet ride the surface
-      const arc=0.4+0.7*F[2];
-      const hMax=sunVisR*(0.25+0.55*F[1])*rise;
-      const STEPS=Math.max(7,Math.round((arc*sunVisR+hMax)*1.4));
-      for(let si=0;si<=STEPS;si++){
-        const f=si/STEPS;
-        const hn2=Math.sin(si*91.17+fi*57.31)*24634.6345, h2=hn2-Math.floor(hn2);
-        const hn3=Math.sin(si*37.73+fi*17.07)*11713.9127, h3=hn3-Math.floor(hn3);
-        if(h2>0.35+0.30*rise) continue;                   // grainy dropout
-        const aa=a0+(f-0.5)*arc;
-        // roughened: the arc wavers, so it stays a filament, never a ring
-        const rr2=sunVisR*0.98+Math.sin(f*Math.PI)*hMax+(h3-0.5)*hMax*0.5;
-        g.fillRect(scx+Math.round(Math.cos(aa)*rr2+(h2-0.5)*2),
-                   scy+Math.round(Math.sin(aa)*rr2*0.94+(h3-0.5)*2),1,1);
-      }
-    }
-    // magenta/amber sparks in the Rust; lights are white in this house
-    if(p.sparks>0.01){
-      const m=rot3(domeYaw,domePitch,domeRoll), sp=sparksFor(p);
-      for(let i=0;i<sp.length;i++){
-        const lon=sp[i][0]*TAU, lat=(sp[i][1]-0.5)*Math.PI*0.85;
-        const cl=Math.cos(lat), sl=Math.sin(lat), co=Math.cos(lon), so=Math.sin(lon);
-        const vx=cl*co, vy=sl, vz=cl*so;
-        const rx=m[0][0]*vx+m[0][1]*vy+m[0][2]*vz;
-        const ry=m[1][0]*vx+m[1][1]*vy+m[1][2]*vz;
-        const rz=m[2][0]*vx+m[2][1]*vy+m[2][2]*vz;
-        const pr=project(rx,ry,rz);
-        if(!pr) continue;
-        const w2=wellWarp(pr[0],pr[1]);
-        if(!w2) continue;
-        // pulse slowly — alive at rest
-        const pulse=0.5+0.5*Math.sin(t*(0.4+sp[i][2])+i);
-        if(pulse*pr[2]<0.35) continue;
-        glowDot(w2[0],w2[1],1.1+1.8*pr[2]*p.sparks,0.25+0.55*pulse*pr[2]*p.sparks,invert);
-      }
-    }
-  }
 
+    flush(farB);
+    // the throat is a hole, so it occludes: everything behind it stops here
+    { let started=false;
+      g.beginPath();
+      for(let i=0;i<=48;i++){
+        const s=onSheet(RS,TAU*i/48);
+        if(!s){ started=false; continue; }
+        if(!started){ g.moveTo(s[0],s[1]); started=true; } else g.lineTo(s[0],s[1]);
+      }
+      g.closePath(); g.fillStyle=invert?'#fff':'#000'; g.fill();
+    }
+
+    /* ---- the star ------------------------------------------------------- */
+    if(starP){
+      // The body: a spheroid on the floor, a round head and one drawn-out
+      // tail, not a symmetric spindle — the hole-side axis is the one that
+      // stretches and its cross-section narrows as it goes, so the shape
+      // reads as a star being pulled apart. Drawn as a wireframe, the dome's
+      // own grammar at star scale, which is what keeps it native to the scene.
+      const surf=(v,w)=>{
+        const cv=Math.cos(v), sv=Math.sin(v);
+        const A=starR*cv*(cv>=0?1+0.16*tid:1+1.75*tid);
+        const rad=starR*sv*(cv>=0?1:1-0.62*tid*(-cv));
+        const B=rad*Math.cos(w), C=rad*Math.sin(w);
+        return project(sc[0]+er[0]*A+et[0]*B+en[0]*C,
+                       sc[1]+er[1]*A+et[1]*B+en[1]*C,
+                       sc[2]+er[2]*A+et[2]*B+en[2]*C);
+      };
+      // Its outline in screen space, so the corona can fill the shape
+      // rather than sit behind it as a disc: head end, tail tip, and how wide
+      // it runs across. All measured off the same surf() the wireframe uses.
+      const eHead=surf(0,0), eTail=surf(Math.PI,0),
+            eSide=surf(Math.PI/2,Math.PI/2), eSid2=surf(Math.PI/2,0);
+      const Lh=eHead?Math.hypot(eHead[0]-sunX,eHead[1]-sunY):starPx;
+      const Lt=eTail?Math.hypot(eTail[0]-sunX,eTail[1]-sunY):starPx;
+      let ux=1,uy=0;
+      if(eTail&&Lt>0.5){ ux=(eTail[0]-sunX)/Lt; uy=(eTail[1]-sunY)/Lt; }
+      const Bw=Math.max(4,
+        eSide?Math.hypot(eSide[0]-sunX,eSide[1]-sunY):starPx,
+        eSid2?Math.hypot(eSid2[0]-sunX,eSid2[1]-sunY):starPx);
+      // Corona: the star lighting the grain the void is already made of,
+      // thresholded through DBAYER on that same 2px lattice, but measured in
+      // the body's own metric so it fills the teardrop instead of sitting
+      // behind it as a disc. Swept over the shape's oriented bounding box —
+      // a square one around a long diagonal tail is mostly wasted cells —
+      // and gathered into one path, because a fillRect per dot is the tax.
+      const G=1.32, CAP=Math.min(W,H)*0.34;
+      const A1=Math.min(Lt,CAP)*G, A0=-Math.min(Lh,CAP)*G, B1=Math.min(Bw,CAP)*G;
+      let bx0=1e9,bx1=-1e9,by0=1e9,by1=-1e9;
+      for(let k=0;k<4;k++){
+        const a=k<2?A0:A1, b=(k&1)?B1:-B1;
+        const X=sunX+a*ux-b*uy, Y=sunY+a*uy+b*ux;
+        if(X<bx0)bx0=X; if(X>bx1)bx1=X; if(Y<by0)by0=Y; if(Y>by1)by1=Y;
+      }
+      const x0=Math.max(0,Math.floor(bx0/2)), x1=Math.min(Math.ceil(W/2),Math.ceil(bx1/2));
+      const y0=Math.max(0,Math.floor(by0/2)), y1=Math.min(Math.ceil(H/2),Math.ceil(by1/2));
+      const halo=new Path2D();
+      for(let iy=y0;iy<y1;iy++)for(let ix=x0;ix<x1;ix++){
+        const dx=ix*2+1-sunX, dy=iy*2+1-sunY;
+        const a=(dx*ux+dy*uy)/G, b=(-dx*uy+dy*ux)/G;
+        const na=a>=0?a/Lt:a/Lh;                     // +a runs down the tail
+        if(na>1||na<-1) continue;
+        const tp=na>0?1-0.8*na:1, nb=b/(Bw*(tp>0.16?tp:0.16));
+        const t2=na*na+nb*nb;
+        if(t2>=1) continue;
+        const e=1-Math.sqrt(t2);
+        // the 0.28+0.72n weighting frays the edge out into the void grain
+        // rather than ending it on a line
+        const n=((ix*73856093^iy*19349663)>>>0)/4294967296;
+        if(e*e*3.4*(0.28+0.72*n)>(DBAYER[iy&3][ix&3]+0.5)/16) halo.rect(ix*2,iy*2,1,1);
+      }
+      g.fillStyle=invert?'#000':'#fff'; g.fill(halo);
+      // the wake it drags along the floor
+      g.strokeStyle=lume(0.34,invert); g.lineWidth=Math.max(0.8,p.stroke);
+      g.beginPath(); let wprev=null;
+      for(let i=0;i<=26;i++){
+        const back=i/26, r2=orbR*(1+0.10*back), a2=orbA-back*0.62;
+        const s=project(Math.cos(a2)*r2, sheetY(r2)+starR*0.5, Math.sin(a2)*r2);
+        if(s){ if(wprev) g.lineTo(s[0],s[1]); else g.moveTo(s[0],s[1]); wprev=s; }
+      }
+      g.stroke();
+      const SM=14, SP=7;
+      g.lineWidth=Math.max(0.9,p.stroke*0.9);
+      g.strokeStyle=lume(0.72,invert);
+      g.beginPath();
+      for(let mi=0;mi<SM;mi++){
+        const w=TAU*mi/SM; let prev=null;
+        for(let i=0;i<=24;i++){
+          const s=surf(Math.PI*i/24,w);
+          if(s){ if(prev) g.lineTo(s[0],s[1]); else g.moveTo(s[0],s[1]); prev=s; } else prev=null;
+        }
+      }
+      for(let pi=1;pi<SP;pi++){
+        const v=Math.PI*pi/SP; let prev=null;
+        for(let i=0;i<=32;i++){
+          const s=surf(v,TAU*i/32);
+          if(s){ if(prev) g.lineTo(s[0],s[1]); else g.moveTo(s[0],s[1]); prev=s; } else prev=null;
+        }
+      }
+      g.stroke();
+      // the core: the one solid white in the band
+      g.fillStyle=invert?'#000':'#fff';
+      g.beginPath(); g.arc(sunX,sunY,Math.max(1.5,starPx*0.34),0,TAU); g.fill();
+    }
+
+    /* ---- the stream: the cusp unwinding down the wall into the throat ---- */
+    { const wind=1.15+p.drag*mix*2.4;
+      g.fillStyle=invert?'#000':'#fff';
+      for(let i=0;i<SUNP.length;i++){
+        const q=SUNP[i];
+        const s=(q[0]+t*(0.055+0.03*q[1]))%1;
+        const u=Math.min(1,s+(q[2]-0.5)*0.05);
+        const r=orbR+(RS*1.03-orbR)*Math.pow(u,1.35);
+        if(r<RS*1.05) continue;                            // swallowed
+        const jit=(q[3]-0.5)*0.10*(1-u);
+        const pos=onSheet(r,orbA+wind*Math.pow(u,1.6)+jit,starR*(0.5-0.4*u));
+        if(!pos) continue;
+        const sz=u>0.75?2:1;
+        g.fillRect(Math.round(pos[0]),Math.round(pos[1]),sz,sz);
+      }
+    }
+
+    flush(nearB);
+  }
   /* ---------------- the switches ---------------- */
   let ti=0, inv=true, t=0;
   const tplBtn=document.getElementById('ground-tpl');
