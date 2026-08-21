@@ -11,6 +11,7 @@ licence.**
 | `pixeloid-mono.ttf` | Pixeloid Mono | SIL Open Font License 1.1 — see `OFL.txt` |
 | `modern-dos-8x16.ttf` | Modern DOS 8x16 | CC0 1.0 — Jayvee Enaguas (HarvettFox96) |
 | `european-teletext.ttf` | European Teletext | CC0 1.0 |
+| `panoptic-monospace-bold.otf` | Panoptic Monospace | Public domain — Josiah Bishop |
 
 Pixeloid Mono — Copyright (c) 2020-2022 GGBotNet (https://ggbot.net/fonts/),
 Reserved Font Name "Pixeloid". The OFL's Reserved Font Name clause means a
@@ -19,6 +20,12 @@ own name, with this notice, is exactly what the licence asks for.
 
 CC0 faces carry no conditions. They are credited because the colophon credits
 them, not because they must be.
+
+Panoptic Monospace — by Josiah Bishop; *"Panoptic Monospace has been released
+into the Public Domain"* (1001fonts.com licence page, checked 2026-08-21;
+Billy's download, same day). It is the live-rendered wordmark face — the first
+face on this site allowed to *be* a font file in the wordmark register, because
+public domain has no redistribution terms to trip over.
 
 ## Not here, deliberately
 
