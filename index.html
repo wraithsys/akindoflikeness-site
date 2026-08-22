@@ -665,8 +665,24 @@
     {name:'WELL',    mer:13,par:48,shells:5,gap:0.145,    focal:0.6,      camZ:0,         yaw:0.054,     pitch:0,roll:0,drift:0.38,      floor:0.01,gain:0.39,      stroke:0.71,      sparks:0,grain:0.062,      flare:0,seed:175n,tip:1,lens:2.0,      lensMax:0.8,      well:0.23,      horizon:0.34,      pinch:0.81,      drag:0.85,mirror:1, apexY:0.2, bob:0.035},
   ];
   const DBAYER=[[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]];
-  // Per-particle jitter for the stream, hashed once at init (BigInt per frame
-  // is a tax), like the motes.
+  // THE SUN (Billy, 2026-08-21): a star mid-disruption, orbiting the hole and
+  // stretched into a stream that feeds it — the scale reference the band was
+  // missing, and its light source. Lights are white in this house, so the star
+  // and its stream are the band's only true white; the lattice stays under the
+  // ink ceiling but brightens where the sun passes, which is what finally
+  // makes every dome preset read. Per-particle jitter is hashed once at init
+  // (BigInt per frame is a tax), like the motes.
+  // Rebuilt grainy (Billy: "plainly just 6 orbs in greyscale gradient with a
+  // decaying opacity ... plenty of room for a bit of detail, grainy little
+  // solar flares"): the disc goes through the house Bayer — dither_circle's
+  // sibling, density not alpha — solid core, grained limb, speckled corona,
+  // slow granulation mottling the surface, prominences arcing off the limb.
+  // And the stream carries a cross-section: each particle keeps a hashed
+  // lane, wide where it tears off the star, pinched at the horizon.
+  // All of that survives the rebuild below; what changed is where it lives.
+  // The ladder, the granulation and the prominences now run on a body in
+  // world space, and the lane and its pinch are measured across the floor,
+  // so the trail funnels down the well itself rather than across the screen.
   const SUNP=[];
   { const ss=0xCA11AB1En;
     for(let i=0;i<170;i++) SUNP.push([hash01(ss,BigInt(i*8)),hash01(ss,BigInt(i*8+1)),
@@ -675,7 +691,7 @@
   // Prominence seeds: foot angle, leap, span, phase, period — hashed once.
   const FLARES=[];
   { const fs=0x50DA1An;
-    for(let i=0;i<7;i++) FLARES.push([hash01(fs,BigInt(i*8)),hash01(fs,BigInt(i*8+1)),
+    for(let i=0;i<10;i++) FLARES.push([hash01(fs,BigInt(i*8)),hash01(fs,BigInt(i*8+1)),
                                       hash01(fs,BigInt(i*8+2)),hash01(fs,BigInt(i*8+3)),
                                       hash01(fs,BigInt(i*8+4))]); }
   // Void grain (house.rs): seed-static, no time term — render once, blit.
@@ -699,6 +715,23 @@
     }
     g.drawImage(grainC,0,0);
   }
+  // The star's disc is thousands of cells a frame. A Path2D that big is an
+  // allocation the collector notices, so it goes into a scratch buffer
+  // instead — sized on demand, reused, blitted once. Same trick as the grain
+  // layer, just not seed-static, so it is rebuilt rather than cached.
+  let haloC=null, haloX=null, haloImg=null, haloW=0, haloH=0;
+  function haloBuf(w,h){
+    if(w>haloW||h>haloH){
+      haloW=Math.max(w,haloW); haloH=Math.max(h,haloH);
+      if(!haloC) haloC=document.createElement('canvas');
+      haloC.width=haloW; haloC.height=haloH;
+      haloX=haloC.getContext('2d');
+      haloImg=haloX.createImageData(haloW,haloH);
+    }
+    haloImg.data.fill(0);
+    return haloImg;
+  }
+
   // The star is the one light in the scene, so it is the one thing allowed
   // through the ink ceiling — everything else stays under it.
   const lume=(v,invert)=>{const q=Math.round(Math.max(0,Math.min(1,v))*255);
@@ -955,38 +988,6 @@
       const Bw=Math.max(4,
         eSide?Math.hypot(eSide[0]-sunX,eSide[1]-sunY):starPx,
         eSid2?Math.hypot(eSid2[0]-sunX,eSid2[1]-sunY):starPx);
-      // Corona: the star lighting the grain the void is already made of,
-      // thresholded through DBAYER on that same 2px lattice, but measured in
-      // the body's own metric so it fills the teardrop instead of sitting
-      // behind it as a disc. Swept over the shape's oriented bounding box —
-      // a square one around a long diagonal tail is mostly wasted cells —
-      // and gathered into one path, because a fillRect per dot is the tax.
-      const G=1.32, CAP=Math.min(W,H)*0.34;
-      const A1=Math.min(Lt,CAP)*G, A0=-Math.min(Lh,CAP)*G, B1=Math.min(Bw,CAP)*G;
-      let bx0=1e9,bx1=-1e9,by0=1e9,by1=-1e9;
-      for(let k=0;k<4;k++){
-        const a=k<2?A0:A1, b=(k&1)?B1:-B1;
-        const X=sunX+a*ux-b*uy, Y=sunY+a*uy+b*ux;
-        if(X<bx0)bx0=X; if(X>bx1)bx1=X; if(Y<by0)by0=Y; if(Y>by1)by1=Y;
-      }
-      const x0=Math.max(0,Math.floor(bx0/2)), x1=Math.min(Math.ceil(W/2),Math.ceil(bx1/2));
-      const y0=Math.max(0,Math.floor(by0/2)), y1=Math.min(Math.ceil(H/2),Math.ceil(by1/2));
-      const halo=new Path2D();
-      for(let iy=y0;iy<y1;iy++)for(let ix=x0;ix<x1;ix++){
-        const dx=ix*2+1-sunX, dy=iy*2+1-sunY;
-        const a=(dx*ux+dy*uy)/G, b=(-dx*uy+dy*ux)/G;
-        const na=a>=0?a/Lt:a/Lh;                     // +a runs down the tail
-        if(na>1||na<-1) continue;
-        const tp=na>0?1-0.8*na:1, nb=b/(Bw*(tp>0.16?tp:0.16));
-        const t2=na*na+nb*nb;
-        if(t2>=1) continue;
-        const e=1-Math.sqrt(t2);
-        // the 0.28+0.72n weighting frays the edge out into the void grain
-        // rather than ending it on a line
-        const n=((ix*73856093^iy*19349663)>>>0)/4294967296;
-        if(e*e*3.4*(0.28+0.72*n)>(DBAYER[iy&3][ix&3]+0.5)/16) halo.rect(ix*2,iy*2,1,1);
-      }
-      g.fillStyle=invert?'#000':'#fff'; g.fill(halo);
       // the wake it drags along the floor
       g.strokeStyle=lume(0.34,invert); g.lineWidth=Math.max(0.8,p.stroke);
       g.beginPath(); let wprev=null;
@@ -1015,9 +1016,103 @@
         }
       }
       g.stroke();
-      // the core: the one solid white in the band
+      // The disc, through the house Bayer — density not alpha. The ladder is
+      // the one the grainy rebuild landed on main (solid core, grained limb,
+      // speckled corona, granulation mottling the surface on a slow churn),
+      // but run in the body's own metric rather than on a screen-space
+      // circle, so it fills the teardrop and stretches with it. Cells sit on
+      // the void grain's 2px lattice, which is what stops the star reading as
+      // a second material laid over the scene. Swept over the shape's
+      // oriented bounding box — a square one around a long diagonal tail is
+      // mostly wasted cells — and gathered into one path, because a fillRect
+      // per dot is the tax.
+      const G=1.42, CAP=Math.min(W,H)*0.34;
+      const A1=Math.min(Lt,CAP)*G, A0=-Math.min(Lh,CAP)*G, B1=Math.min(Bw,CAP)*G;
+      let bx0=1e9,bx1=-1e9,by0=1e9,by1=-1e9;
+      for(let k=0;k<4;k++){
+        const a=k<2?A0:A1, b=(k&1)?B1:-B1;
+        const X=sunX+a*ux-b*uy, Y=sunY+a*uy+b*ux;
+        if(X<bx0)bx0=X; if(X>bx1)bx1=X; if(Y<by0)by0=Y; if(Y>by1)by1=Y;
+      }
+      const x0=Math.max(0,Math.floor(bx0/2)), x1=Math.min(Math.ceil(W/2),Math.ceil(bx1/2));
+      const y0=Math.max(0,Math.floor(by0/2)), y1=Math.min(Math.ceil(H/2),Math.ceil(by1/2));
+      const bw2=(x1-x0)*2, bh2=(y1-y0)*2;
+      const img=bw2>0&&bh2>0?haloBuf(bw2,bh2):null;
+      const D=img?img.data:null, stride=haloW*4, lit=invert?0:255;
+      for(let iy=y0;img&&iy<y1;iy++)for(let ix=x0;ix<x1;ix++){
+        const dx=ix*2+1-sunX, dy=iy*2+1-sunY;
+        const a=(dx*ux+dy*uy)/G, b=(-dx*uy+dy*ux)/G;
+        const na=a>=0?a/Lt:a/Lh;                     // +a runs down the tail
+        if(na>1.4||na<-1.4) continue;
+        const tp=na>0?Math.max(0.16,1-0.8*na):1, nb=b/(Bw*tp);
+        const d=Math.sqrt(na*na+nb*nb);
+        if(d>1.35) continue;                         // d=1 is the body's skin
+        const n=((ix*73856093^iy*19349663)>>>0)/4294967296;
+        let dens;
+        // the core stays round — it is measured without the tidal stretch,
+        // so what elongates is the limb and the tail, not the light itself
+        const dh=Math.sqrt(a*a+b*b)/Bw;
+        if(dh<0.66) dens=1-((n>0.62&&dh>0.18)?0.28*Math.max(0,Math.sin(t*0.6+n*TAU)):0);
+        else if(d<1.0) dens=0.12+0.83*(1.0-d)/0.66;   // the limb, darkening out
+        // the 0.28+0.72n weighting frays the corona out into the void grain
+        // rather than ending it on a line
+        else dens=(1.35-d)/0.35*0.46*(0.6+0.4*Math.sin(t*0.9+n*TAU))*(0.28+0.72*n);
+        // A 1px dot on the 2px lattice tops out at quarter coverage, which is
+        // right for grain and wrong for a core. So the cell carries two
+        // levels and the Bayer threshold picks between them: the top half of
+        // the range fills the cell, the bottom half drops a dot. One lattice,
+        // one material, and the crossover is dithered rather than stepped.
+        const th=(DBAYER[iy&3][ix&3]+0.5)/16;
+        const full=dens>=0.5+0.5*th;
+        if(!full&&dens<0.5*th) continue;
+        const o=((iy-y0)*2*stride)+((ix-x0)*2*4);
+        D[o]=lit; D[o+1]=lit; D[o+2]=lit; D[o+3]=255;
+        if(full){
+          D[o+4]=lit; D[o+5]=lit; D[o+6]=lit; D[o+7]=255;
+          const o2=o+stride;
+          D[o2]=lit; D[o2+1]=lit; D[o2+2]=lit; D[o2+3]=255;
+          D[o2+4]=lit; D[o2+5]=lit; D[o2+6]=lit; D[o2+7]=255;
+        }
+      }
+      if(img){
+        haloX.putImageData(img,0,0);
+        g.drawImage(haloC,0,0,bw2,bh2,x0*2,y0*2,bw2,bh2);
+      }
+      // Grainy little solar flares: prominence loops off the head's limb,
+      // each a dithered run that grows, arcs over and sinks back on its own
+      // slow period, dropout keeping it a filament rather than a stroke.
+      // Each loop lives in a plane through the body's long axis, rolled by
+      // its own hash, so they stand off the limb in three dimensions and
+      // foreshorten with the rest of the scene.
       g.fillStyle=invert?'#000':'#fff';
-      g.beginPath(); g.arc(sunX,sunY,Math.max(1.5,starPx*0.34),0,TAU); g.fill();
+      for(let fi=0;fi<FLARES.length;fi++){
+        const F=FLARES[fi];
+        const rise=Math.max(0,Math.sin(t*(0.08+0.12*F[4])+F[3]*TAU));
+        if(rise<0.06) continue;
+        const w0=F[0]*TAU+t*0.02;                    // the loop's roll, drifting
+        const qx=et[0]*Math.cos(w0)+en[0]*Math.sin(w0),
+              qy=et[1]*Math.cos(w0)+en[1]*Math.sin(w0),
+              qz=et[2]*Math.cos(w0)+en[2]*Math.sin(w0);
+        const a0=(F[1]-0.5)*2.4;                     // feet, spread over the head
+        const arc=0.4+0.7*F[2], hMax=starR*(0.36+0.62*F[2])*rise;
+        // stepped by the arc's length on screen, not in world units, so a
+        // filament stays a filament however near the camera the star swings
+        const STEPS=Math.max(10,Math.round((arc+hMax/starR)*starPx*1.4));
+        for(let si=0;si<=STEPS;si++){
+          const f=si/STEPS;
+          const hn2=Math.sin(si*91.17+fi*57.31)*24634.6345, h2=hn2-Math.floor(hn2);
+          const hn3=Math.sin(si*37.73+fi*17.07)*11713.9127, h3=hn3-Math.floor(hn3);
+          if(h2>0.35+0.30*rise) continue;            // grainy dropout
+          const aa=a0+(f-0.5)*arc;
+          // roughened, so the arc wavers and stays a filament, never a ring
+          const rr=starR*0.98+Math.sin(f*Math.PI)*hMax+(h3-0.5)*hMax*0.5;
+          const ca=Math.cos(aa)*rr, sa2=Math.sin(aa)*rr;
+          const pr=project(sc[0]+er[0]*ca+qx*sa2,
+                           sc[1]+er[1]*ca+qy*sa2,
+                           sc[2]+er[2]*ca+qz*sa2);
+          if(pr) g.fillRect(Math.round(pr[0]+(h2-0.5)*2),Math.round(pr[1]+(h3-0.5)*2),1,1);
+        }
+      }
     }
 
     /* ---- the stream: the cusp unwinding down the wall into the throat ---- */
@@ -1029,8 +1124,14 @@
         const u=Math.min(1,s+(q[2]-0.5)*0.05);
         const r=orbR+(RS*1.03-orbR)*Math.pow(u,1.35);
         if(r<RS*1.05) continue;                            // swallowed
-        const jit=(q[3]-0.5)*0.10*(1-u);
-        const pos=onSheet(r,orbA+wind*Math.pow(u,1.6)+jit,starR*(0.5-0.4*u));
+        // each particle keeps a hashed lane across the flow — the spread
+        // matches the star where it tears off and pinches to a hairline at
+        // the horizon, so the trail funnels. Measured across the floor, so
+        // the fan lies on the funnel's wall rather than across the screen.
+        const lane=(q[4]-0.5)*2+Math.sin(t*(0.4+0.6*q[5])+q[3]*TAU)*0.25;
+        const r2=r+lane*starR*(0.42*Math.pow(1-u,1.6)+0.03);
+        if(r2<RS*1.05) continue;
+        const pos=onSheet(r2,orbA+wind*Math.pow(u,1.6),starR*(0.5-0.4*u));
         if(!pos) continue;
         const sz=u>0.75?2:1;
         g.fillRect(Math.round(pos[0]),Math.round(pos[1]),sz,sz);
