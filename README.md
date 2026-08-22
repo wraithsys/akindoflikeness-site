@@ -81,8 +81,11 @@ shipping a font is redistribution either way.
 `_headers` has the reasoning inline, including two Cloudflare `_headers` quirks
 that fail silently and are easy to get wrong. The short version: `/assets/*` is
 immutable for a year and is therefore **rename-to-change**; `/covers/*` gets a
-month; HTML gets Pages' own `max-age=0, must-revalidate`, so a deploy is live
-immediately.
+month; HTML is `max-age=0` with `stale-while-revalidate` and `stale-if-error`,
+and a zone Cache Rule (not in this repo — Cloudflare dashboard, Caching →
+Cache Rules) holds every page at the edge for 120s and serves that copy when
+the Pages origin answers 5xx. Since 2026-08-19 it did so on one request in
+six; `_headers` has the numbers. A deploy is live within two minutes.
 
 ## Web instruments
 
