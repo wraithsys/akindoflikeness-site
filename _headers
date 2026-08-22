@@ -13,9 +13,55 @@
 #      non-overlapping prefixes only, and never on `/*`.
 #
 # Pages already answers everything with `public, max-age=0, must-revalidate`,
-# which is what HTML wants: a push to `main` is live on the next request. The
-# pages therefore need no rule at all. Every Cache-Control below is opting a
-# specific prefix OUT of that default.
+# which is what HTML wanted: a push to `main` is live on the next request.
+# Every Cache-Control below is opting a specific prefix OUT of that default.
+
+
+# -------------------------------------------------------------------- pages --
+#
+# The pages DID need no rule, until the Pages origin started timing out. From
+# 2026-08-19 the zone analytics show 8-14% of every hour's requests answered
+# 504 from the edge, at any load, and for `/` and `/instruments/phyllotaxis/`
+# on 08-22: 544 x 200 (cacheStatus "dynamic") against 107 x 504 (cacheStatus
+# "miss"). `_routes.json` keeps those paths off the Functions runtime, so that
+# is the static origin itself, not our code. One page load in six was the
+# Cloudflare error page.
+#
+# `must-revalidate` is the directive that forbids a cache from serving a
+# stale copy, which is exactly the copy we want served when the origin fails.
+# So HTML gets a Cache-Control of its own:
+#
+#   max-age=0                   browsers still revalidate every load, so a
+#                               push to `main` is still live next request
+#   stale-while-revalidate=600  a stale copy may be served while that
+#                               revalidation runs, instead of blocking on it
+#   stale-if-error=86400        and may be served for a day if the origin
+#                               answers 5xx (Cloudflare: 500/502/503/504)
+#
+# Not `s-maxage`: Cloudflare reads it as `proxy-revalidate`, which switches
+# both stale directives straight back off (cache/concepts/cache-control).
+#
+# The edge half of this lives outside the repo, as a zone Cache Rule
+# (rulesets phase http_request_cache_settings, "Edge-cache HTML/pages 120s"):
+# GETs on this host, minus /api/ and the immutable prefixes below, are cached
+# at the edge for 120s regardless of origin headers, 5xx is never stored,
+# serve-stale is on. That rule is what turns a 504 into a HIT; these headers
+# are what stop a cache-control directive from arguing with it. Either alone
+# is a weaker promise than both.
+#
+# The cost is freshness: a deploy may take up to two minutes to reach a
+# visitor, and a returning browser may show the previous copy for one load.
+# Billy's call: "the site just must work and must load."
+#
+# Rule 2 applies. These are exact paths (no `*`), so none of them overlaps
+# any Cache-Control prefix below, and `/instruments/*` carries only the
+# isolation headers, which is a different header and does not concatenate.
+/
+  Cache-Control: public, max-age=0, stale-while-revalidate=600, stale-if-error=86400
+/bypo
+  Cache-Control: public, max-age=0, stale-while-revalidate=600, stale-if-error=86400
+/instruments/phyllotaxis/
+  Cache-Control: public, max-age=0, stale-while-revalidate=600, stale-if-error=86400
 
 
 # ------------------------------------------------------------- static assets --
