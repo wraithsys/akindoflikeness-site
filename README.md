@@ -115,8 +115,10 @@ form returns ok and stores nothing.
 **This repository is public**, so the `phyllotaxis/` workspace — `DESIGN.md` and
 all of its source — is readable by anyone. That was raised as a problem and
 Billy's call is that it is not one: *"keep it where it is, it's not causing any
-problems."* `fibonacci-synth` is public and MIT already, so this is the same
-posture, not a new one.
+problems."* (`fibonacci-synth` was public and MIT when this was written; it
+went private on 2026-08-23 and the site copy no longer says MIT, free, or
+public source — see the `scrub-mit-language` PR. The phyllotaxis posture
+above is unchanged.)
 
 Two mechanics that follow from it, both handled:
 
