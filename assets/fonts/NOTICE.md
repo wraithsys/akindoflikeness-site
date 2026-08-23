@@ -48,3 +48,17 @@ Cloudflare Pages compresses on the wire, and a brotli-compressed pixel TTF is
 within a few kilobytes of the equivalent WOFF2. Converting would mean
 re-generating the files and re-checking the hinting on faces whose entire point
 is that they are pixel-exact. Not worth it; revisit only if the fonts grow.
+
+## Inter (footer and colophon, 2026-08-23)
+
+| file | family | licence |
+|---|---|---|
+| `inter-latin-400.woff2` | Inter, regular weight, latin subset | SIL Open Font License 1.1 (c) 2016 The Inter Project Authors, see `OFL-Inter.txt` |
+
+The footer and colophon moved off the bitmap faces to Inter at 9px / 8px
+(Billy: "put the footer in a normal font inter or something and make it very
+small"). Bitmap faces off their native grid go soft at that size; a vector
+face does not. This is the latin-subset regular weight as served by Google
+Fonts (unicode-range U+0000-00FF plus general punctuation, which covers the
+em dash in the colophon), 23 kB. Inter's Reserved Font Name is "Inter"; the
+file ships unmodified under that name, with this notice and its licence.
