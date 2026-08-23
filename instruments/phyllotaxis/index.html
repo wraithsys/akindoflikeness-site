@@ -1311,6 +1311,7 @@ const GROUND = [
 // The one dial, deliberately not a slider: how loud the ground sits under
 // everything, before the breathing and the Master fader scale it.
 const GROUND_LEVEL = 0.09;
+const GROUND_MUTED = true; // Billy 2026-08-23: mute the granular ground
 
 // The engine's slow field level, written by the frame loop each frame; the
 // ground breathes against it.
@@ -1413,7 +1414,7 @@ function groundInit() {
     // swell, ~0.18 in a deep decay. The ground blooms into the quiet.
     const rest = Math.max(0.15, 1.15 - fieldLevel);
     const master = +document.querySelector('input[data-param="17"]').value;
-    ground.bus.gain.setTargetAtTime(GROUND_LEVEL * rest * master, now, 0.8);
+    ground.bus.gain.setTargetAtTime(GROUND_MUTED ? 0 : GROUND_LEVEL * rest * master, now, 0.8);
     while (next < now + 0.6) {
       spawnGrain(next);
       // φ overlap, breathing: quiet stretches pack grains closer.
