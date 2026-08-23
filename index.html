@@ -154,26 +154,13 @@
   .hr { height: 1px; background: var(--rule); }
   .pad { padding: 0 36px; }
 
-  /* ---------- NAV ---------- */
-  nav {
-    height: 70px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .mark {
-    display: block;
-    height: 22px;
-    width: auto;
-    image-rendering: auto; /* it is artwork, not a bitmap grid — let it resample */
-  }
-  .navlinks { display: flex; gap: 36px; }
-  nav a, .colophon a {
+  /* The nav masthead was removed 2026-08-23 (Billy: "remove the header"); its
+     rules went with it. Colophon links keep their own colour below. */
+  .colophon a {
     color: var(--inactive);
     text-decoration: none;
     letter-spacing: 0.04em;
   }
-  nav a:hover, nav a:focus-visible { color: var(--light); }
 
   /* ---------- THE FLARE ----------
      Not a full-bleed hero. A CONTAINED band (Billy, 2026-08-23: "make the
@@ -278,16 +265,25 @@
     color: var(--tint, var(--field));
   }
 
+  /* The caption. The site has no fit engine, so containment is CSS: the row
+     may WRAP (Billy 2026-08-23: captions clipped at the tile edge). Title and
+     state share the tile width; when both do not fit on one line the state
+     drops to its own line under the name (never clipped mid-glyph). The title
+     itself wraps on word boundaries and the tile height grows to hold it. */
   .tile-foot {
-    display: flex; align-items: baseline; justify-content: space-between;
-    gap: 12px; padding: var(--g) 12px;
+    display: flex; flex-wrap: wrap; align-items: baseline;
+    justify-content: space-between;
+    gap: 2px 12px; padding: var(--g) 12px;
   }
   .tile-title {
+    flex: 1 1 auto; min-width: 0;
+    overflow-wrap: break-word; word-break: normal;
     color: var(--text); letter-spacing: 0.04em; line-height: 1.2;
     font-size: 15px;
   }
   .tile:hover .tile-title, .tile:focus-visible .tile-title { color: var(--light); }
   .tile-state {
+    flex: 0 0 auto; max-width: 100%;
     font-family: "European Teletext", ui-monospace, monospace;
     font-size: 13px; letter-spacing: 0.06em; white-space: nowrap;
     color: var(--tint, var(--field));
@@ -305,20 +301,27 @@
   #tile-live.on { display: flex; }
   #tile-live { --tint: var(--tint-live); }
 
-  /* ---------- FOOTER / COLOPHON ---------- */
+  /* ---------- FOOTER / COLOPHON ----------
+     Set in Panoptic Monospace — the site's public-domain wordmark face (see
+     assets/fonts/NOTICE.md), the thematic/display register, not the plain mono
+     body (Billy 2026-08-23: "put the footer in a thematic font"). The zone is
+     pushed clear of the last tile by `.foot-rule` above it, so it reads as its
+     own band rather than crammed under the grid. */
+  .foot-rule { margin-top: var(--s2); }
   footer {
-    height: 61px;
-    display: flex;
-    align-items: center;
+    display: flex; flex-wrap: wrap;
+    align-items: baseline;
     justify-content: space-between;
-    font-family: ui-monospace, Consolas, monospace;
+    gap: 6px 24px;
+    padding: var(--s1) 0 var(--g);
+    font-family: "Panoptic Monospace", "Modern DOS", ui-monospace, monospace;
     color: var(--field);
     letter-spacing: 0.08em;
   }
   footer a { color: var(--field); text-decoration: none; }
   footer a:hover, footer a:focus-visible { color: var(--light); }
   .colophon {
-    font-family: ui-monospace, Consolas, monospace;
+    font-family: "Panoptic Monospace", "Modern DOS", ui-monospace, monospace;
     color: var(--field);
     letter-spacing: 0.06em;
     padding-bottom: var(--s2);
@@ -330,8 +333,6 @@
 
   /* ---------- responsive ---------- */
   @media (max-width: 640px) {
-    nav { height: auto; padding: 14px 0; flex-wrap: wrap; gap: 10px 20px; }
-    .navlinks { gap: 20px; }
     .index { padding: 28px 18px 8px; }
     .pad, footer { padding-left: 18px; padding-right: 18px; }
     .grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
@@ -346,19 +347,10 @@
 <body>
 <div class="page">
 
-  <div class="pad">
-    <nav>
-      <img class="mark" src="/assets/img/akol-mark.png" alt="AKOL" width="240" height="48">
-      <span class="navlinks">
-        <a href="#tools">INSTRUMENTS</a>
-        <a href="#records">MUSIC</a>
-        <a href="https://github.com/wraithsys" target="_blank" rel="noopener">GITHUB</a>
-      </span>
-    </nav>
-  </div>
-  <div class="hr"></div>
-
-  <!-- THE FLARE: warped field, wordmark at its gravitational centre. -->
+  <!-- THE FLARE: warped field, wordmark at its gravitational centre.
+       (The nav masthead was removed 2026-08-23 — Billy: "remove the header".
+       The flare hero and the section labels stay; the GitHub link lives on in
+       the footer.) -->
   <figure class="flare">
     <canvas id="field-c" role="img" aria-label="A warped starfield drifting on a golden-angle bearing and falling into a black hole at the centre; the AKOL wordmark sits in the dark slot the captured stars leave."></canvas>
     <h1 class="unseen">akindoflikeness</h1>
@@ -394,7 +386,7 @@
         </a>
 
         <a class="tile" href="/room">
-          <span class="tile-media"><span class="tile-glyph">[ ]</span></span>
+          <span class="tile-media"><canvas id="pentagram-c" aria-hidden="true"></canvas></span>
           <span class="tile-foot"><span class="tile-title">THE ROOM</span><span class="tile-state">free · vst3 · clap</span></span>
         </a>
 
@@ -457,7 +449,7 @@
 
   </section>
 
-  <div class="hr"></div>
+  <div class="hr foot-rule"></div>
 
   <div class="pad">
     <footer>
@@ -759,6 +751,136 @@
       else running=false;
     });
   },{threshold:0.05});
+  io.observe(c);
+})();
+</script>
+
+<script>
+/* THE ROOM tile: the Pentagram — The Room's cross-feed graph, drawn live.
+ * A JS port (not a redraw) of BYPO's own mark. Sources:
+ *   - fibonacci-synth/crates/fibonacci-gui/src/main.rs :: draw_pentagram
+ *     (lines 2862-2905: "The Room's cross-feed graph: 5 ops on a circle,
+ *     rotation-by-3 arcs. It is a pentagram because the mathematics says so.")
+ *   - slate_shell .../slates/pentagram.rs — the already-adapted geometry and
+ *     the slow sample-and-hold that stands in for the reverb (SH_HOLD_S,
+ *     SH_SLEW_S, SH_HAUNT_*, BUBBLE_TRAVEL, the BAYER tile), ported verbatim.
+ * Five nodes on a circle, arcs i -> i+3, the 21-point cardioid web revealed one
+ * chord at a time by `haunt`, node discs dithered by the operator envelopes.
+ * Alive at rest: the S&H wanders haunt between its floor and 1 and deals the
+ * five envelopes, so the web breathes and the arcs' bubbles travel. Dots not
+ * lines for the animated parts (bubble chains, node dithers); the web is the
+ * cardioid's own chords. House 1-bit greys capped at INK_CEILING, no glow.
+ * Pauses off-screen like the sibling tiles. Self-contained, same-origin. */
+(function(){
+  const c=document.getElementById('pentagram-c'); if(!c||!c.getContext) return;
+  const g=c.getContext('2d',{alpha:false});
+  const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const TAU=Math.PI*2, INK=0.26;
+
+  // ── the drawing's constants, from pentagram.rs ──
+  const NODES=5, CROSS_FEED=3, RADIUS_FRAC=0.40, WEB_POINTS=21;
+  const NODE_R=7.0, ARC_INSET=9.0, NODE_DITHER_R=5.5, DITHER_CELL=2.0, NODE_DITHER_GAIN=2.0;
+  const BUB_SPACE_ON=7.0, BUB_SPACE_OFF=10.0, BUB_R_MIN=1.3, BUB_R_SWING=1.4, BUB_PHASE_STEP=0.9, BUB_PHASE_LEN=0.13, DORMANT_DOT=1.5;
+  const SOURCE_PANEL_H=110.0, BUBBLE_TRAVEL=1.2;
+  const BAYER=[[0/16,8/16,2/16,10/16],[12/16,4/16,14/16,6/16],[3/16,11/16,1/16,9/16],[15/16,7/16,13/16,5/16]];
+  // ── the sample-and-hold that stands in for the reverb ──
+  const SH_HOLD_S=2.6, SH_HOLD_JITTER=1.1, SH_SLEW_S=0.7, SH_DEPTH=0.85, SH_HAUNT_HOLD_MULT=4.0, SH_HAUNT_MIN=0.15, SH_HAUNT_MAX=1.0;
+
+  // house grey: cap the ladder at INK_CEILING, no white fills on a resting tile.
+  function ink(v){ const b=Math.round((v<0?0:v>1?1:v)*INK*255); return 'rgb('+b+','+b+','+b+')'; }
+
+  let rng=0x1F2B3C4D>>>0;
+  function uniform(){ rng=(rng*48271)%2147483647; return rng/2147483647; }
+  function nextHold(){ return SH_HOLD_S + (uniform()*2-1)*SH_HOLD_JITTER; }
+  const env=[], envH=[]; for(let i=0;i<NODES;i++){ env.push(0); envH.push({cur:0,tgt:0,at:i*0.37}); }
+  const haunt={cur:SH_HAUNT_MIN,tgt:SH_HAUNT_MIN,at:0}; let hauntV=SH_HAUNT_MIN;
+  function sandhTick(clk,dt){
+    const k=1-Math.exp(-dt/SH_SLEW_S);
+    for(let i=0;i<NODES;i++){
+      if(clk>=envH[i].at){ envH[i].tgt=uniform()*SH_DEPTH; envH[i].at=clk+nextHold(); }
+      envH[i].cur+=(envH[i].tgt-envH[i].cur)*k; env[i]=envH[i].cur;
+    }
+    if(clk>=haunt.at){ haunt.tgt=SH_HAUNT_MIN+uniform()*(SH_HAUNT_MAX-SH_HAUNT_MIN); haunt.at=clk+nextHold()*SH_HAUNT_HOLD_MULT; }
+    haunt.cur+=(haunt.tgt-haunt.cur)*k; hauntV=haunt.cur;
+  }
+
+  let W,H,DPR,cx,cy,R,K,running=false,clk=0,phase=0;
+  function resize(){
+    DPR=Math.min(devicePixelRatio||1,2);
+    const r=c.getBoundingClientRect(); W=r.width; H=r.height; if(!W||!H) return;
+    c.width=Math.round(W*DPR); c.height=Math.round(H*DPR); g.setTransform(DPR,0,0,DPR,0,0);
+    g.imageSmoothingEnabled=false; g.lineWidth=1;
+    cx=W/2; cy=H/2; R=Math.min(W,H)*RADIUS_FRAC;
+    K=Math.max(1,Math.min(W,H)/SOURCE_PANEL_H);   // scale vs BYPO's 110px strip
+  }
+  addEventListener('resize',resize); resize();
+
+  const nodePt=i=>{ const a=-Math.PI/2+TAU*i/NODES; return [cx+Math.cos(a)*R, cy+Math.sin(a)*R]; };
+  const circlePt=t=>{ const a=-Math.PI/2+TAU*t; return [cx+Math.cos(a)*R, cy+Math.sin(a)*R]; };
+
+  function ditherCircle(x0,y0,radius,density,cell){
+    if(density<=0) return; const r2=radius*radius;
+    const steps=Math.ceil(radius*2/cell);
+    for(let iy=0;iy<steps;iy++) for(let ix=0;ix<steps;ix++){
+      const ox=ix*cell-radius, oy=iy*cell-radius;
+      if(ox*ox+oy*oy<=r2 && density>BAYER[iy&3][ix&3])
+        g.fillRect(Math.round(x0+ox),Math.round(y0+oy),Math.max(1,Math.round(cell-1)),Math.max(1,Math.round(cell-1)));
+    }
+  }
+  function bubbleChain(ax,ay,bx,by,active){
+    const spx=bx-ax, spy=by-ay, len=Math.hypot(spx,spy); if(len<4*K) return;
+    const spacing=(active?BUB_SPACE_ON:BUB_SPACE_OFF)*K, n=Math.max(2,Math.ceil(len/spacing));
+    for(let j=0;j<=n;j++){
+      const t=j/n, px=Math.round(ax+spx*t), py=Math.round(ay+spy*t);
+      if(active){
+        const r=BUB_R_MIN+BUB_R_SWING*(0.5+0.5*Math.sin(j*BUB_PHASE_STEP+(len/K)*BUB_PHASE_LEN-phase));
+        g.beginPath(); g.arc(px,py,Math.max(0.5,r*K),0,TAU); g.stroke();
+      } else {
+        const s=Math.max(1,Math.round(DORMANT_DOT*K)); g.fillRect(Math.round(px-s/2),Math.round(py-s/2),s,s);
+      }
+    }
+  }
+
+  function draw(){
+    g.fillStyle='#000'; g.fillRect(0,0,W,H);
+    if(Math.min(W,H)<16) return;
+    const chords=Math.floor((hauntV<0?0:hauntV>1?1:hauntV)*WEB_POINTS);
+    // the cardioid web: chords c -> 2c around the 21-point circle
+    g.strokeStyle=ink(0.85); g.lineWidth=1;
+    for(let cc=1;cc<=chords;cc++){
+      const a=circlePt(cc/WEB_POINTS), b=circlePt((cc*2%WEB_POINTS)/WEB_POINTS);
+      g.beginPath(); g.moveTo(Math.round(a[0]),Math.round(a[1])); g.lineTo(Math.round(b[0]),Math.round(b[1])); g.stroke();
+    }
+    // the arcs: i -> i+3, a bubble chain stopped short of each node
+    g.strokeStyle=ink(0.8);
+    for(let i=0;i<NODES;i++){
+      const f=nodePt(i), t=nodePt((i+CROSS_FEED)%NODES);
+      let dx=t[0]-f[0], dy=t[1]-f[1]; const L=Math.hypot(dx,dy)||1; dx/=L; dy/=L;
+      bubbleChain(f[0]+dx*ARC_INSET*K, f[1]+dy*ARC_INSET*K, t[0]-dx*ARC_INSET*K, t[1]-dy*ARC_INSET*K, hauntV>0);
+    }
+    // the nodes: a black disc punched out, a grey ring, the operator's level as a Bayer fill
+    for(let i=0;i<NODES;i++){
+      const p=nodePt(i), px=Math.round(p[0]), py=Math.round(p[1]);
+      g.fillStyle='#000'; g.beginPath(); g.arc(px,py,NODE_R*K,0,TAU); g.fill();
+      g.strokeStyle=ink(1.0); g.beginPath(); g.arc(px,py,NODE_R*K,0,TAU); g.stroke();
+      g.fillStyle=ink(0.95);
+      ditherCircle(px,py,NODE_DITHER_R*K, Math.min(1,env[i]*hauntV*NODE_DITHER_GAIN), DITHER_CELL*Math.max(1,Math.round(K)));
+    }
+  }
+
+  let last=0;
+  function frame(now){
+    if(!running) return;
+    if(!last) last=now;
+    let dt=(now-last)/1000; last=now; dt=dt<0?0:dt>0.1?0.1:dt;
+    clk+=dt; phase=(phase+dt*BUBBLE_TRAVEL)%TAU;
+    sandhTick(clk,dt); draw();
+    if(!reduced) requestAnimationFrame(frame);
+  }
+  const io=new IntersectionObserver(es=>{es.forEach(e=>{
+    if(e.isIntersecting){ if(!running){ running=true; last=0; resize(); if(reduced){ sandhTick(0,0); draw(); } else requestAnimationFrame(frame); } }
+    else running=false;
+  });},{threshold:0.05});
   io.observe(c);
 })();
 </script>
