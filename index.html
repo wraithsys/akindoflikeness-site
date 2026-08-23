@@ -4,7 +4,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <title>AKOL — art / tools / systems</title>
-<meta name="description" content="Instruments, records and systems by A KIND OF LIKENESS: BYPO, a Fibonacci-derived FM drone synth, and seven releases on Bandcamp.">
+<meta name="description" content="Instruments, records and systems by A KIND OF LIKENESS: BYPO, a Fibonacci-derived FM drone synth, PHYLLOTAXIS in the browser, and seven releases on Bandcamp.">
 <link rel="canonical" href="https://akindoflikeness.net/">
 <meta name="theme-color" content="#000000">
 
@@ -15,7 +15,7 @@
 <meta property="og:site_name" content="AKOL">
 <meta property="og:url" content="https://akindoflikeness.net/">
 <meta property="og:title" content="AKOL — art / tools / systems">
-<meta property="og:description" content="Instruments, records and systems by A KIND OF LIKENESS: BYPO, a Fibonacci-derived FM drone synth, and seven releases on Bandcamp.">
+<meta property="og:description" content="Instruments, records and systems by A KIND OF LIKENESS: BYPO, a Fibonacci-derived FM drone synth, PHYLLOTAXIS in the browser, and seven releases on Bandcamp.">
 <meta property="og:image" content="https://akindoflikeness.net/assets/img/og-card.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -53,8 +53,6 @@
      that asks for it, so the browser never fetches it at all. -->
 <link rel="preload" href="/assets/fonts/modern-dos-8x16.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="/assets/fonts/european-teletext.ttf" as="font" type="font/ttf" crossorigin>
-<!-- Panoptic is no longer preloaded: with the live wordmark out of the band,
-     no rule matches it, so the browser never fetches it at all. -->
 
 <!--
   Fonts, imagery and the wordmark are real files under /assets, not data URIs.
@@ -118,20 +116,27 @@
     --inactive: #606060; /* gray(96) */
     --text:     #A0A0A0; /* gray(160) */
     --light:    #FFFFFF; /* light sources only */
-    /* Pixeloid's native grid is 9px. Every size is a whole multiple of it, which
-       is the whole reason it stays crisp. */
-    /* Modern DOS is 16px-native; the reading scale is whole multiples of it.
-       Was on Pixeloid's 9px grid, which is the wrong ladder for this face. */
+
+    /* One tint per family (taste-pinterest f.2: "one phosphor per world";
+       DESIGN.md: hue is the surface-separator, colour follows role). Each is a
+       single dim phosphor on black — spent on the tile's readout and a 1px top
+       accent only, never a fill, never a glow. */
+    --tint-tools:   #A8843E; /* amber   — the instruments */
+    --tint-records: #A85A4A; /* rust    — record red, the semantic role */
+    --tint-writing: #6F68C0; /* indigo  — the exhaust */
+    --tint-live:    #4E9E5C; /* phosphor green — on air */
+
+    /* Modern DOS is 16px-native; the reading scale is whole multiples of it. */
     --g:  8px;
     --s1: 16px;
     --s2: 32px;
-    --hero: 80px;   /* Alkhemikal is 16px-native: 16/32/48/64/80 */
+    --hero: 80px;
   }
 
   * { box-sizing: border-box; }
 
+  html, body { background: var(--black); }
   body {
-    background: var(--black);
     color: var(--text);
     font-family: "Modern DOS", ui-monospace, Consolas, monospace;
     font-size: var(--s1);
@@ -147,7 +152,6 @@
 
   /* 1px hairlines at gray(70). Never a border-radius, never a shadow. */
   .hr { height: 1px; background: var(--rule); }
-
   .pad { padding: 0 36px; }
 
   /* ---------- NAV ---------- */
@@ -164,151 +168,144 @@
     image-rendering: auto; /* it is artwork, not a bitmap grid — let it resample */
   }
   .navlinks { display: flex; gap: 36px; }
-  nav a, .col a {
+  nav a, .colophon a {
     color: var(--inactive);
     text-decoration: none;
     letter-spacing: 0.04em;
   }
-  nav a:hover, nav a:focus-visible,
-  .col a:hover, .col a:focus-visible { color: var(--light); }
+  nav a:hover, nav a:focus-visible { color: var(--light); }
 
-  /* ---------- HERO ---------- */
-  header {
-    padding: 81px 36px 72px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--s2);
-  }
-  h1 {
-    font-family: "Alkhemikal", "Pixeloid Mono", monospace;
-    font-size: var(--hero);
-    line-height: 1;
-    margin: 0;
-    color: var(--light); /* the light source */
-    letter-spacing: 0.08em;
-    font-weight: normal;
-  }
-  .tagline {
-    font-family: ui-monospace, Consolas, monospace;
-    color: var(--inactive);
-    letter-spacing: 0.14em;
-    margin: 0;
-  }
-
-  /* ---------- the moshed band ---------- */
+  /* ---------- THE FLARE ----------
+     Not a full-bleed hero. A CONTAINED band (Billy, 2026-08-23: "make the
+     display smaller — a flare, but the core of the site visible"). The warped
+     field falls into a black hole; the wordmark sits at its gravitational
+     centre, in the dark slot the captured motes leave. The index grid begins
+     immediately beneath, so the core reads above the fold. */
   figure { margin: 0; }
-  .hero {
+  .flare {
     position: relative;
     background: var(--black);
     overflow: hidden;
-    height: min(64vh, 560px);
+    height: min(48vh, 440px);
   }
-  .hero canvas {
+  .flare canvas {
     position: absolute; inset: 0;
     display: block; width: 100%; height: 100%;
     image-rendering: pixelated;
   }
-  .hero .wordmark {
+  .flare .wordmark {
     position: absolute;
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
-    width: min(58%, 1185px);
+    width: min(46%, 940px);
     height: auto;
     image-rendering: pixelated;
     /* Difference blending: the mark inverts whatever is behind it, so it reads
-       as cut OUT of the footage rather than laid on top, and it can never be
-       lost against a bright or dark frame. Needs the white artwork — black is
-       (0,0,0) and differencing that against the video is a no-op. */
+       as cut OUT of the field rather than laid on top, and it can never be
+       lost against a bright or dark frame. Needs the white artwork. */
     mix-blend-mode: difference;
+    pointer-events: none;
   }
   .unseen {
-    /* The h1 without the pixels: the band belongs to the scene now, but the
-       document keeps its name for readers and crawlers. */
     position: absolute; width: 1px; height: 1px; overflow: hidden;
     clip-path: inset(50%); white-space: nowrap; margin: 0;
   }
-  .ground-row {
-    /* The judging happens on the page: one readout cycles the starfield
-       templates, the other flips the ground. State readouts, so European
-       Teletext, on its native 16px. Difference blend keeps them legible
-       over the inverted ground's white. */
-    position: absolute; right: 20px; bottom: 14px;
-    display: flex; gap: 24px;
-    mix-blend-mode: difference;
-  }
-  .ground-switch {
-    background: none; border: 0; padding: 2px 4px; cursor: pointer;
-    font-family: "European Teletext", monospace; font-size: 16px;
-    letter-spacing: .08em; color: var(--field);
-  }
-  .ground-switch:hover, .ground-switch:focus-visible { color: var(--light); }
-  .tagline { padding: var(--s1) 0; }
-  figure img {
-    display: block;
-    width: 100%;
-    height: 198px;
-    object-fit: cover;
-    object-position: center 30%;
-    /* aliased on purpose: no smoothing, no interpolation */
-    image-rendering: pixelated;
-  }
-  figcaption {
-    font-family: ui-monospace, Consolas, monospace;
-    color: var(--field);
-    padding: var(--g) 36px;
-    letter-spacing: 0.1em;
-  }
 
-  /* ---------- COLUMNS ---------- */
-  .columns {
-    display: grid;
-    grid-template-columns: 1fr 1px 1fr 1px 1fr;
-    padding: 72px 36px;
-    gap: 0;
-  }
-  .vr { background: var(--rule); }
-  .col { padding: 0 36px; display: flex; flex-direction: column; gap: var(--s1); }
-  .col:first-child { padding-left: 0; }
-  .col:last-child { padding-right: 0; }
-  .col h2 {
-    font-size: var(--s1);
-    font-weight: normal;
-    margin: 0;
-    color: var(--light);
-    letter-spacing: 0.14em;
-  }
-  .col p { margin: 0; max-width: 34ch; }
-  .mark-img {
-    display: block;
-    width: 100%;
-    height: 132px;
-    object-fit: cover;
-    border: 1px solid var(--rule);
-    image-rendering: pixelated;
-  }
-  .listing { display: flex; flex-direction: column; }
-  .item {
-    display: flex;
-    justify-content: space-between;
-    gap: var(--s1);
-    padding: var(--g) 0;
-    border-bottom: 1px solid var(--rule);
-  }
-  .item:first-child { border-top: 1px solid var(--rule); }
-  .state {
-    /* the readout face, and only here: v1.0.2, IN PROGRESS, RELEASED are
-       values on an instrument. Billy's verdict — rare, never chrome. */
+  /* ---------- readout strip (Teletext, values only) ---------- */
+  .strip {
+    display: flex; align-items: center; gap: 20px;
+    min-height: 34px; padding: 6px 0;
     font-family: "European Teletext", ui-monospace, monospace;
-    font-size: 16px;   /* its native grid */
-    color: var(--field);
-    letter-spacing: 0.08em;
-    white-space: nowrap;
+    font-size: 16px; letter-spacing: 0.08em; color: var(--field);
   }
-  .state.on { color: var(--text); }
+  .strip .tagline { margin: 0; }
+  .strip .live { display: none; align-items: center; gap: 8px; color: var(--tint-live); }
+  .strip .live.on { display: inline-flex; }
+  .strip .live a { color: var(--tint-live); text-decoration: none; }
+  .strip .live a:hover, .strip .live a:focus-visible { color: var(--light); }
 
-  /* ---------- FOOTER ---------- */
+  /* ---------- THE INDEX ---------- */
+  .index { padding: 40px 36px 8px; display: flex; flex-direction: column; gap: var(--s2); }
+  .family { display: flex; flex-direction: column; gap: var(--s1); }
+  .family > h2 {
+    margin: 0; font-weight: 400; font-size: 16px; letter-spacing: 0.16em;
+    color: var(--field);
+    font-family: "European Teletext", ui-monospace, monospace;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+  }
+  .grid.records { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+
+  /* Every surface is a box (DESIGN.md). Hairline at gray(70); a 1px top accent
+     carries the family tint. No fill, no radius, no shadow, no glow. */
+  .tile {
+    display: flex; flex-direction: column;
+    text-decoration: none;
+    border: 1px solid var(--rule);
+    border-top: 1px solid var(--tint, var(--rule));
+    background: var(--black);
+    min-height: 0;
+  }
+  .tile:hover, .tile:focus-visible { border-color: var(--light); border-top-color: var(--light); }
+  .tile:focus-visible { outline: 1px solid var(--light); outline-offset: 2px; }
+
+  .tile-media {
+    position: relative;
+    aspect-ratio: 16 / 10;
+    background: var(--black);
+    overflow: hidden;
+    border-bottom: 1px solid var(--rule);
+    display: block;
+  }
+  .grid.records .tile-media { aspect-ratio: 1 / 1; }
+  .tile-media canvas, .tile-media img {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    display: block;
+    image-rendering: pixelated;
+  }
+  .grid.records .tile-media img { object-fit: cover; }
+  /* Glyph tiles: a hollow bracket in the family tint (taste-pinterest f.5). */
+  .tile-glyph {
+    display: flex; align-items: center; justify-content: center;
+    height: 100%;
+    font-family: "Pixeloid Mono", ui-monospace, monospace;
+    font-size: 34px; letter-spacing: 0.12em;
+    color: var(--tint, var(--field));
+  }
+
+  .tile-foot {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 12px; padding: var(--g) 12px;
+  }
+  .tile-title {
+    color: var(--text); letter-spacing: 0.04em; line-height: 1.2;
+    font-size: 15px;
+  }
+  .tile:hover .tile-title, .tile:focus-visible .tile-title { color: var(--light); }
+  .tile-state {
+    font-family: "European Teletext", ui-monospace, monospace;
+    font-size: 13px; letter-spacing: 0.06em; white-space: nowrap;
+    color: var(--tint, var(--field));
+  }
+  /* the grey placeholder — the DAW, no date, no tint */
+  .tile.placeholder { border-top-color: var(--rule); }
+  .tile.placeholder .tile-glyph, .tile.placeholder .tile-state { color: var(--field); }
+
+  .fam-tools   { --tint: var(--tint-tools); }
+  .fam-records { --tint: var(--tint-records); }
+  .fam-writing { --tint: var(--tint-writing); }
+
+  /* the LIVE tile is hidden until /api/live answers on */
+  #tile-live { display: none; }
+  #tile-live.on { display: flex; }
+  #tile-live { --tint: var(--tint-live); }
+
+  /* ---------- FOOTER / COLOPHON ---------- */
   footer {
     height: 61px;
     display: flex;
@@ -325,848 +322,358 @@
     color: var(--field);
     letter-spacing: 0.06em;
     padding-bottom: var(--s2);
+    line-height: 1.6;
   }
-
-  /* Tone via the 4x4 Bayer tile from house.rs, never via opacity. */
-  .dither {
-    height: var(--g);
-    background-image: url("/assets/img/bayer-4x4.png");
-    background-repeat: repeat;
-    image-rendering: pixelated;
-  }
+  .colophon a:hover, .colophon a:focus-visible { color: var(--light); }
 
   a:focus-visible { outline: 1px solid var(--light); outline-offset: 2px; }
 
-  /* The nav only ever looked right on a phone because there was no viewport
-     meta: the browser laid the page out at 980px and scaled it down. With a
-     real viewport, the mark plus three 36px-gapped links overflow 390px and
-     CONTACT falls off the edge. Let the row wrap instead. */
+  /* ---------- responsive ---------- */
   @media (max-width: 640px) {
     nav { height: auto; padding: 14px 0; flex-wrap: wrap; gap: 10px 20px; }
     .navlinks { gap: 20px; }
+    .index { padding: 28px 18px 8px; }
+    .pad, footer { padding-left: 18px; padding-right: 18px; }
+    .grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
   }
 
   @media (max-width: 900px) {
-    .columns { grid-template-columns: 1fr; padding: 36px; gap: 36px; }
-    .vr { display: none; }
-    .col { padding: 0; }
     :root { --hero: 48px; }
-    .hero { height: 46vh; }
-    .pad, footer { padding-left: 18px; padding-right: 18px; }
+    .flare { height: 40vh; }
   }
-
-  /* stacked content bands (replaced the three cramped columns) */
-  .band{ padding:48px 36px; display:flex; flex-direction:column; gap:var(--s2); }
-  .band h2{ font-size:var(--s1); font-weight:400; letter-spacing:.16em; color:var(--light); margin:0; }
-  .lede{ color:var(--text); max-width:62ch; margin:0; }
-  .feature{ display:flex; gap:36px; align-items:center; }
-  .feature-body{ flex:1; display:flex; flex-direction:column; gap:var(--s1); }
-  .feature-body h3{ margin:0; font-size:34px; color:var(--light); font-weight:400; letter-spacing:.04em; }
-  .feature-body p{ color:var(--text); max-width:52ch; margin:0; }
-  .feature-img{ width:44%; max-width:520px; aspect-ratio:1/1; height:auto; display:block; background:#000; border:1px solid var(--rule); }
-  @media(max-width:640px){ .feature-img{ width:100%; } }
-  .frow{ display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
-  .cta{ border:1px solid var(--light); color:var(--light); padding:10px 18px; letter-spacing:.08em; text-decoration:none; }
-  .cta:hover{ background:var(--light); color:var(--black); }
-  .cta.ghost{ border-color:var(--rule); color:var(--inactive); }
-  .cta.ghost:hover{ background:none; border-color:var(--light); color:var(--light); }
-  .wip{ color:var(--inactive); margin:0; letter-spacing:.02em; }
-  .wip .wl{ color:var(--field); font-family:"European Teletext",monospace; letter-spacing:.1em; margin-right:10px; }
-  .covers{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:16px; }
-  .cover{ display:flex; flex-direction:column; gap:8px; text-decoration:none; }
-  .cover img{ width:100%; aspect-ratio:1/1; object-fit:cover; border:1px solid var(--rule); display:block; }
-  .cover:hover img{ border-color:var(--light); }
-  .cover .ct{ color:var(--text); font-size:14px; line-height:1.3; }
-  .cover:hover .ct{ color:var(--light); }
-  .cover .cm{ color:var(--field); font-family:"European Teletext",monospace; font-size:12px; letter-spacing:.06em; }
-  @media(max-width:640px){ .feature{flex-direction:column;align-items:flex-start} .feature-img{width:100%} .band{padding:32px 18px} }
-
-  .social{ display:flex; gap:28px; flex-wrap:wrap; }
-  .social a{ display:inline-flex; align-items:center; gap:10px; color:var(--inactive); text-decoration:none; letter-spacing:.06em; }
-  .social a:hover, .social a:focus-visible{ color:var(--light); }
-  .social svg{ width:22px; height:22px; display:block; }
-
-  .notify{ display:flex; gap:12px; flex-wrap:wrap; align-items:center; max-width:520px; }
-  .notify input{ flex:1; min-width:200px; background:#000; border:1px solid var(--rule); color:var(--light);
-    font-family:"Modern DOS",ui-monospace,monospace; font-size:16px; padding:11px 14px; }
-  .notify input:focus{ outline:none; border-color:var(--light); }
-  .notify button{ background:none; border:1px solid var(--light); color:var(--light);
-    font:inherit; letter-spacing:.06em; padding:11px 18px; cursor:pointer; }
-  .notify button:hover{ background:var(--light); color:var(--black); }
-  .notify-msg{ color:var(--field); font-family:"European Teletext",monospace; font-size:13px; letter-spacing:.04em; margin:0; min-height:1em; }
 </style>
 
+<body>
 <div class="page">
 
   <div class="pad">
     <nav>
       <img class="mark" src="/assets/img/akol-mark.png" alt="AKOL" width="240" height="48">
       <span class="navlinks">
-        <a href="#instruments">INSTRUMENTS</a>
-        <a href="#music">MUSIC</a>
-        <a href="#contact">CONTACT</a>
+        <a href="#tools">INSTRUMENTS</a>
+        <a href="#records">MUSIC</a>
+        <a href="https://github.com/wraithsys" target="_blank" rel="noopener">GITHUB</a>
       </span>
     </nav>
   </div>
   <div class="hr"></div>
 
-  <figure class="hero">
-    <canvas id="ground-c" role="img" aria-label="A wireframe dome standing on a grid of spacetime that funnels down into a black hole; a white star rides the funnel's wall, stretched into a stream feeding the hole."></canvas>
-    <!-- The wordmark left the band (his call, 2026-08-21) — the h1 keeps the
-         name for the document, unseen; the noscript mark is the baked fallback. -->
+  <!-- THE FLARE: warped field, wordmark at its gravitational centre. -->
+  <figure class="flare">
+    <canvas id="field-c" role="img" aria-label="A warped starfield drifting on a golden-angle bearing and falling into a black hole at the centre; the AKOL wordmark sits in the dark slot the captured stars leave."></canvas>
     <h1 class="unseen">akindoflikeness</h1>
+    <img class="wordmark" src="/assets/img/akol-wordmark.png" alt="AKOL" width="1185" height="236">
     <noscript><img class="wordmark" src="/assets/img/akol-wordmark.png" alt="AKOL" width="1185" height="236"></noscript>
-    <div class="ground-row">
-      <button class="ground-switch" id="ground-tpl" aria-label="Cycle the ground template">FIELD · DOME IMPLIED</button>
-      <button class="ground-switch" id="ground-inv" aria-pressed="true" aria-label="Toggle ground inversion">INV ON</button>
-    </div>
   </figure>
   <div class="hr"></div>
-  <div class="pad"><p class="tagline">tools / art / systems</p></div>
+
+  <!-- readout strip: the tagline, and LIVE state from /api/live, nothing else -->
+  <div class="pad">
+    <div class="strip">
+      <span class="tagline">tools / art / systems</span>
+      <span class="live" id="live-row">● <a id="live-link" href="https://www.youtube.com/@akindoflikeness/live" target="_blank" rel="noopener">live now — watch</a></span>
+    </div>
+  </div>
   <div class="hr"></div>
 
-  <section class="band" id="instruments">
-    <h2>INSTRUMENTS</h2>
-    <div class="feature">
-      <div class="feature-body">
-        <h3>BYPO</h3>
-        <p>blow your phase off — a monophonic fm drone synth. rust, no
-        envelopes. the Windows build comes through the AKOL installer.</p>
-        <div class="frow">
-          <a class="cta" href="/bypo">open ▸</a>
-          <a class="cta ghost" href="/bypo#get">get it · windows</a>
-          <span class="state on">v1.0.2</span>
-        </div>
+  <!-- THE INDEX: one boxed grid, one tint per family, one tile per thing. -->
+  <section class="index">
+
+    <div class="family fam-tools" id="tools">
+      <h2>INSTRUMENTS</h2>
+      <div class="grid">
+
+        <a class="tile" href="/instruments/phyllotaxis/">
+          <span class="tile-media"><canvas id="phyllo-c" aria-hidden="true"></canvas></span>
+          <span class="tile-foot"><span class="tile-title">PHYLLOTAXIS</span><span class="tile-state">in browser</span></span>
+        </a>
+
+        <a class="tile" href="/bypo">
+          <span class="tile-media"><canvas id="logalith-c" aria-hidden="true"></canvas></span>
+          <span class="tile-foot"><span class="tile-title">BYPO</span><span class="tile-state">v1.0.2</span></span>
+        </a>
+
+        <a class="tile" href="/room">
+          <span class="tile-media"><span class="tile-glyph">[ ]</span></span>
+          <span class="tile-foot"><span class="tile-title">THE ROOM</span><span class="tile-state">free · vst3 · clap</span></span>
+        </a>
+
+        <a class="tile" id="tile-live" href="https://www.youtube.com/@akindoflikeness/live" target="_blank" rel="noopener">
+          <span class="tile-media"><span class="tile-glyph">( )</span></span>
+          <span class="tile-foot"><span class="tile-title">LIVE</span><span class="tile-state">● on air</span></span>
+        </a>
+
+        <span class="tile placeholder" aria-label="DAW — not yet released">
+          <span class="tile-media"><span class="tile-glyph">/ /</span></span>
+          <span class="tile-foot"><span class="tile-title">DAW</span><span class="tile-state">—</span></span>
+        </span>
+
       </div>
-      <canvas class="feature-img" id="logalith-c" role="img" aria-label="The Logalith — BYPO's Fibonacci shell, computed live."></canvas>
     </div>
-    <div class="feature">
-      <div class="feature-body">
-        <h3>PHYLLOTAXIS</h3>
-        <p>a polyphonic instrument that plays itself, in the browser. nothing to
-        download. its scales are computed from each algorithm&rsquo;s own spectrum
-        rather than assumed &mdash; so the more inharmonic a voice gets, the more
-        consonant it sounds. when the stream is on it plays itself on youtube,
-        and the chat plays it too: shape a patch, press share, paste the link
-        into the chat &mdash; the stream takes it, with your name on it.</p>
-        <div class="frow">
-          <a class="cta" href="/instruments/phyllotaxis/">play in browser &#9656;</a>
-          <a class="cta ghost" id="stream" hidden target="_blank" rel="noopener"
-             href="https://www.youtube.com/@akindoflikeness/live">stream &#183; youtube</a>
-          <span class="state on">no install</span>
-        </div>
+
+    <div class="family fam-records" id="records">
+      <h2>MUSIC</h2>
+      <div class="grid records">
+        <a class="tile" href="https://akindoflikeness.bandcamp.com/album/hope-as-haunting" target="_blank" rel="noopener">
+          <span class="tile-media"><img src="covers/hope-as-haunting.jpg" alt="hope as haunting cover" loading="lazy"></span>
+          <span class="tile-foot"><span class="tile-title">hope as haunting</span><span class="tile-state">4 · 2026</span></span>
+        </a>
+        <a class="tile" href="https://akindoflikeness.bandcamp.com/album/rotting" target="_blank" rel="noopener">
+          <span class="tile-media"><img src="covers/rotting.jpg" alt="rotting. cover" loading="lazy"></span>
+          <span class="tile-foot"><span class="tile-title">rotting.</span><span class="tile-state">9 · 2026</span></span>
+        </a>
+        <a class="tile" href="https://akindoflikeness.bandcamp.com/album/mutation" target="_blank" rel="noopener">
+          <span class="tile-media"><img src="covers/mutation.jpg" alt="Mutation cover" loading="lazy"></span>
+          <span class="tile-foot"><span class="tile-title">Mutation</span><span class="tile-state">7 · 2026</span></span>
+        </a>
+        <a class="tile" href="https://akindoflikeness.bandcamp.com/album/the-past-in-progress" target="_blank" rel="noopener">
+          <span class="tile-media"><img src="covers/the-past-in-progress.jpg" alt="THE PAST IN PROGRESS cover" loading="lazy"></span>
+          <span class="tile-foot"><span class="tile-title">THE PAST IN PROGRESS</span><span class="tile-state">7 · 2025</span></span>
+        </a>
+        <a class="tile" href="https://akindoflikeness.bandcamp.com/album/sounds-of-solaris" target="_blank" rel="noopener">
+          <span class="tile-media"><img src="covers/sounds-of-solaris.jpg" alt="Sounds of Solaris cover" loading="lazy"></span>
+          <span class="tile-foot"><span class="tile-title">Sounds of Solaris</span><span class="tile-state">12 · 2025</span></span>
+        </a>
+        <a class="tile" href="https://akindoflikeness.bandcamp.com/album/a-tram-to-sadovaya" target="_blank" rel="noopener">
+          <span class="tile-media"><img src="covers/a-tram-to-sadovaya.jpg" alt="A Tram To Sadovaya cover" loading="lazy"></span>
+          <span class="tile-foot"><span class="tile-title">A Tram To Sadovaya</span><span class="tile-state">4 · 2025</span></span>
+        </a>
+        <a class="tile" href="https://akindoflikeness.bandcamp.com/album/i-miss-the-rain" target="_blank" rel="noopener">
+          <span class="tile-media"><img src="covers/i-miss-the-rain.jpg" alt="i miss the rain cover" loading="lazy"></span>
+          <span class="tile-foot"><span class="tile-title">i miss the rain</span><span class="tile-state">5 · 2024</span></span>
+        </a>
       </div>
     </div>
-    <p class="wip"><span class="wl">also in the works</span> fibonacci-drum · the dome · constellation</p>
-  </section>
 
-  <div class="hr"></div>
-
-  <section class="band" id="music">
-    <h2>MUSIC</h2>
-    <p class="lede">Experimental electronic as A KIND OF LIKENESS — seven releases on
-    Bandcamp. Work archived by the British Library Sound and Moving Image Collection.</p>
-    <div class="covers"><a class="cover" href="https://akindoflikeness.bandcamp.com/album/hope-as-haunting" target="_blank" rel="noopener"><img src="covers/hope-as-haunting.jpg" alt="hope as haunting cover" loading="lazy"><span class="ct">hope as haunting</span><span class="cm">4 tracks · 2026</span></a>
-      <a class="cover" href="https://akindoflikeness.bandcamp.com/album/rotting" target="_blank" rel="noopener"><img src="covers/rotting.jpg" alt="rotting. cover" loading="lazy"><span class="ct">rotting.</span><span class="cm">9 tracks · 2026</span></a>
-      <a class="cover" href="https://akindoflikeness.bandcamp.com/album/mutation" target="_blank" rel="noopener"><img src="covers/mutation.jpg" alt="Mutation cover" loading="lazy"><span class="ct">Mutation</span><span class="cm">7 tracks · 2026</span></a>
-      <a class="cover" href="https://akindoflikeness.bandcamp.com/album/the-past-in-progress" target="_blank" rel="noopener"><img src="covers/the-past-in-progress.jpg" alt="THE PAST IN PROGRESS cover" loading="lazy"><span class="ct">THE PAST IN PROGRESS</span><span class="cm">7 tracks · 2025</span></a>
-      <a class="cover" href="https://akindoflikeness.bandcamp.com/album/sounds-of-solaris" target="_blank" rel="noopener"><img src="covers/sounds-of-solaris.jpg" alt="Sounds of Solaris cover" loading="lazy"><span class="ct">Sounds of Solaris</span><span class="cm">12 tracks · 2025</span></a>
-      <a class="cover" href="https://akindoflikeness.bandcamp.com/album/a-tram-to-sadovaya" target="_blank" rel="noopener"><img src="covers/a-tram-to-sadovaya.jpg" alt="A Tram To Sadovaya cover" loading="lazy"><span class="ct">A Tram To Sadovaya</span><span class="cm">4 tracks · 2025</span></a>
-      <a class="cover" href="https://akindoflikeness.bandcamp.com/album/i-miss-the-rain" target="_blank" rel="noopener"><img src="covers/i-miss-the-rain.jpg" alt="i miss the rain cover" loading="lazy"><span class="ct">i miss the rain</span><span class="cm">5 tracks · 2024</span></a></div>
-  </section>
-
-  <div class="hr"></div>
-
-  <section class="band" id="contact">
-    <h2>CONTACT</h2>
-    <p>akindoflikeness@gmail.com</p>
-    <div class="social">
-      <a href="https://youtube.com/@akindoflikeness" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M10 8.5l5.5 3.5-5.5 3.5z" fill="currentColor" stroke="none"/></svg><span>youtube</span></a>
-      <a href="https://akindoflikeness.bandcamp.com" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="3"/><path d="M7.5 9h9l-4.5 6h-9z" fill="currentColor" stroke="none"/></svg><span>bandcamp</span></a>
-      <a href="https://instagram.com/akindoflikeness" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.4" cy="6.6" r="1.1" fill="currentColor" stroke="none"/></svg><span>instagram</span></a>
+    <div class="family fam-writing" id="writing">
+      <h2>WRITING</h2>
+      <div class="grid">
+        <a class="tile" href="/writing">
+          <span class="tile-media"><span class="tile-glyph">&gt;_</span></span>
+          <span class="tile-foot"><span class="tile-title">the exhaust</span><span class="tile-state">probes · notes</span></span>
+        </a>
+      </div>
     </div>
-    <form class="notify" id="notify">
-      <input type="email" name="email" placeholder="email" required aria-label="your email">
-      <button type="submit">keep me in the loop ▸</button>
-    </form>
-    <p class="notify-msg" id="notify-msg" role="status"></p>
+
   </section>
+
   <div class="hr"></div>
 
   <div class="pad">
     <footer>
-      <span>akindoflikeness.net</span>
+      <span>akindoflikeness.net · akindoflikeness@gmail.com</span>
       <span><a href="https://github.com/wraithsys" target="_blank" rel="noopener">github</a> · <a href="https://akindoflikeness.bandcamp.com" target="_blank" rel="noopener">bandcamp</a></span>
     </footer>
-    <div class="colophon">wordmark set in Panoptic Monospace, Josiah Bishop, public domain — body Modern DOS &amp; readouts European Teletext, Jayvee Enaguas, CC0 1.0</div>
+    <div class="colophon">
+      wordmark set in Panoptic Monospace, Josiah Bishop, public domain — body Modern DOS &amp; readouts European Teletext, Jayvee Enaguas, CC0 1.0.
+      Work archived by the British Library Sound and Moving Image Collection.
+    </div>
   </div>
 
 </div>
 
 <script>
-/* The ground: the starfield, ported from the hostile-visualiser workbench.
- *
- * The draw is workbench/src/sketches/starfield.rs — golden-angle drift,
- * three-layer parallax, curvature breath, local shear, lensing round the
- * subject (∝ 1/d, capped), edge shimmer — and the templates are the eight
- * saved exhibits in workbench/presets/starfield/, numbers verbatim. The
- * bench brightness formula rides along: value = (floor + gain·depth) ·
- * (1 + low·0.25), through the ink ceiling. The audio lows the bench feeds
- * it are stood in for by one slow sine; pulse sits at zero. The subject
- * the field lenses around is the wordmark's box; BLACK HOLE's stand-in
- * subject ring is kept, because the exhibit shows it.
- *
- * The readouts bottom-right cycle the templates and flip the ground — the
- * judging happens on the page, not in the code. Inverted is the default
- * (the recorded hero verdict). The wordmark left the band 2026-08-21 (his
- * call — "it's no longer doing it for me"); the scene is the hero now, and
- * the subject box the field lenses around stays where the mark stood. */
+/* THE FLARE — field · no pulse · warped, ported verbatim from
+ * crates/daw/research/field-warp/no-pulse-warped.html (the approved candidate:
+ * half speed, colour on, no ring, all baked). Self-contained 2D canvas, no
+ * external deps, same-origin — nothing here touches the instruments' cross-origin
+ * isolation. The window-fixed sizing of the candidate is swapped for the site's
+ * canvas-rect + DPR-clamp resize (as the old ground-c used), so the field fills
+ * the contained flare band rather than the viewport. The judging controls
+ * (template cycler, INV toggle) are gone: the field is chosen. */
 (function(){
-  const c=document.getElementById('ground-c'); if(!c||!c.getContext) return;
-  const g=c.getContext('2d',{alpha:false});
+  const cv=document.getElementById('field-c'); if(!cv||!cv.getContext) return;
+  const g=cv.getContext('2d',{alpha:false});
   const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
   const TAU=Math.PI*2;
 
-  // The house hash (modes.rs hash01), bit-exact via BigInt; only ever run at
-  // init, precomputed into plain arrays, because BigInt per frame is a tax.
-  const M64=(1n<<64n)-1n;
+  // house.rs hash01 (splitmix64 finaliser), bit-exact via BigInt at init only.
+  const M0=0x9E3779B97F4A7C15n, M1=0xBF58476D1CE4E5B9n, M2=0x94D049BB133111EBn, MASK=0xFFFFFFFFFFFFFFFFn;
   function hash01(seed,n){
-    let x=(seed*0x9E3779B97F4A7C15n+n)&M64;
-    x^=x>>30n; x=(x*0xBF58476D1CE4E5B9n)&M64;
-    x^=x>>27n; x=(x*0x94D049BB133111EBn)&M64;
-    x^=x>>31n;
-    return Number(x&0xFFFFFFn)/0xFFFFFF;
+    let x=(BigInt(seed)*M0 + BigInt(n)) & MASK;
+    x^=x>>30n; x=(x*M1)&MASK; x^=x>>27n; x=(x*M2)&MASK; x^=x>>31n;
+    return Number(x & 0xFFFFFFn)/0xFFFFFF;
   }
-  const INK=0.26;                       // house.rs INK_CEILING
-  const grey=q=>'rgb('+q+','+q+','+q+')';
-  const ink=v=>grey(Math.round(Math.max(0,Math.min(1,v))*INK*255));
-  const inkInv=v=>grey(255-Math.round(Math.max(0,Math.min(1,v))*INK*255));
+  const INK_CEILING=0.26;
+  function clamp(x,a,b){ return x<a?a:x>b?b:x; }
+  function smooth(a,b,x){ const t=clamp((x-a)/(b-a),0,1); return t*t*(3-2*t); }
+  function mix(a,b,t){ return a+(b-a)*t; }
+  function ink(v){ const b=Math.round(clamp(v,0,1)*INK_CEILING*255); return 'rgb('+b+','+b+','+b+')'; }
 
-  let W=0,H=0;
-  function resize(){
-    const DPR=Math.min(devicePixelRatio||1,2);
-    const r=c.getBoundingClientRect(); W=r.width; H=r.height;
-    c.width=Math.max(1,Math.round(W*DPR)); c.height=Math.max(1,Math.round(H*DPR));
-    g.setTransform(DPR,0,0,DPR,0,0);
-  }
-  addEventListener('resize',resize); resize();
-
-  // The stand-in for the low band: one slow sine, gentle, never still.
-  const low=t=>0.5+0.4*Math.sin(t*0.11);
-
-  /* -------- the eight saved templates, workbench/presets/starfield/ -------- */
+  // the preset (presets/starfield/no pulse.ron), values used or superseded as
+  // annotated in the candidate; wobble deleted, warp promoted to the flow field.
+  const RON={ motes:3000, drift:0.12, curve:1.0, curve_period_s:10.0, warp:0.0,
+    lens:0.835, lens_max:1.5, value_floor:1.0, value_gain:1.0, subject_frac:0.24, seed:790 };
   const DRIFT_ANGLE=2.3999632;
-  const TPL=[
-    {name:'DOME IMPLIED', dome:2},
-    {name:'IMPLIED',      motes:360, drift:0.026,wobble:0.056,curve:0.33, period:16,  warp:0.06, lens:0.34, lensMax:0.8, edge:0.39, duty:0.63,floor:1.0, gain:0.49, subj:0.322,ring:false,seed:790n},
-    {name:'BLACK HOLE',   motes:800, drift:0.03, wobble:0.017,curve:0.4,  period:145, warp:0.08, lens:0.3,  lensMax:1.0, edge:0.5,  duty:0.93,floor:1.0, gain:0.25, subj:0.21, ring:true, seed:210n},
-    {name:'EXHAUST',      motes:3000,drift:0.0,  wobble:0.039,curve:1.16, period:85,  warp:0.092,lens:0.88, lensMax:0.98,edge:0.48, duty:0.79,floor:0.51,gain:0.855,subj:0.245,ring:false,seed:980n},
-    {name:'FUNNEL',       motes:1500,drift:0.12, wobble:0.079,curve:-1.2, period:100, warp:0.2,  lens:0.84, lensMax:1.45,edge:0.68, duty:0.62,floor:0.65,gain:0.14, subj:0.117,ring:false,seed:810n},
-    {name:'GRAVITATIONAL',motes:410, drift:0.0,  wobble:0.12, curve:0.0,  period:5,   warp:0.077,lens:0.29, lensMax:0.82,edge:0.0,  duty:1.0, floor:1.0, gain:1.0,  subj:0.23, ring:false,seed:490n},
-    {name:'NO PULSE',     motes:3000,drift:0.12, wobble:0.12, curve:1.0,  period:10,  warp:0.0,  lens:0.835,lensMax:1.5, edge:0.0,  duty:0.51,floor:1.0, gain:1.0,  subj:0.24, ring:false,seed:790n},
-    {name:'PUMP',         motes:770, drift:0.106,wobble:0.12, curve:1.2,  period:147, warp:0.0,  lens:0.08, lensMax:0.28,edge:0.45, duty:0.62,floor:0.71,gain:0.405,subj:0.48, ring:false,seed:710n},
-    {name:'SUPERMASSIVE', motes:2420,drift:0.057,wobble:0.0,  curve:1.2,  period:233, warp:0.028,lens:0.38, lensMax:0.93,edge:0.675,duty:1.0, floor:0.7, gain:0.665,subj:0.24, ring:false,seed:790n},
-    {name:'DOME',         dome:0},
-    {name:'DOME LEMON',   dome:1},
-    {name:'DOME MESH-ON', dome:3},
-    {name:'DOME SLOW',    dome:4},
-    {name:'DOME SPARSE',  dome:5},
-    {name:'DOME WELL',    dome:6},
-    {name:'NONE'},
-  ];
-  // Per-mote hashes, computed once per template on first use (BigInt at
-  // init only, never per frame).
-  function motesFor(p){
-    if(p.m) return p.m;
-    const s=p.seed^0xF1E1Dn, m=p.m=[];
-    for(let i=0;i<p.motes;i++){
-      const h=k=>hash01(s,BigInt(i*16+k));
-      m.push({h0:h(0),h1:h(1),h2:h(2),h3:h(3),h4:h(4)});
-    }
-    return m;
+  const T={ MOTES:1200, drift:0.10, infall:14.0, swirl:26.0, lens_k:0.90, lens_cap:1.45,
+    tidal_R:1.55, tidal_Lmax:22, tidal_pitch:3.4, tidal_dotsMax:6,
+    ring:false, colour:true, colour_intensity:0.6, doppler_gain:1.0, redshift_gain:0.7 };
+  const WARM=[184,112,46], COOL=[58,110,168];
+
+  let W,H,DPR,cx,cy,R,B_CRIT;
+  function resize(){
+    DPR=Math.min(window.devicePixelRatio||1,2);
+    const r=cv.getBoundingClientRect(); W=r.width; H=r.height;
+    if(!W||!H) return;
+    cv.width=Math.max(1,Math.round(W*DPR)); cv.height=Math.max(1,Math.round(H*DPR));
+    g.setTransform(DPR,0,0,DPR,0,0);
+    cx=W/2; cy=H/2;
+    R=H*RON.subject_frac;
+    B_CRIT=R*(3*Math.sqrt(3)/2/2.0);   // ~= R*1.30 ; visual shadow radius
   }
-  function starDraw(t,p,invert){
-    g.fillStyle=invert?'#fff':'#000'; g.fillRect(0,0,W,H);
-    if(!p.motes) return;                          // NONE
-    const lo=low(t);
-    const curve=p.curve*Math.sin(t/Math.max(p.period,0.1)*TAU)*(1+lo*0.5);
-    const ddx=Math.cos(DRIFT_ANGLE), ddy=Math.sin(DRIFT_ANGLE);
-    const pivx=W*0.5, pivy=H*0.5, R=H*p.subj;     // the mark's box is the subject
-    const m=motesFor(p);
-    for(let i=0;i<p.motes;i++){
-      const q=m[i];
-      const depth=Math.floor(q.h0*3)/3, near=0.35+0.65*depth, phase=q.h1*TAU;
-      // (1) drift, wrapped; edge factor before any displacement
-      let fx=(q.h2+t*p.drift*near*ddx)%1; if(fx<0)fx+=1;
-      let fy=(q.h3+t*p.drift*near*ddy)%1; if(fy<0)fy+=1;
-      const e=Math.max(0,Math.min(1-Math.abs(fx-0.5)*2,1-Math.abs(fy-0.5)*2));
-      const edge=p.edge>0?Math.max(0,Math.min(1,1-e/p.edge)):0;
-      // (2) parallax wobble
-      fx+=Math.sin(t/34*TAU+phase)*p.wobble*near;
-      fy+=Math.sin(t/21*TAU+phase)*p.wobble*near;
-      // (3) curvature of the whole field
-      let ux=fx-0.5, uy=fy-0.5;
-      const k=1+curve*(ux*ux+uy*uy); ux*=k; uy*=k;
-      // (4) local shear
-      const nx=ux*6.283, ny=uy*6.283;
-      ux+=Math.sin(nx+t*0.11)*Math.cos(ny*1.3-t*0.07)*p.warp;
-      uy+=Math.sin(ny*0.8-t*0.09)*Math.cos(nx*1.7+t*0.13)*p.warp;
-      let px=W*0.5+ux*W, py=H*0.5+uy*H;
-      // (5) lensing around the subject, capped
-      const ox=px-pivx, oy=py-pivy, d=Math.hypot(ox,oy);
-      if(d>0.5){
-        const push=Math.min(p.lens*R*R/d,p.lensMax*R);
-        px+=ox/d*push; py+=oy/d*push;
-      }
-      // (6) edge shimmer
-      if(edge>0){
-        const blink=0.5+0.5*Math.sin(t*(1.3+1.7*q.h4)+phase);
-        if(blink<edge*p.duty) continue;
-      }
-      const value=(p.floor+p.gain*depth)*(1+lo*0.25);
-      const sz=(depth>0.6?2:1)*Math.max(W/1920,1);
-      g.fillStyle=invert?inkInv(value):ink(value);
-      g.fillRect(Math.round(px),Math.round(py),sz,sz);
+  addEventListener('resize', ()=>{ resize(); if(reduced) draw(); });
+
+  let N, mx, my, mdepth, mnear, mgen;
+  function spawn(i){
+    const s=RON.seed ^ 0x51ED;
+    const gen=mgen[i]|0;
+    const a=hash01(s, i*97 + gen*7 + 1) * TAU;
+    const rad=(0.55 + 0.75*hash01(s, i*97+gen*7+2)) * Math.max(W,H)*0.62;
+    mx[i]=cx + Math.cos(a)*rad;
+    my[i]=cy + Math.sin(a)*rad;
+    const d=hash01(s, i*97+gen*7+3);
+    mdepth[i]=Math.floor(d*3)/3;
+    mnear[i]=0.35 + 0.65*mdepth[i];
+    mgen[i]=gen+1;
+  }
+  function initMotes(){
+    N=T.MOTES;
+    mx=new Float32Array(N); my=new Float32Array(N);
+    mdepth=new Float32Array(N); mnear=new Float32Array(N); mgen=new Int32Array(N);
+    const s=RON.seed ^ 0x51ED;
+    for(let i=0;i<N;i++){
+      mx[i]=hash01(s,i*97+11)*W*2 - W*0.5;
+      my[i]=hash01(s,i*97+12)*H*2 - H*0.5;
+      const d=hash01(s,i*97+13); mdepth[i]=Math.floor(d*3)/3; mnear[i]=0.35+0.65*mdepth[i];
+      mgen[i]=0;
     }
-    if(p.ring){
-      g.strokeStyle=invert?inkInv(0.9):ink(0.9); g.lineWidth=1;
-      g.beginPath(); g.arc(pivx,pivy,R,0,TAU); g.stroke();
+  }
+  const bearing=[Math.cos(DRIFT_ANGLE), Math.sin(DRIFT_ANGLE)];
+
+  function step(dt){
+    const driftS=RON.drift * T.drift * 900;
+    for(let i=0;i<N;i++){
+      let dx=mx[i]-cx, dy=my[i]-cy;
+      let d=Math.hypot(dx,dy) || 0.001;
+      const rx=dx/d, ry=dy/d;
+      const tx=-ry, ty=rx;
+      const soft=Math.max(d, B_CRIT*0.9);
+      const grav=(R*R)/(soft*soft);
+      let vx=-rx*T.infall*grav*mnear[i]*60 + tx*T.swirl*grav*mnear[i]*60;
+      let vy=-ry*T.infall*grav*mnear[i]*60 + ty*T.swirl*grav*mnear[i]*60;
+      vx+=bearing[0]*driftS*mnear[i];
+      vy+=bearing[1]*driftS*mnear[i];
+      mx[i]+=vx*dt; my[i]+=vy*dt;
+      if(d < B_CRIT*0.55 || mx[i]<-W*0.8 || mx[i]>W*1.8 || my[i]<-H*0.8 || my[i]>H*1.8){
+        spawn(i);
+      }
     }
   }
 
-  /* ---- THE DOME (the-dome @ a6ed79c, src/dome.rs + presets/) ----
-   * You stand at the centre of a giant sphere: concentric lat/long lattices
-   * tumble slowly, structure read off motion and depth falloff. Same tech as
-   * the starfield where it counts — the well is starfield lensing (∝ 1/d,
-   * capped) plus Funnel's concave pinch, a swallowed horizon (the hole is
-   * inferred, never outlined) and tangential frame-drag; lines skimming the
-   * horizon cast a 180° photon-belt ghost. The roster is the code's Default
-   * (the last tuned state before f4aa007 dropped the dome) plus the six
-   * saved presets, params verbatim — their audio/mesh/seq sides ignored.
-   * The dome's own `implied` predates the well (tip 0, and the bench drops
-   * to 48 segments). Grain is ported in monochrome — cobalt, magenta and
-   * amber stay home; greys come through this site's ink ladder. Grain is
-   * seed-static, so it renders once per preset and is blitted. Segments
-   * batch into paths by quantised brightness and width. */
-  // The scene got straightened out (Billy, 2026-08-21): every preset now
-  // runs one camera over one world — a hemisphere of shells planted in a
-  // spacetime floor that funnels into the hole, with the star riding the
-  // funnel's wall. See THE SHEET, AND THE STAR ON IT below for what each
-  // param drives now. Rows are unchanged from the archive, so the fields the
-  // new scene has no use for (camZ, pitch, roll, apexY, mirror, sparks,
-  // flare) are left standing rather than edited out of the record.
-  const DOMES=[
-    {name:'DOME',    mer:64,par:48,shells:5,gap:0.25,     focal:0.8,      camZ:0.1,       yaw:0.017,     pitch:0,roll:0,drift:0.17,      floor:0.12,gain:0.05,      stroke:1.25,      sparks:0,grain:0,          flare:0,seed:890n,tip:1,lens:0.3,      lensMax:0.1,      well:0.308,     horizon:0.79,      pinch:0.45,      drag:0.85,mirror:1, apexY:0.2, bob:0.035},
-    {name:'LEMON',   mer:64,par:48,shells:5,gap:0.2163086,focal:0.6,      camZ:0,         yaw:0.02387028,pitch:0,roll:0,drift:0.38,      floor:0,   gain:0.34729478,stroke:2.7238655, sparks:0,grain:0,          flare:0,seed:422n,tip:1,lens:2.0,      lensMax:0.8,      well:0.15846397,horizon:0.654043,  pinch:0.86932385,drag:0.85,mirror:1, apexY:0.2, bob:0.035},
-    {name:'IMPLIED', mer:24,par:12,shells:3,gap:0.08,     focal:1.35,     camZ:0.18,      yaw:0.012,     pitch:0,roll:0,drift:0.22,      floor:0.12,gain:0.78,      stroke:1.15,      sparks:0,grain:0.08,       flare:0,seed:13n, tip:1,lens:0.3,      lensMax:0.1,      well:0.308,     horizon:0.79,      pinch:0.45,      drag:0.85,mirror:1, apexY:0.2, bob:0.035},
-    {name:'MESH-ON', mer:17,par:2, shells:5,gap:0.25,     focal:1.3133897,camZ:0.08009711,yaw:0.04535113,pitch:0,roll:0,drift:0.43042073,floor:0,   gain:0.42378926,stroke:0.78551555,sparks:0,grain:0.031086205,flare:0,seed:428n,tip:1,lens:1.9519475,lensMax:1.1186663,well:0.2693426, horizon:0.57352066,pinch:0.8948926, drag:0.85,mirror:1, apexY:0.2, bob:0.035},
-    {name:'SLOW',    mer:4, par:48,shells:5,gap:0.2163086,focal:0.6,      camZ:0,         yaw:0.02387028,pitch:0,roll:0,drift:0.38,      floor:0,   gain:0.34729478,stroke:1.4042861, sparks:0,grain:0.093436375,flare:0,seed:288n,tip:1,lens:2.0,      lensMax:0.8,      well:0.3110748, horizon:0.654043,  pinch:0.86932385,drag:0.85,mirror:1, apexY:0.2, bob:0.035},
-    {name:'SPARSE',  mer:4, par:48,shells:5,gap:0.2163086,focal:0.6,      camZ:0,         yaw:0.02387028,pitch:0,roll:0,drift:0.38,      floor:0,   gain:0.34729478,stroke:1.4042861, sparks:0,grain:0.09202354, flare:0,seed:288n,tip:1,lens:2.0,      lensMax:0.8,      well:0.15846397,horizon:0.654043,  pinch:0.86932385,drag:0.85,mirror:1, apexY:0.2, bob:0.035},
-    {name:'WELL',    mer:13,par:48,shells:5,gap:0.145,    focal:0.6,      camZ:0,         yaw:0.054,     pitch:0,roll:0,drift:0.38,      floor:0.01,gain:0.39,      stroke:0.71,      sparks:0,grain:0.062,      flare:0,seed:175n,tip:1,lens:2.0,      lensMax:0.8,      well:0.23,      horizon:0.34,      pinch:0.81,      drag:0.85,mirror:1, apexY:0.2, bob:0.035},
-  ];
-  const DBAYER=[[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]];
-  // THE SUN (Billy, 2026-08-21): a star mid-disruption, orbiting the hole and
-  // stretched into a stream that feeds it — the scale reference the band was
-  // missing, and its light source. Lights are white in this house, so the star
-  // and its stream are the band's only true white; the lattice stays under the
-  // ink ceiling but brightens where the sun passes, which is what finally
-  // makes every dome preset read. Per-particle jitter is hashed once at init
-  // (BigInt per frame is a tax), like the motes.
-  // Rebuilt grainy (Billy: "plainly just 6 orbs in greyscale gradient with a
-  // decaying opacity ... plenty of room for a bit of detail, grainy little
-  // solar flares"): the disc goes through the house Bayer — dither_circle's
-  // sibling, density not alpha — solid core, grained limb, speckled corona,
-  // slow granulation mottling the surface, prominences arcing off the limb.
-  // And the stream carries a cross-section: each particle keeps a hashed
-  // lane, wide where it tears off the star, pinched at the horizon.
-  // All of that survives the rebuild below; what changed is where it lives.
-  // The ladder, the granulation and the prominences now run on a body in
-  // world space, and the lane and its pinch are measured across the floor,
-  // so the trail funnels down the well itself rather than across the screen.
-  const SUNP=[];
-  { const ss=0xCA11AB1En;
-    for(let i=0;i<170;i++) SUNP.push([hash01(ss,BigInt(i*8)),hash01(ss,BigInt(i*8+1)),
-                                      hash01(ss,BigInt(i*8+2)),hash01(ss,BigInt(i*8+3)),
-                                      hash01(ss,BigInt(i*8+4)),hash01(ss,BigInt(i*8+5))]); }
-  // Prominence seeds: foot angle, leap, span, phase, period — hashed once.
-  const FLARES=[];
-  { const fs=0x50DA1An;
-    for(let i=0;i<10;i++) FLARES.push([hash01(fs,BigInt(i*8)),hash01(fs,BigInt(i*8+1)),
-                                      hash01(fs,BigInt(i*8+2)),hash01(fs,BigInt(i*8+3)),
-                                      hash01(fs,BigInt(i*8+4))]); }
-  // Void grain (house.rs): seed-static, no time term — render once, blit.
-  let grainKey='', grainC=null;
-  function grainLayer(p,invert){
-    if(p.grain<=0) return;
-    const key=p.seed+'|'+p.grain+'|'+Math.round(W)+'|'+Math.round(H)+'|'+invert;
-    if(key!==grainKey){
-      grainKey=key;
-      grainC=document.createElement('canvas');
-      grainC.width=Math.max(1,Math.ceil(W)); grainC.height=Math.max(1,Math.ceil(H));
-      const cg=grainC.getContext('2d');
-      const cols=Math.ceil(W/2), rows=Math.ceil(H/2);
-      for(let iy=0;iy<rows;iy++)for(let ix=0;ix<cols;ix++){
-        const n=hash01(p.seed,BigInt(iy*65536+ix));
-        if(p.grain*(0.55+0.45*n)>DBAYER[iy&3][ix&3]/16){
-          cg.fillStyle=invert?inkInv(0.35+0.25*n):ink(0.35+0.25*n);
-          cg.fillRect(ix*2,iy*2,1,1);
+  function draw(){
+    g.fillStyle='#000'; g.fillRect(0,0,W,H);
+    for(let i=0;i<N;i++){
+      const dx=mx[i]-cx, dy=my[i]-cy;
+      const d=Math.hypot(dx,dy)||0.001;
+      if(d < B_CRIT) continue;
+      const rx=dx/d, ry=dy/d, tx=-ry, ty=rx;
+      let push=Math.min(T.lens_k*R*R/d, T.lens_cap*R);
+      const blend=smooth(B_CRIT, B_CRIT*1.8, d);
+      const ux=mix(tx, rx, blend), uy=mix(ty, ry, blend);
+      let ax=mx[i] + ux*push, ay=my[i] + uy*push;
+      const rt=T.tidal_R*R;
+      let s=clamp(Math.pow(rt/d, 3), 0, 1);
+      const L=s*T.tidal_Lmax;
+      const ndots=1 + Math.min(T.tidal_dotsMax-1, Math.floor(L/T.tidal_pitch));
+      const px=(mdepth[i]>0.6?2:1);
+      const value=(RON.value_floor + RON.value_gain*mdepth[i]);
+      let fill=ink(value*0.62 + 0.38);
+      if(T.colour){
+        const los=tx;
+        const warmth=clamp(-los, -1, 1);
+        const gz=clamp((R)/(2*Math.max(d,R)), 0, 1);
+        let temp=warmth*T.doppler_gain + gz*T.redshift_gain;
+        temp=clamp(temp, -1, 1);
+        const spend=smooth(0, 1, Math.max(s, gz*0.8)) * T.colour_intensity;
+        if(spend>0.01){
+          const tt=(temp+1)/2;
+          const cr=mix(COOL[0],WARM[0],tt), cg=mix(COOL[1],WARM[1],tt), cb=mix(COOL[2],WARM[2],tt);
+          const base=value*0.62+0.38;
+          const br=Math.round(mix(base*INK_CEILING*255, cr, spend));
+          const bg=Math.round(mix(base*INK_CEILING*255, cg, spend));
+          const bb=Math.round(mix(base*INK_CEILING*255, cb, spend));
+          fill='rgb('+br+','+bg+','+bb+')';
         }
       }
+      g.fillStyle=fill;
+      for(let k=0;k<ndots;k++){
+        const f=ndots>1 ? (k/(ndots-1)-0.5) : 0;
+        const sx=Math.round(ax + rx*f*L);
+        const sy=Math.round(ay + ry*f*L);
+        g.fillRect(sx, sy, px, px);
+      }
     }
-    g.drawImage(grainC,0,0);
-  }
-  // The star's disc is thousands of cells a frame. A Path2D that big is an
-  // allocation the collector notices, so it goes into a scratch buffer
-  // instead — sized on demand, reused, blitted once. Same trick as the grain
-  // layer, just not seed-static, so it is rebuilt rather than cached.
-  let haloC=null, haloX=null, haloImg=null, haloW=0, haloH=0;
-  function haloBuf(w,h){
-    if(w>haloW||h>haloH){
-      haloW=Math.max(w,haloW); haloH=Math.max(h,haloH);
-      if(!haloC) haloC=document.createElement('canvas');
-      haloC.width=haloW; haloC.height=haloH;
-      haloX=haloC.getContext('2d');
-      haloImg=haloX.createImageData(haloW,haloH);
+    if(T.ring){
+      g.strokeStyle='rgba(255,255,255,0.9)'; g.lineWidth=1;
+      g.beginPath(); g.arc(cx,cy,B_CRIT,0,TAU); g.stroke();
     }
-    haloImg.data.fill(0);
-    return haloImg;
   }
 
-  // The star is the one light in the scene, so it is the one thing allowed
-  // through the ink ceiling — everything else stays under it.
-  const lume=(v,invert)=>{const q=Math.round(Math.max(0,Math.min(1,v))*255);
-    return invert?grey(255-q):grey(q);};
-
-  /* ---- THE SHEET, AND THE STAR ON IT (Billy, 2026-08-21) ----------------
-   * The old sun was a screen-space sprite: a soft radial blob and a scatter
-   * of dots painted over the lattice after the fact, in a coordinate system
-   * the lattice never knew about. It read as a sticker because it was one.
-   * It is a body now, and it lives in the same world the mesh does.
-   *
-   * The mesh got straightened out to make room for it. The dome is a dome —
-   * a hemisphere of shells — standing on a floor, and the floor is Flamm's
-   * paraboloid hung from its rim: w(r) = 2*sqrt(rs*(r-rs)), which plunges
-   * vertically at the horizon and flattens off toward the edge. That is the
-   * sinkhole, drawn rather than implied, and the star rides its wall.
-   *
-   * Everything now goes through one camera. The floor's polar grid, the
-   * dome's shells, the star's own lattice and the stream feeding the hole
-   * are all world-space points through the same project(); depth sorts them
-   * into a far pass and a near pass with the star between, so the near
-   * lines cross in front of it. That single ordering is most of what makes
-   * it sit in the scene instead of on top of it.
-   *
-   * The star is drawn the way the dome is drawn — a wireframe spheroid,
-   * same line grammar — because a body made of the environment's own
-   * material cannot read as pasted on. Tidal stretch points along the sheet
-   * at the hole and deepens at periapsis, tapering that end to a cusp that
-   * the stream leaves from. Only the core is solid white.
-   *
-   * The dither stays, differently: instead of a blurred alpha halo the
-   * star's corona is thresholded through DBAYER on the grain's own 2px
-   * lattice, so what you see is the star lighting the grain the void is
-   * already made of, not a second material laid over it.
-   *
-   * Preset params, verbatim as ever, now read: well -> throat radius,
-   * pinch -> how deep the funnel drops, drag -> how hard the sheet and the
-   * stream wind, mer/par -> spoke and ring counts on the floor as well as
-   * the dome, focal -> the lens (framing is fixed, so it buys perspective
-   * rather than zoom), gap/shells/floor/gain/stroke/grain unchanged.
-   * apexY, camZ, pitch, roll, mirror, sparks and flare fall out: the scene
-   * has a real camera and a real floor now, and the mirrored photon ghost
-   * was reading as doubled artefacts rather than as a belt. */
-  const INCL=0.58;                       // the rake — enough to read the pit
-  let domeYaw=NaN, domeLast=NaN;
-  function domeDraw(t,p,invert){
-    g.fillStyle=invert?'#fff':'#000'; g.fillRect(0,0,W,H);
-    // one slow yaw plus the drift's wander — alive at rest, never tumbling
-    const dt=isNaN(domeLast)?0:Math.min(Math.max(t-domeLast,0),0.1);
-    const dy=Math.sin(t*0.07)*p.drift*0.015;
-    if(isNaN(domeYaw)) domeYaw=t*p.yaw*TAU; else domeYaw+=TAU*(p.yaw+dy)*dt;
-    domeLast=t;
-    const mix=Math.max(0,Math.min(1,p.tip));
-
-    /* ---- the well, in world units (the dome's outer shell is radius 1) --- */
-    const RS=0.15+0.5*p.well;                    // the horizon
-    const RMAX=2.25;                             // the sheet's rim
-    const DEEP=(0.26+0.40*p.pinch)*mix;          // how far the funnel drops
-    const wOf=r=>2*Math.sqrt(RS*Math.max(r-RS,0));
-    const wRim=wOf(RMAX);
-    const sheetY=r=>-(wRim-wOf(Math.min(Math.max(r,RS),RMAX)))*DEEP;
-    const slope=r=>Math.sqrt(RS/Math.max(r-RS,RS*0.05))*DEEP;
-    // frame-drag: the floor winds as it falls, tighter toward the throat
-    const twist=r=>p.drag*mix*2.1*Math.pow(RS/Math.max(r,RS),1.15);
-
-    /* ---- the camera: back, above, looking into the throat ---------------- */
-    const bob=(p.bob||0)*Math.sin(t*0.21);
-    const camD=4.9-1.05*p.focal;                 // focal buys perspective, not zoom
-    const LOOKY=sheetY(RS)*0.42;                 // frame the pit, not the horizon
-    const cx=W*0.5, cyy=H*0.54;
-    const scale=Math.min(W*0.315,H*0.48)*camD;   // dome radius 1 -> that span
-    const ci=Math.cos(INCL), si=Math.sin(INCL);
-    const eyeY=LOOKY+camD*si, eyeZ=-camD*ci;
-    const cy0=Math.cos(domeYaw), sy0=Math.sin(domeYaw);
-    // world -> [screen x, screen y, depth, camera z]; null behind the lens
-    function project(x,y,z){
-      const X=x*cy0-z*sy0, Zw=x*sy0+z*cy0;
-      const Yp=y+bob-eyeY, Zp=Zw-eyeZ;
-      const Yc=Yp*ci+Zp*si, Zc=-Yp*si+Zp*ci;
-      if(Zc<0.12) return null;
-      const inv=1/Zc;
-      return [cx+X*inv*scale, cyy-Yc*inv*scale,
-              Math.max(0,Math.min(1,(Zc-(camD-1.5))/3.0)), Zc];
-    }
-    // a point on the floor at polar (r, ang), dragged
-    const onSheet=(r,ang,lift)=>{
-      const a=ang+twist(r);
-      return project(Math.cos(a)*r, sheetY(r)+(lift||0), Math.sin(a)*r);
-    };
-
-    /* ---- the star's state this frame ------------------------------------ *
-     * An eccentric orbit that falls down the funnel wall and climbs back
-     * out: at periapsis it is deep in the steep part, skirting the throat. */
-    const dip=0.5+0.5*Math.sin(t*0.043);         // 1 at closest approach
-    const orbR=RS*(3.1-1.45*dip);
-    const orbA=t*TAU/53+Math.sin(t*0.019)*0.55+twist(orbR);
-    const tid=0.22+0.72*dip;                     // tidal stretch
-    const starR=RS*0.50;                         // smaller than the hole — not by much
-    const sy1=sheetY(orbR)+starR*0.82;           // resting on the sheet
-    const sc=[Math.cos(orbA)*orbR, sy1, Math.sin(orbA)*orbR];
-    // local frame on the floor: out along the slope, along the orbit, normal
-    const sl=slope(orbR), ln=Math.hypot(1,sl);
-    const er=[Math.cos(orbA)/ln, sl/ln, Math.sin(orbA)/ln];
-    const et=[-Math.sin(orbA),0,Math.cos(orbA)];
-    const en=[er[1]*et[2]-er[2]*et[1], er[2]*et[0]-er[0]*et[2], er[0]*et[1]-er[1]*et[0]];
-    const starP=project(sc[0],sc[1],sc[2]);
-    const starZ=starP?starP[3]:camD;
-    // the star's screen radius, for the lighting falloff and the corona
-    const starPx=starP?starR/starZ*scale:0;      // the body, unstretched
-    const sunX=starP?starP[0]:-1e4, sunY=starP?starP[1]:-1e4;
-    const sunReach=Math.max(starPx*5.5,40);
-
-    /* ---- lensing of the dome, around the throat's image ------------------ */
-    const holeC=project(0,sheetY(RS),0);
-    const holeE=project(RS,sheetY(RS),0);
-    const hx=holeC?holeC[0]:cx, hy=holeC?holeC[1]:cyy;
-    const hr=holeC&&holeE?Math.max(Math.hypot(holeE[0]-hx,holeE[1]-hy),4):Math.min(W,H)*0.1;
-    function lensWarp(s){
-      if(!s||mix<0.001) return null;
-      const ox=s[0]-hx, oy=s[1]-hy, d=Math.hypot(ox,oy);
-      if(d<1) return null;
-      if(d<hr*Math.max(p.horizon*mix,0.4)) return null;      // swallowed
-      const push=Math.min(p.lens*mix*hr*hr/d, p.lensMax*mix*hr);
-      return [s[0]+ox/d*push, s[1]+oy/d*push, s[2], s[3]];
-    }
-
-    /* ---- batched strokes, split far / near about the star --------------- */
-    const farB=new Map(), nearB=new Map();
-    function seg(a,b,dim,major,inkMul){
-      if(inkMul<0.02) return;
-      const depth=a[2];
-      let bright=(p.floor+p.gain*depth)*dim*inkMul*1.35;
-      if(major) bright*=1.15;
-      // the star lights what it passes — a local lift, still clamped
-      const sdx=(a[0]+b[0])*0.5-sunX, sdy=(a[1]+b[1])*0.5-sunY;
-      const sd=Math.hypot(sdx,sdy);
-      if(sd<sunReach){ const L=1-sd/sunReach; bright*=1+2.6*L*L; }
-      bright=Math.max(0,Math.min(1,bright));
-      const w=p.stroke*(0.55+0.7*depth)*(major?1.2:1)*1.3;
-      const key=Math.round(bright*40)+'|'+Math.round(w*4);
-      const M=(a[3]+b[3])*0.5>starZ?farB:nearB;
-      let bk=M.get(key);
-      if(!bk){ bk={path:new Path2D(),bright,w}; M.set(key,bk); }
-      bk.path.moveTo(a[0],a[1]); bk.path.lineTo(b[0],b[1]);
-    }
-    function flush(M){
-      for(const b of M.values()){
-        g.strokeStyle=invert?inkInv(b.bright):ink(b.bright);
-        g.lineWidth=b.w; g.stroke(b.path);
-      }
-      M.clear();
-    }
-
-    grainLayer(p,invert);
-
-    /* ---- the floor: a polar grid poured into the funnel ------------------ */
-    const NS=Math.max(8,Math.min(64,p.mer*2));            // spokes
-    const NR=Math.max(11,Math.min(34,Math.round(p.par*0.62)));  // rings
-    const RSTEP=Math.pow(RMAX/RS,1/(NR-1));               // geometric: dense at the throat
-    const rAt=i=>RS*Math.pow(RSTEP,i);
-    // light piles up as the rings crowd the horizon — this is what makes the
-    // pit read as a pit rather than as a pattern
-    const crowd=r=>1+2.8*Math.pow(RS/r,2.2);
-    for(let ri=0;ri<NR;ri++){
-      const r=rAt(ri), major=ri%3===0||r<RS*1.5;
-      let prev=null;
-      const steps=Math.max(28,NS*2);
-      for(let i=0;i<=steps;i++){
-        const s=onSheet(r,TAU*i/steps);
-        if(s&&prev) seg(prev,s,1,major,crowd(r));
-        prev=s;
-      }
-    }
-    for(let si2=0;si2<NS;si2++){
-      const ang=TAU*si2/NS, major=si2%4===0;
-      let prev=null;
-      for(let i=0;i<=NR*3;i++){
-        const r=RS*Math.pow(RMAX/RS,i/(NR*3));
-        const s=onSheet(r,ang);
-        if(s&&prev) seg(prev,s,1,major,crowd(r));
-        prev=s;
-      }
-    }
-
-    /* ---- the dome: hemispheres of shells standing in the floor ----------- */
-    const LAT1=0.5*Math.PI, segs=64;
-    for(let shell=0;shell<p.shells;shell++){
-      const radius=1-shell*p.gap;
-      if(radius<0.35) continue;
-      const dim=1-shell*0.18;
-      const baseY=sheetY(radius);          // the rim rides its own floor ring
-      const ap=(lat,lon)=>{
-        const cl=Math.cos(lat), sl2=Math.sin(lat);
-        return lensWarp(project(radius*cl*Math.cos(lon),baseY+radius*sl2,radius*cl*Math.sin(lon)));
-      };
-      for(let mi=0;mi<p.mer;mi++){                        // meridians
-        const lon=TAU*mi/p.mer;
-        let prev=null;
-        for(let i=0;i<=segs;i++){
-          const s=ap(LAT1*i/segs,lon);
-          if(s&&prev) seg(prev,s,dim,false,1);
-          prev=s;
-        }
-      }
-      for(let par=0;par<=p.par;par++){                    // parallels
-        const lat=LAT1*par/p.par;
-        const major=par%3===0||shell===0;
-        let prev=null;
-        for(let i=0;i<=segs;i++){
-          const s=ap(lat,TAU*i/segs);
-          if(s&&prev) seg(prev,s,dim,major,1);
-          prev=s;
-        }
-      }
-    }
-
-    flush(farB);
-    // the throat is a hole, so it occludes: everything behind it stops here
-    { let started=false;
-      g.beginPath();
-      for(let i=0;i<=48;i++){
-        const s=onSheet(RS,TAU*i/48);
-        if(!s){ started=false; continue; }
-        if(!started){ g.moveTo(s[0],s[1]); started=true; } else g.lineTo(s[0],s[1]);
-      }
-      g.closePath(); g.fillStyle=invert?'#fff':'#000'; g.fill();
-    }
-
-    /* ---- the star ------------------------------------------------------- */
-    if(starP){
-      // The body: a spheroid on the floor, a round head and one drawn-out
-      // tail, not a symmetric spindle — the hole-side axis is the one that
-      // stretches and its cross-section narrows as it goes, so the shape
-      // reads as a star being pulled apart. Drawn as a wireframe, the dome's
-      // own grammar at star scale, which is what keeps it native to the scene.
-      const surf=(v,w)=>{
-        const cv=Math.cos(v), sv=Math.sin(v);
-        const A=starR*cv*(cv>=0?1+0.16*tid:1+1.75*tid);
-        const rad=starR*sv*(cv>=0?1:1-0.62*tid*(-cv));
-        const B=rad*Math.cos(w), C=rad*Math.sin(w);
-        return project(sc[0]+er[0]*A+et[0]*B+en[0]*C,
-                       sc[1]+er[1]*A+et[1]*B+en[1]*C,
-                       sc[2]+er[2]*A+et[2]*B+en[2]*C);
-      };
-      // Its outline in screen space, so the corona can fill the shape
-      // rather than sit behind it as a disc: head end, tail tip, and how wide
-      // it runs across. All measured off the same surf() the wireframe uses.
-      const eHead=surf(0,0), eTail=surf(Math.PI,0),
-            eSide=surf(Math.PI/2,Math.PI/2), eSid2=surf(Math.PI/2,0);
-      const Lh=eHead?Math.hypot(eHead[0]-sunX,eHead[1]-sunY):starPx;
-      const Lt=eTail?Math.hypot(eTail[0]-sunX,eTail[1]-sunY):starPx;
-      let ux=1,uy=0;
-      if(eTail&&Lt>0.5){ ux=(eTail[0]-sunX)/Lt; uy=(eTail[1]-sunY)/Lt; }
-      const Bw=Math.max(4,
-        eSide?Math.hypot(eSide[0]-sunX,eSide[1]-sunY):starPx,
-        eSid2?Math.hypot(eSid2[0]-sunX,eSid2[1]-sunY):starPx);
-      // the wake it drags along the floor
-      g.strokeStyle=lume(0.34,invert); g.lineWidth=Math.max(0.8,p.stroke);
-      g.beginPath(); let wprev=null;
-      for(let i=0;i<=26;i++){
-        const back=i/26, r2=orbR*(1+0.10*back), a2=orbA-back*0.62;
-        const s=project(Math.cos(a2)*r2, sheetY(r2)+starR*0.5, Math.sin(a2)*r2);
-        if(s){ if(wprev) g.lineTo(s[0],s[1]); else g.moveTo(s[0],s[1]); wprev=s; }
-      }
-      g.stroke();
-      const SM=14, SP=7;
-      g.lineWidth=Math.max(0.9,p.stroke*0.9);
-      g.strokeStyle=lume(0.72,invert);
-      g.beginPath();
-      for(let mi=0;mi<SM;mi++){
-        const w=TAU*mi/SM; let prev=null;
-        for(let i=0;i<=24;i++){
-          const s=surf(Math.PI*i/24,w);
-          if(s){ if(prev) g.lineTo(s[0],s[1]); else g.moveTo(s[0],s[1]); prev=s; } else prev=null;
-        }
-      }
-      for(let pi=1;pi<SP;pi++){
-        const v=Math.PI*pi/SP; let prev=null;
-        for(let i=0;i<=32;i++){
-          const s=surf(v,TAU*i/32);
-          if(s){ if(prev) g.lineTo(s[0],s[1]); else g.moveTo(s[0],s[1]); prev=s; } else prev=null;
-        }
-      }
-      g.stroke();
-      // The disc, through the house Bayer — density not alpha. The ladder is
-      // the one the grainy rebuild landed on main (solid core, grained limb,
-      // speckled corona, granulation mottling the surface on a slow churn),
-      // but run in the body's own metric rather than on a screen-space
-      // circle, so it fills the teardrop and stretches with it. Cells sit on
-      // the void grain's 2px lattice, which is what stops the star reading as
-      // a second material laid over the scene. Swept over the shape's
-      // oriented bounding box — a square one around a long diagonal tail is
-      // mostly wasted cells — and gathered into one path, because a fillRect
-      // per dot is the tax.
-      const G=1.42, CAP=Math.min(W,H)*0.34;
-      const A1=Math.min(Lt,CAP)*G, A0=-Math.min(Lh,CAP)*G, B1=Math.min(Bw,CAP)*G;
-      let bx0=1e9,bx1=-1e9,by0=1e9,by1=-1e9;
-      for(let k=0;k<4;k++){
-        const a=k<2?A0:A1, b=(k&1)?B1:-B1;
-        const X=sunX+a*ux-b*uy, Y=sunY+a*uy+b*ux;
-        if(X<bx0)bx0=X; if(X>bx1)bx1=X; if(Y<by0)by0=Y; if(Y>by1)by1=Y;
-      }
-      const x0=Math.max(0,Math.floor(bx0/2)), x1=Math.min(Math.ceil(W/2),Math.ceil(bx1/2));
-      const y0=Math.max(0,Math.floor(by0/2)), y1=Math.min(Math.ceil(H/2),Math.ceil(by1/2));
-      const bw2=(x1-x0)*2, bh2=(y1-y0)*2;
-      const img=bw2>0&&bh2>0?haloBuf(bw2,bh2):null;
-      const D=img?img.data:null, stride=haloW*4, lit=invert?0:255;
-      for(let iy=y0;img&&iy<y1;iy++)for(let ix=x0;ix<x1;ix++){
-        const dx=ix*2+1-sunX, dy=iy*2+1-sunY;
-        const a=(dx*ux+dy*uy)/G, b=(-dx*uy+dy*ux)/G;
-        const na=a>=0?a/Lt:a/Lh;                     // +a runs down the tail
-        if(na>1.4||na<-1.4) continue;
-        const tp=na>0?Math.max(0.16,1-0.8*na):1, nb=b/(Bw*tp);
-        const d=Math.sqrt(na*na+nb*nb);
-        if(d>1.35) continue;                         // d=1 is the body's skin
-        const n=((ix*73856093^iy*19349663)>>>0)/4294967296;
-        let dens;
-        // the core stays round — it is measured without the tidal stretch,
-        // so what elongates is the limb and the tail, not the light itself
-        const dh=Math.sqrt(a*a+b*b)/Bw;
-        if(dh<0.66) dens=1-((n>0.62&&dh>0.18)?0.28*Math.max(0,Math.sin(t*0.6+n*TAU)):0);
-        else if(d<1.0) dens=0.12+0.83*(1.0-d)/0.66;   // the limb, darkening out
-        // the 0.28+0.72n weighting frays the corona out into the void grain
-        // rather than ending it on a line
-        else dens=(1.35-d)/0.35*0.46*(0.6+0.4*Math.sin(t*0.9+n*TAU))*(0.28+0.72*n);
-        // A 1px dot on the 2px lattice tops out at quarter coverage, which is
-        // right for grain and wrong for a core. So the cell carries two
-        // levels and the Bayer threshold picks between them: the top half of
-        // the range fills the cell, the bottom half drops a dot. One lattice,
-        // one material, and the crossover is dithered rather than stepped.
-        const th=(DBAYER[iy&3][ix&3]+0.5)/16;
-        const full=dens>=0.5+0.5*th;
-        if(!full&&dens<0.5*th) continue;
-        const o=((iy-y0)*2*stride)+((ix-x0)*2*4);
-        D[o]=lit; D[o+1]=lit; D[o+2]=lit; D[o+3]=255;
-        if(full){
-          D[o+4]=lit; D[o+5]=lit; D[o+6]=lit; D[o+7]=255;
-          const o2=o+stride;
-          D[o2]=lit; D[o2+1]=lit; D[o2+2]=lit; D[o2+3]=255;
-          D[o2+4]=lit; D[o2+5]=lit; D[o2+6]=lit; D[o2+7]=255;
-        }
-      }
-      if(img){
-        haloX.putImageData(img,0,0);
-        g.drawImage(haloC,0,0,bw2,bh2,x0*2,y0*2,bw2,bh2);
-      }
-      // Grainy little solar flares: prominence loops off the head's limb,
-      // each a dithered run that grows, arcs over and sinks back on its own
-      // slow period, dropout keeping it a filament rather than a stroke.
-      // Each loop lives in a plane through the body's long axis, rolled by
-      // its own hash, so they stand off the limb in three dimensions and
-      // foreshorten with the rest of the scene.
-      g.fillStyle=invert?'#000':'#fff';
-      for(let fi=0;fi<FLARES.length;fi++){
-        const F=FLARES[fi];
-        const rise=Math.max(0,Math.sin(t*(0.08+0.12*F[4])+F[3]*TAU));
-        if(rise<0.06) continue;
-        const w0=F[0]*TAU+t*0.02;                    // the loop's roll, drifting
-        const qx=et[0]*Math.cos(w0)+en[0]*Math.sin(w0),
-              qy=et[1]*Math.cos(w0)+en[1]*Math.sin(w0),
-              qz=et[2]*Math.cos(w0)+en[2]*Math.sin(w0);
-        const a0=(F[1]-0.5)*2.4;                     // feet, spread over the head
-        const arc=0.4+0.7*F[2], hMax=starR*(0.36+0.62*F[2])*rise;
-        // stepped by the arc's length on screen, not in world units, so a
-        // filament stays a filament however near the camera the star swings
-        const STEPS=Math.max(10,Math.round((arc+hMax/starR)*starPx*1.4));
-        for(let si=0;si<=STEPS;si++){
-          const f=si/STEPS;
-          const hn2=Math.sin(si*91.17+fi*57.31)*24634.6345, h2=hn2-Math.floor(hn2);
-          const hn3=Math.sin(si*37.73+fi*17.07)*11713.9127, h3=hn3-Math.floor(hn3);
-          if(h2>0.35+0.30*rise) continue;            // grainy dropout
-          const aa=a0+(f-0.5)*arc;
-          // roughened, so the arc wavers and stays a filament, never a ring
-          const rr=starR*0.98+Math.sin(f*Math.PI)*hMax+(h3-0.5)*hMax*0.5;
-          const ca=Math.cos(aa)*rr, sa2=Math.sin(aa)*rr;
-          const pr=project(sc[0]+er[0]*ca+qx*sa2,
-                           sc[1]+er[1]*ca+qy*sa2,
-                           sc[2]+er[2]*ca+qz*sa2);
-          if(pr) g.fillRect(Math.round(pr[0]+(h2-0.5)*2),Math.round(pr[1]+(h3-0.5)*2),1,1);
-        }
-      }
-    }
-
-    /* ---- the stream: the cusp unwinding down the wall into the throat ---- */
-    { const wind=1.15+p.drag*mix*2.4;
-      g.fillStyle=invert?'#000':'#fff';
-      for(let i=0;i<SUNP.length;i++){
-        const q=SUNP[i];
-        const s=(q[0]+t*(0.055+0.03*q[1]))%1;
-        const u=Math.min(1,s+(q[2]-0.5)*0.05);
-        const r=orbR+(RS*1.03-orbR)*Math.pow(u,1.35);
-        if(r<RS*1.05) continue;                            // swallowed
-        // each particle keeps a hashed lane across the flow — the spread
-        // matches the star where it tears off and pinches to a hairline at
-        // the horizon, so the trail funnels. Measured across the floor, so
-        // the fan lies on the funnel's wall rather than across the screen.
-        const lane=(q[4]-0.5)*2+Math.sin(t*(0.4+0.6*q[5])+q[3]*TAU)*0.25;
-        const r2=r+lane*starR*(0.42*Math.pow(1-u,1.6)+0.03);
-        if(r2<RS*1.05) continue;
-        const pos=onSheet(r2,orbA+wind*Math.pow(u,1.6),starR*(0.5-0.4*u));
-        if(!pos) continue;
-        const sz=u>0.75?2:1;
-        g.fillRect(Math.round(pos[0]),Math.round(pos[1]),sz,sz);
-      }
-    }
-
-    flush(nearB);
-  }
-  /* ---------------- the switches ---------------- */
-  let ti=0, inv=true, t=0;
-  const tplBtn=document.getElementById('ground-tpl');
-  const invBtn=document.getElementById('ground-inv');
-  function frame(){
-    t+=0.016;
-    const p=TPL[ti];
-    if(p.dome!=null) domeDraw(t,DOMES[p.dome],inv); else starDraw(t,p,inv);
+  let last=performance.now();
+  function frame(now){
+    let dt=(now-last)/1000; last=now;
+    dt=Math.min(dt,0.05)*0.5;  // half speed (Billy 2026-08-23)
+    step(dt); draw();
     if(!reduced) requestAnimationFrame(frame);
   }
-  if(tplBtn) tplBtn.addEventListener('click',()=>{
-    ti=(ti+1)%TPL.length;
-    tplBtn.textContent='FIELD · '+TPL[ti].name;
-    if(reduced) frame();
-  });
-  if(invBtn) invBtn.addEventListener('click',()=>{
-    inv=!inv;
-    invBtn.textContent=inv?'INV ON':'INV OFF';
-    invBtn.setAttribute('aria-pressed',String(inv));
-    if(reduced) frame();
-  });
-  if(reduced) frame(); else requestAnimationFrame(frame);
+  resize(); initMotes();
+  if(reduced){ step(0.5); draw(); } else requestAnimationFrame(frame);
 })();
 </script>
 
 <script>
-/* The Logalith in the Instruments feature: BYPO's Fibonacci shell, computed.
+/* PHYLLOTAXIS tile: a golden-angle dot spiral, slowly turning. Dots not lines,
+ * dots animate (his principle). Same house ink ceiling; pauses off-screen. */
+(function(){
+  const c=document.getElementById('phyllo-c'); if(!c||!c.getContext) return;
+  const g=c.getContext('2d',{alpha:false});
+  const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const GA=2.39996323, INK=0.26, NDOTS=220;
+  let W,H,DPR,cx,cy,S,running=false,t=0;
+  function resize(){
+    DPR=Math.min(devicePixelRatio||1,2);
+    const r=c.getBoundingClientRect(); W=r.width; H=r.height; if(!W||!H) return;
+    c.width=Math.round(W*DPR); c.height=Math.round(H*DPR); g.setTransform(DPR,0,0,DPR,0,0);
+    cx=W/2; cy=H/2; S=Math.min(W,H)*0.030;
+  }
+  addEventListener('resize',resize); resize();
+  function frame(){
+    if(!running) return;
+    t+=0.006;
+    g.fillStyle='#000'; g.fillRect(0,0,W,H);
+    for(let i=0;i<NDOTS;i++){
+      const a=i*GA + t;
+      const rr=S*Math.sqrt(i);
+      if(rr>Math.min(W,H)*0.5) break;
+      const x=cx+Math.cos(a)*rr, y=cy+Math.sin(a)*rr;
+      const v=(0.45+0.55*(i/NDOTS))*INK*255;
+      const q=Math.round(v);
+      g.fillStyle='rgb('+q+','+q+','+q+')';
+      const sz=i>NDOTS*0.6?2:1;
+      g.fillRect(Math.round(x),Math.round(y),sz,sz);
+    }
+    if(!reduced) requestAnimationFrame(frame);
+  }
+  const io=new IntersectionObserver(es=>{es.forEach(e=>{
+    if(e.isIntersecting){ if(!running){ running=true; resize(); if(reduced) frame(); else requestAnimationFrame(frame);} }
+    else running=false;
+  });},{threshold:0.05});
+  io.observe(c);
+})();
+</script>
+
+<script>
+/* The Logalith in the BYPO tile: BYPO's Fibonacci shell, computed live.
  * Faithful to hostile-visualiser/src/ui.rs — 5-whorl log spiral (x2 growth,
  * not golden), suture + growth ribs, nothing filled — with the 2026-08-04 rock
  * (diagonal quasi-periodic sway, double-golden tilt, slow spin). Runs its own
@@ -1233,7 +740,7 @@
   let t=0, running=false;
   function frame(){
     if(!running) return;
-    t+=0.016; tmx&&0; mx+=(tmx-mx)*0.05; my+=(tmy-my)*0.05;
+    t+=0.016; mx+=(tmx-mx)*0.05; my+=(tmy-my)*0.05;
     const rip=Math.min(1,Math.max(0,mx)), haunt=Math.min(1,Math.max(0,my));
     const sp=t*2*Math.PI/SWAY_P, sp2=t*2*Math.PI/(SWAY_P/PHI), A=ROCK_SWAY*R*2.2;
     const swayX=A*(Math.sin(sp)+0.5*Math.sin(sp2))/1.5;
@@ -1246,7 +753,6 @@
     for(let k=ghosts;k>=0;k--) shell(swayX,swayY, tilt+spin+k*PI5, rip, 1-k/7);
     if(!reduced) requestAnimationFrame(frame);
   }
-  // only animate while on-screen
   const io=new IntersectionObserver(es=>{
     es.forEach(e=>{
       if(e.isIntersecting){ if(!running){ running=true; resize(); if(reduced) frame(); else requestAnimationFrame(frame);} }
@@ -1258,40 +764,20 @@
 </script>
 
 <script>
-(function(){
-  var f=document.getElementById('notify'); if(!f) return;
-  var m=document.getElementById('notify-msg');
-  f.addEventListener('submit', function(e){
-    e.preventDefault();
-    var email=f.email.value.trim();
-    m.textContent='...';
-    fetch('/api/notify',{method:'POST',headers:{'content-type':'application/json'},
-      body:JSON.stringify({email:email})})
-      .then(function(r){return r.json();})
-      .then(function(d){
-        if(d.ok){ f.reset(); m.textContent="in the loop — you'll hear when there's a build or a record, and only then."; }
-        else { m.textContent=(d.error||'that didn’t take — try again?'); }
-      })
-      .catch(function(){ m.textContent='no connection — try again?'; });
-  });
-})();
-</script>
-
-<script>
 /* Whether the PHYLLOTAXIS stream is on. /api/live reads YouTube's canonical
-   link server-side, cached a minute at the edge. Hidden until it answers —
-   offline it stays a quiet link to the channel, live it drops the ghost and
-   points straight at the watch URL. */
+   link server-side, cached a minute at the edge. The LIVE tile and the readout
+   row stay hidden until it answers on — offline there is no row, no tile, no
+   error; live, both appear and point at the watch URL. */
 (function(){
-  var a=document.getElementById('stream'); if(!a) return;
   fetch('/api/live').then(function(r){return r.json();}).then(function(d){
-    a.hidden=false;
-    if(d && d.live && d.url){
-      a.href=d.url;
-      a.textContent='● live now — watch';
-      a.classList.remove('ghost');
-      if(d.title) a.title=d.title;
-    }
-  }).catch(function(){ /* endpoint missing: no row, no error */ });
+    if(!(d && d.live && d.url)) return;
+    var tile=document.getElementById('tile-live');
+    if(tile){ tile.href=d.url; tile.classList.add('on'); if(d.title) tile.title=d.title; }
+    var row=document.getElementById('live-row'), link=document.getElementById('live-link');
+    if(row){ row.classList.add('on'); }
+    if(link){ link.href=d.url; if(d.title) link.title=d.title; }
+  }).catch(function(){ /* endpoint missing: no row, no tile, no error */ });
 })();
 </script>
+</body>
+</html>
