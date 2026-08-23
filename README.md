@@ -98,7 +98,31 @@ subtree on purpose — site-wide isolation would blank the YouTube embed on
 
 `functions/api/notify.js` stores opt-ins in a KV namespace bound as `NOTIFY`
 (Pages dashboard → Settings → Functions → KV bindings). Until it is bound the
-form returns ok and stores nothing.
+form still answers `{ok:true}` — a visitor should never see a broken-looking
+form — but nothing is stored and a `console.error` plus an
+`x-notify-store: unbound` response header say so for anyone checking the
+Functions log.
+
+Each subscriber is two KV keys: `sub:<email>` (the record: timestamp + a
+random unsubscribe token) and `tok:<token>` (the index the unsubscribe link
+reads by).
+
+- **Unsubscribe** — `functions/api/unsubscribe.js`, `GET
+  /api/unsubscribe?token=<token>`. Removes both KV keys, answers a plain
+  house-styled HTML page (it's opened from a mail client, not fetched by the
+  site's JS). An unknown or already-used token reads as success — no
+  enumeration, no error for a link used twice.
+- **Export** — `functions/api/notify-export.js`, `GET /api/notify-export`
+  with header `x-notify-admin: <secret>`. Returns the list as CSV
+  (`email,subscribed_at,unsubscribe_token`). **Billy's hands**: set the
+  `NOTIFY_ADMIN` secret once (Pages dashboard → Settings → Environment
+  variables → add `NOTIFY_ADMIN`, mark it **Secret**, Production
+  environment) — nothing in the repo can set it. Without it the endpoint
+  answers `501 not configured` rather than pretending to work; a wrong or
+  missing header answers `401`.
+
+Terms, refunds and what the list stores are stated in plain language at
+`/terms` (linked from `/bypo`'s footer).
 
 ## Open
 
