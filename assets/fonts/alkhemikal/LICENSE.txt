@@ -1,0 +1,17 @@
+Licensed under Creative Commons Attribution 4.0 International (CC BY 4.0).
+
+Author: jeti  --  https://fontenddev.com/
+
+The author states the terms on their own site rather than shipping a licence
+file with the font. Quoted verbatim from https://fontenddev.com/about/,
+retrieved 2026-08-04:
+
+    "Can I use these fonts commercially?
+     Yup! All fonts I release are licensed under CC BY 4.0, which means you are
+     free to do with them what you want as long as you give appropriate credit.
+     For example, if you are using the fonts in a game, you would include
+     "{Font name} from fontenddev.com" (or something similar) in your credits."
+
+Full licence text: https://creativecommons.org/licenses/by/4.0/legalcode
+
+ATTRIBUTION IS REQUIRED. See ../NOTICE.md for the credit this project ships.
