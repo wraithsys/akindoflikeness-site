@@ -48,11 +48,13 @@
 }
 </script>
 
-<!-- The two faces that set text inside the first viewport. Pixeloid Mono is
+<!-- The three faces that set text inside the first viewport (body/caption,
+     readouts, and "Wraith" in the header lockup). Pixeloid Mono is
      deliberately NOT preloaded: nothing in the markup matches the only rule
      that asks for it, so the browser never fetches it at all. -->
 <link rel="preload" href="/assets/fonts/modern-dos-8x16.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="/assets/fonts/european-teletext.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="preload" href="/assets/fonts/alkhemikal/Alkhemikal.ttf" as="font" type="font/ttf" crossorigin>
 
 <!--
   Fonts, imagery and the wordmark are real files under /assets, not data URIs.
@@ -102,10 +104,10 @@
     font-display: swap;
   }
   @font-face {
-    /* The wordmark face: public domain (Josiah Bishop), so unlike Horizon it
-       is allowed to ship as a font file. See assets/fonts/NOTICE.md. */
-    font-family: "Panoptic Monospace";
-    src: url("/assets/fonts/panoptic-monospace-bold.otf") format("opentype");
+    /* "Wraith" in the header lockup — a display face, never body text.
+       CC BY 4.0, jeti (fontenddev.com). See assets/fonts/NOTICE.md. */
+    font-family: "Alkhemikal";
+    src: url("/assets/fonts/alkhemikal/Alkhemikal.ttf") format("truetype");
     font-display: block;
   }
 
@@ -186,19 +188,63 @@
     display: block; width: 100%; height: 100%;
     image-rendering: pixelated;
   }
-  .flare .wordmark {
+  /* The header lockup: AKOL (artwork) + a plain separator + "Wraith" (Alkhemikal)
+     + the INSTRUMENTS caption, stacked at the flare's gravitational centre where
+     the wordmark alone used to sit. Difference blending stays on every piece
+     individually (as it did on the wordmark alone) so each reads as cut OUT of
+     the field rather than laid on top, and never gets lost against a bright or
+     dark frame. The dot/star field the header needed is the flare itself —
+     see the PR notes for why nothing simpler was built on top of it. */
+  .flare .lockup {
     position: absolute;
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
-    width: min(46%, 940px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--g);
+    text-align: center;
+    pointer-events: none;
+  }
+  .flare .lockup-row {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .flare .wordmark {
+    display: block;
+    width: clamp(220px, 40vw, 880px);
     height: auto;
     image-rendering: pixelated;
-    /* Difference blending: the mark inverts whatever is behind it, so it reads
-       as cut OUT of the field rather than laid on top, and it can never be
-       lost against a bright or dark frame. Needs the white artwork. */
     mix-blend-mode: difference;
-    pointer-events: none;
+  }
+  /* Plain, neutral separator — not European Teletext. Teletext is a readout
+     face only (values, states, numbers), never chrome, and its native grid is
+     16px; a masthead glyph at display scale would be exactly the "chrome" use
+     and the off-grid softness the font rules exist to prevent. */
+  .flare .lockup-sep {
+    font-family: ui-monospace, system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 28px;
+    line-height: 1;
+    color: var(--light);
+    mix-blend-mode: difference;
+  }
+  .flare .lockup-wraith {
+    font-family: "Alkhemikal", "Pixeloid Mono", monospace;
+    font-size: var(--hero);
+    line-height: 1;
+    letter-spacing: 0.02em;
+    color: var(--light);
+    mix-blend-mode: difference;
+  }
+  .flare .lockup-caption {
+    margin: 0;
+    font-family: "Modern DOS", ui-monospace, monospace;
+    font-size: 16px;
+    letter-spacing: 0.28em;
+    color: var(--light);
+    mix-blend-mode: difference;
   }
   .unseen {
     position: absolute; width: 1px; height: 1px; overflow: hidden;
@@ -308,11 +354,13 @@
   #tile-live { --tint: var(--tint-live); }
 
   /* ---------- FOOTER / COLOPHON ----------
-     Set in Panoptic Monospace — the site's public-domain wordmark face (see
-     assets/fonts/NOTICE.md), the thematic/display register, not the plain mono
-     body (Billy 2026-08-23: "put the footer in a thematic font"). The zone is
-     pushed clear of the last tile by `.foot-rule` above it, so it reads as its
-     own band rather than crammed under the grid. */
+     Set in Inter (see "Inter (footer and colophon)" in assets/fonts/NOTICE.md)
+     — this comment used to say Panoptic Monospace, the display wordmark
+     candidate that was live briefly; the rules below moved to Inter in a
+     later pass ("Footer and colophon in Inter, 9px and 8px") and this comment
+     was never updated to match. Corrected 2026-08-24. The zone is pushed
+     clear of the last tile by `.foot-rule` above it, so it reads as its own
+     band rather than crammed under the grid. */
   .foot-rule { margin-top: var(--s2); }
   /* Footer type, Inter. One dial: --footer-size. Compare 8px / 9px / 10px / 11px.
      The colophon sits 1px under it. Billy, 2026-08-23: "normal font, very small". */
@@ -354,6 +402,9 @@
   @media (max-width: 900px) {
     :root { --hero: 48px; }
     .flare { height: 40vh; }
+    .flare .lockup-row { gap: 12px; }
+    .flare .lockup-sep { font-size: 20px; }
+    .flare .lockup-caption { letter-spacing: 0.2em; }
   }
 </style>
 
@@ -365,10 +416,26 @@
        The flare hero and the section labels stay; the GitHub link lives on in
        the footer.) -->
   <figure class="flare">
-    <canvas id="field-c" role="img" aria-label="A warped starfield drifting on a golden-angle bearing and falling into a black hole at the centre; the AKOL wordmark sits in the dark slot the captured stars leave."></canvas>
-    <h1 class="unseen">akindoflikeness</h1>
-    <img class="wordmark" src="/assets/img/akol-wordmark.png" alt="AKOL" width="1185" height="236">
-    <noscript><img class="wordmark" src="/assets/img/akol-wordmark.png" alt="AKOL" width="1185" height="236"></noscript>
+    <canvas id="field-c" role="img" aria-label="A warped starfield drifting on a golden-angle bearing and falling into a black hole at the centre; the AKOL · Wraith Instruments lockup sits in the dark slot the captured stars leave."></canvas>
+    <h1 class="unseen">AKOL · Wraith Instruments</h1>
+    <div class="lockup">
+      <div class="lockup-row">
+        <img class="wordmark" src="/assets/img/akol-wordmark.png" alt="AKOL" width="1185" height="236">
+        <span class="lockup-sep" aria-hidden="true">·</span>
+        <span class="lockup-wraith">Wraith</span>
+      </div>
+      <p class="lockup-caption">INSTRUMENTS</p>
+    </div>
+    <noscript>
+      <div class="lockup">
+        <div class="lockup-row">
+          <img class="wordmark" src="/assets/img/akol-wordmark.png" alt="AKOL" width="1185" height="236">
+          <span class="lockup-sep" aria-hidden="true">·</span>
+          <span class="lockup-wraith">Wraith</span>
+        </div>
+        <p class="lockup-caption">INSTRUMENTS</p>
+      </div>
+    </noscript>
   </figure>
   <div class="hr"></div>
 
@@ -398,19 +465,27 @@
           <span class="tile-foot"><span class="tile-title">BYPO</span><span class="tile-state">v1.0.2</span></span>
         </a>
 
-        <a class="tile" href="/room">
+        <!-- Non-linking: "The Room" is currently a reverb inside BYPO's own
+             engine (fibonacci-dsp/src/reverb.rs), not a release of its own —
+             gh release list on fibonacci-synth shows only BYPO v1.0.0-v1.0.2.
+             It used to link to /room, a route that does not exist. Kept
+             visually present, made a non-linking placeholder like DAW/MERCURY
+             until it either ships standalone or the copy changes. -->
+        <span class="tile placeholder" aria-label="THE ROOM — a reverb inside BYPO's engine, not yet a standalone release">
           <span class="tile-media"><canvas id="pentagram-c" aria-hidden="true"></canvas></span>
           <span class="tile-foot"><span class="tile-title">THE ROOM</span><span class="tile-state">free · vst3 · clap</span></span>
-        </a>
+        </span>
 
         <a class="tile" id="tile-live" href="https://www.youtube.com/@akindoflikeness/live" target="_blank" rel="noopener">
           <span class="tile-media"><span class="tile-glyph">( )</span></span>
           <span class="tile-foot"><span class="tile-title">LIVE</span><span class="tile-state">● on air</span></span>
         </a>
 
-        <span class="tile placeholder" aria-label="DAW — not yet released">
+        <!-- Naming rule: "Mercury" and "DAW" stay adjacent in the page text
+             near this tile for the next 18 months — never bare "Mercury". -->
+        <span class="tile placeholder" aria-label="Mercury — daw, in progress">
           <span class="tile-media"><span class="tile-glyph">/ /</span></span>
-          <span class="tile-foot"><span class="tile-title">DAW</span><span class="tile-state">—</span></span>
+          <span class="tile-foot"><span class="tile-title">MERCURY</span><span class="tile-state">daw · in progress</span></span>
         </span>
 
       </div>
@@ -470,7 +545,7 @@
       <span><a href="https://github.com/wraithsys" target="_blank" rel="noopener">github</a> · <a href="https://akindoflikeness.bandcamp.com" target="_blank" rel="noopener">bandcamp</a></span>
     </footer>
     <div class="colophon">
-      wordmark set in Panoptic Monospace, Josiah Bishop, public domain — body Modern DOS &amp; readouts European Teletext, Jayvee Enaguas, CC0 1.0.
+      wordmark set in Horizon (artwork, not distributed as a font) — "Wraith" set in Alkhemikal, jeti (fontenddev.com), CC BY 4.0 — body Modern DOS &amp; readouts European Teletext, Jayvee Enaguas, CC0 1.0.
       Work archived by the British Library Sound and Moving Image Collection.
     </div>
   </div>

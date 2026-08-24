@@ -12,6 +12,7 @@ licence.**
 | `modern-dos-8x16.ttf` | Modern DOS 8x16 | CC0 1.0 — Jayvee Enaguas (HarvettFox96) |
 | `european-teletext.ttf` | European Teletext | CC0 1.0 |
 | `panoptic-monospace-bold.otf` | Panoptic Monospace | Public domain — Josiah Bishop |
+| `alkhemikal/Alkhemikal.ttf` | Alkhemikal | CC BY 4.0 — jeti (fontenddev.com), see `alkhemikal/LICENSE.txt` |
 
 Pixeloid Mono — Copyright (c) 2020-2022 GGBotNet (https://ggbot.net/fonts/),
 Reserved Font Name "Pixeloid". The OFL's Reserved Font Name clause means a
@@ -23,9 +24,20 @@ them, not because they must be.
 
 Panoptic Monospace — by Josiah Bishop; *"Panoptic Monospace has been released
 into the Public Domain"* (1001fonts.com licence page, checked 2026-08-21;
-Billy's download, same day). It is the live-rendered wordmark face — the first
-face on this site allowed to *be* a font file in the wordmark register, because
-public domain has no redistribution terms to trip over.
+Billy's download, same day). It was briefly wired up as a candidate wordmark
+face; that `@font-face` rule has since been removed from `index.html` as dead
+code (2026-08-24 — nothing in the markup renders live text in it, the wordmark
+stays the Horizon PNG artwork below). The file ships unreferenced — harmless,
+since a webfont with no matching CSS rule is never fetched — but it is a
+candidate for deletion next time this folder gets a pass.
+
+Alkhemikal — by jeti (fontenddev.com), CC BY 4.0, licence quoted in
+`alkhemikal/LICENSE.txt` (author publishes terms on their own site rather than
+shipping a licence file; same provenance shape as `hostile-visualiser`'s copy,
+which is where this copy came from). Added 2026-08-24 to set "Wraith" in the
+header lockup — a display face, not body text, matching its role everywhere
+else in Billy's tree. Required credit: *"Alkhemikal by jeti (fontenddev.com),
+licensed CC BY 4.0."*
 
 ## Not here, deliberately
 
