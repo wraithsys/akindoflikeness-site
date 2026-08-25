@@ -1,7 +1,8 @@
 # akindoflikeness.net
 
 The AKOL landing page, the BYPO page, and the place web instruments get served
-from. Static, no build step in this repo.
+from. Static, no build step in this repo. Wiki lives at `/wiki/`, built from
+`~/dev/wiki`.
 
 Deployed on Cloudflare Pages, connected to this repo: **every push to `main`
 redeploys the live site.** Custom domain `akindoflikeness.net`.

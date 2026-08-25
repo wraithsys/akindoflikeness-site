@@ -11,11 +11,23 @@ licence.**
 | `pixeloid-mono.ttf` | Pixeloid Mono | SIL Open Font License 1.1 — see `OFL.txt` |
 | `modern-dos-8x16.ttf` | Modern DOS 8x16 | CC0 1.0 — Jayvee Enaguas (HarvettFox96) |
 | `european-teletext.ttf` | European Teletext | CC0 1.0 |
+| `alkhemikal.ttf` | Alkhemikal | CC BY 4.0 — jeti, fontenddev.com |
+| `inter-latin-400.woff2` | Inter | SIL Open Font License 1.1 — see `OFL.txt` |
 
 Pixeloid Mono — Copyright (c) 2020-2022 GGBotNet (https://ggbot.net/fonts/),
 Reserved Font Name "Pixeloid". The OFL's Reserved Font Name clause means a
 *modified* copy may not be called "Pixeloid"; shipping it unmodified under its
 own name, with this notice, is exactly what the licence asks for.
+
+Alkhemikal is **CC BY 4.0**, which is the only face here with a live
+condition attached: it requires attribution wherever it is used. That
+attribution is the first clause of the colophon line at the foot of `bypo.html`
+and `index.html`. Deleting that line breaks the licence. It is display only —
+the "Wraith" lockup — never body, per the dev tree's font rules.
+
+Inter is OFL like Pixeloid Mono, no Reserved Font Name issue, shipped
+unmodified as `inter-latin-400.woff2`. It is used at 8-9px for the colophon
+only, where a bitmap face at that size would be unreadable.
 
 CC0 faces carry no conditions. They are credited because the colophon credits
 them, not because they must be.
