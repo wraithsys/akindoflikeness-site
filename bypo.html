@@ -145,7 +145,9 @@
 
   .dl{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
   .cta{align-self:flex-start;border:1px solid var(--light);color:var(--light);padding:12px 22px;letter-spacing:.08em}
-  .cta:hover{background:var(--light);color:var(--black)}
+  a.cta:hover{background:var(--light);color:var(--black)}
+  .cta.soon{border-color:var(--rule);color:var(--inactive);cursor:default}
+  .cta .tag{font-family:"European Teletext",monospace;color:var(--field);margin-left:10px;letter-spacing:.06em}
 
   footer.strip{padding:28px 32px;border-top:1px solid var(--rule);
     font-family:"European Teletext",monospace;color:var(--field);letter-spacing:.06em;
@@ -283,7 +285,9 @@
 
   <section>
     <div class="dl">
-      <a class="cta" href="https://dl.akindoflikeness.net/akol-installer-latest.zip">AKOL INSTALLER</a>
+      <!-- Live link, ready to go back in when the installer is actually built:
+           <a class="cta" href="https://dl.akindoflikeness.net/akol-installer-latest.zip">AKOL INSTALLER</a> -->
+      <span class="cta soon">AKOL INSTALLER <span class="tag">soon</span></span>
     </div>
   </section>
 
