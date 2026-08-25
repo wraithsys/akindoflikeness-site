@@ -1,7 +1,8 @@
 # akindoflikeness.net
 
 The AKOL landing page, the BYPO page, and the place web instruments get served
-from. Static, no build step in this repo.
+from. Static, no build step in this repo. Wiki lives at `/wiki/`, built from
+`~/dev/wiki`.
 
 Deployed on Cloudflare Pages, connected to this repo: **every push to `main`
 redeploys the live site.** Custom domain `akindoflikeness.net`.
@@ -81,11 +82,8 @@ shipping a font is redistribution either way.
 `_headers` has the reasoning inline, including two Cloudflare `_headers` quirks
 that fail silently and are easy to get wrong. The short version: `/assets/*` is
 immutable for a year and is therefore **rename-to-change**; `/covers/*` gets a
-month; HTML is `max-age=0` with `stale-while-revalidate` and `stale-if-error`,
-and a zone Cache Rule (not in this repo — Cloudflare dashboard, Caching →
-Cache Rules) holds every page at the edge for 120s and serves that copy when
-the Pages origin answers 5xx. Since 2026-08-19 it did so on one request in
-six; `_headers` has the numbers. A deploy is live within two minutes.
+month; HTML gets Pages' own `max-age=0, must-revalidate`, so a deploy is live
+immediately.
 
 ## Web instruments
 
@@ -98,31 +96,7 @@ subtree on purpose — site-wide isolation would blank the YouTube embed on
 
 `functions/api/notify.js` stores opt-ins in a KV namespace bound as `NOTIFY`
 (Pages dashboard → Settings → Functions → KV bindings). Until it is bound the
-form still answers `{ok:true}` — a visitor should never see a broken-looking
-form — but nothing is stored and a `console.error` plus an
-`x-notify-store: unbound` response header say so for anyone checking the
-Functions log.
-
-Each subscriber is two KV keys: `sub:<email>` (the record: timestamp + a
-random unsubscribe token) and `tok:<token>` (the index the unsubscribe link
-reads by).
-
-- **Unsubscribe** — `functions/api/unsubscribe.js`, `GET
-  /api/unsubscribe?token=<token>`. Removes both KV keys, answers a plain
-  house-styled HTML page (it's opened from a mail client, not fetched by the
-  site's JS). An unknown or already-used token reads as success — no
-  enumeration, no error for a link used twice.
-- **Export** — `functions/api/notify-export.js`, `GET /api/notify-export`
-  with header `x-notify-admin: <secret>`. Returns the list as CSV
-  (`email,subscribed_at,unsubscribe_token`). **Billy's hands**: set the
-  `NOTIFY_ADMIN` secret once (Pages dashboard → Settings → Environment
-  variables → add `NOTIFY_ADMIN`, mark it **Secret**, Production
-  environment) — nothing in the repo can set it. Without it the endpoint
-  answers `501 not configured` rather than pretending to work; a wrong or
-  missing header answers `401`.
-
-Terms, refunds and what the list stores are stated in plain language at
-`/terms` (linked from `/bypo`'s footer).
+form returns ok and stores nothing.
 
 ## Open
 
@@ -139,10 +113,8 @@ Terms, refunds and what the list stores are stated in plain language at
 **This repository is public**, so the `phyllotaxis/` workspace — `DESIGN.md` and
 all of its source — is readable by anyone. That was raised as a problem and
 Billy's call is that it is not one: *"keep it where it is, it's not causing any
-problems."* (`fibonacci-synth` was public and MIT when this was written; it
-went private on 2026-08-23 and the site copy no longer says MIT, free, or
-public source — see the `scrub-mit-language` PR. The phyllotaxis posture
-above is unchanged.)
+problems."* `fibonacci-synth` is public and MIT already, so this is the same
+posture, not a new one.
 
 Two mechanics that follow from it, both handled:
 

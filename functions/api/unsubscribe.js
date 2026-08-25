@@ -54,12 +54,12 @@ export async function onRequestGet({ request, env }) {
     return page(400, "MISSING TOKEN", "this link is missing its token — copy the whole address from the email.");
   }
 
-  if (!env.NOTIFY) {
+  if (!(env.NOTIFY || env.KV_BINDING)) {
     console.error("unsubscribe: NOTIFY KV is not bound — cannot process", { token });
     return page(503, "NOT CONFIGURED", "the mailing list isn't wired up on this deploy yet. try again later, or email us directly.");
   }
 
-  const email = await env.NOTIFY.get("tok:" + token);
+  const email = await (env.NOTIFY || env.KV_BINDING).get("tok:" + token);
   if (!email) {
     // Idempotent, and no enumeration: an unknown or already-used token reads
     // the same as success, since either way the answer to "am I still on the
@@ -67,8 +67,8 @@ export async function onRequestGet({ request, env }) {
     return page(200, "ALREADY OFF THE LIST", "that link has already been used, or was never on the list. either way, you're not subscribed.");
   }
 
-  await env.NOTIFY.delete("tok:" + token);
-  await env.NOTIFY.delete("sub:" + email);
+  await (env.NOTIFY || env.KV_BINDING).delete("tok:" + token);
+  await (env.NOTIFY || env.KV_BINDING).delete("sub:" + email);
 
   return page(200, "YOU'RE OFF THE LIST", "no more mail from this list. re-subscribe any time from the front page.");
 }

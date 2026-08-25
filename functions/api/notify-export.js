@@ -47,7 +47,7 @@ export async function onRequestGet({ request, env }) {
     return new Response("unauthorized\n", { status: 401, headers: { "content-type": "text/plain; charset=utf-8" } });
   }
 
-  if (!env.NOTIFY) {
+  if (!(env.NOTIFY || env.KV_BINDING)) {
     return new Response("not configured: NOTIFY KV is not bound for this deploy\n", {
       status: 503,
       headers: { "content-type": "text/plain; charset=utf-8" },
@@ -57,10 +57,10 @@ export async function onRequestGet({ request, env }) {
   const rows = ["email,subscribed_at,unsubscribe_token"];
   let cursor;
   do {
-    const listed = await env.NOTIFY.list({ prefix: "sub:", cursor });
+    const listed = await (env.NOTIFY || env.KV_BINDING).list({ prefix: "sub:", cursor });
     for (const key of listed.keys) {
       const email = key.name.slice("sub:".length);
-      const { ts, token } = parseRecord(await env.NOTIFY.get(key.name));
+      const { ts, token } = parseRecord(await (env.NOTIFY || env.KV_BINDING).get(key.name));
       rows.push([csvField(email), csvField(ts), csvField(token)].join(","));
     }
     cursor = listed.list_complete ? undefined : listed.cursor;
