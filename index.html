@@ -165,6 +165,22 @@
   .dim .state{color:var(--field)}
   .card.phyllo .state{font-family:"Modern DOS",ui-monospace,monospace}
 
+  /* The list. His own copy, kept verbatim. */
+  .notify{display:flex;flex-wrap:wrap;gap:10px}
+  .notify input{
+    flex:1 1 240px;min-width:0;background:var(--black);color:var(--text);
+    border:1px solid var(--rule);padding:10px 12px;font:inherit;letter-spacing:.04em;
+  }
+  .notify input::placeholder{color:var(--field)}
+  .notify input:focus-visible{border-color:var(--light);outline:none;color:var(--light)}
+  .notify button{
+    flex:0 0 auto;background:var(--black);color:var(--inactive);
+    border:1px solid var(--rule);padding:10px 18px;font:inherit;letter-spacing:.08em;cursor:pointer;
+  }
+  .notify button:hover,.notify button:focus-visible{border-color:var(--light);color:var(--light)}
+  .notify-msg{margin:0;color:var(--field);font-family:"European Teletext",ui-monospace,monospace;
+    letter-spacing:.06em;font-size:14px;min-height:1.2em}
+
   .hr{height:1px;background:var(--rule);margin-top:32px}
   .colophon{padding:0 36px}
   .colophon .links{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;
@@ -292,6 +308,15 @@
     </div>
     -->
 
+    <div class="block">
+      <h2>THE LIST</h2>
+      <form class="notify" id="notify">
+        <input type="email" name="email" placeholder="email" required aria-label="your email">
+        <button type="submit">keep me in the loop &#9656;</button>
+      </form>
+      <p class="notify-msg" id="notify-msg" role="status"></p>
+    </div>
+
   </section>
 
   <div class="hr"></div>
@@ -333,6 +358,27 @@
   fetch('/api/live').then(function (r) { return r.json(); }).then(function (d) {
     if (d && d.live && d.url) { card.href = d.url; card.hidden = false; }
   }).catch(function () {});
+})();
+
+/* The list. Posts to /api/notify, which writes into the akol-notify KV
+   namespace. It now reports a real failure if the binding is missing, so a
+   silent success can never mean a discarded address again. */
+(function () {
+  var f = document.getElementById('notify'), m = document.getElementById('notify-msg');
+  if (!f || !m) return;
+  f.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var email = f.email.value.trim();
+    m.textContent = '...';
+    fetch('/api/notify', { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: email }) })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d.ok) { f.reset(); m.textContent = "in the loop \u2014 you'll hear when there's a build or a record, and only then."; }
+        else { m.textContent = (d.error || 'that didn\u2019t take \u2014 try again?'); }
+      })
+      .catch(function () { m.textContent = 'no connection \u2014 try again?'; });
+  });
 })();
 
 /* The field: a warped starfield on a golden-angle bearing, falling in. */
