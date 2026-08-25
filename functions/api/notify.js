@@ -1,5 +1,8 @@
 /* Opt-in mailing list endpoint (Cloudflare Pages Function).
- * POST {email} -> stored in the KV namespace bound as NOTIFY.
+ * POST {email} -> stored in the KV namespace `akol-notify`, which this
+ * project binds as KV_BINDING. A Function only ever sees the BINDING name,
+ * never the namespace name, so reading env.NOTIFY alone found nothing and
+ * every signup took the unbound path below. Both names are accepted now.
  * No cadence, no third party: emails land in your own KV, you mail the list
  * only when a build ships. One-time setup: create a KV namespace and bind it
  * to this Pages project as `NOTIFY` (dashboard: Settings > Functions > KV
@@ -50,7 +53,8 @@ export async function onRequestPost({ request, env }) {
       return json({ ok: false, error: "that doesn't look like an email" }, 400);
     }
 
-    if (!env.NOTIFY) {
+    const kv = env.NOTIFY || env.KV_BINDING;
+    if (!kv) {
       // Not silent: this is the bug the research flagged (site-commerce.md
       // §6) — the KV binding can be missing in a preview/dev environment or
       // simply not yet wired up. The visitor is not told; the operator can
@@ -62,15 +66,15 @@ export async function onRequestPost({ request, env }) {
     const subKey = "sub:" + email;
     // Resubscribing (or a double click) must not orphan the previous
     // token's index entry — clean it up before writing the new one.
-    const existing = parseRecord(await env.NOTIFY.get(subKey));
+    const existing = parseRecord(await kv.get(subKey));
     if (existing?.token) {
-      await env.NOTIFY.delete("tok:" + existing.token);
+      await kv.delete("tok:" + existing.token);
     }
 
     const token = randomToken();
     const ts = new Date().toISOString();
-    await env.NOTIFY.put(subKey, JSON.stringify({ ts, token }));
-    await env.NOTIFY.put("tok:" + token, email);
+    await kv.put(subKey, JSON.stringify({ ts, token }));
+    await kv.put("tok:" + token, email);
 
     return json({ ok: true });
   } catch {
