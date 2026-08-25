@@ -3,8 +3,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>AKOL — art / tools / systems</title>
-<meta name="description" content="Instruments, records and systems by A KIND OF LIKENESS: BYPO, a free Fibonacci-derived FM drone synth, and seven releases on Bandcamp.">
+<title>AKOL · Wraith Instruments</title>
+<meta name="description" content="Instruments, records and systems by A KIND OF LIKENESS: BYPO and PHYLLOTAXIS, and seven releases on Bandcamp.">
 <link rel="canonical" href="https://akindoflikeness.net/">
 <meta name="theme-color" content="#000000">
 
@@ -14,8 +14,8 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="AKOL">
 <meta property="og:url" content="https://akindoflikeness.net/">
-<meta property="og:title" content="AKOL — art / tools / systems">
-<meta property="og:description" content="Instruments, records and systems by A KIND OF LIKENESS: BYPO, a free Fibonacci-derived FM drone synth, and seven releases on Bandcamp.">
+<meta property="og:title" content="AKOL · Wraith Instruments">
+<meta property="og:description" content="Instruments, records and systems by A KIND OF LIKENESS: BYPO and PHYLLOTAXIS, and seven releases on Bandcamp.">
 <meta property="og:image" content="https://akindoflikeness.net/assets/img/og-card.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -48,627 +48,604 @@
 }
 </script>
 
-<!-- The two faces that set text inside the first viewport. Pixeloid Mono is
-     deliberately NOT preloaded: nothing in the markup matches the only rule
-     that asks for it, so the browser never fetches it at all. -->
 <link rel="preload" href="/assets/fonts/modern-dos-8x16.ttf" as="font" type="font/ttf" crossorigin>
-<link rel="preload" href="/assets/fonts/european-teletext.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="preload" href="/assets/fonts/alkhemikal.ttf" as="font" type="font/ttf" crossorigin>
 
 <!--
-  Fonts, imagery and the wordmark are real files under /assets, not data URIs.
-  Serving them separately is what lets the browser cache them across pages and
-  across deploys, and it is why editing a paragraph no longer rewrites 400 kB.
+  FONT LICENSING — see assets/fonts/NOTICE.md.
 
-  Redistribution is unchanged by that move — the licences travel with the files.
-  See assets/fonts/NOTICE.md and assets/fonts/OFL.txt.
+  The hero lockup is now TYPE, not artwork: "AKOL" in Modern DOS italic and
+  "Wraith" in Alkhemikal. Alkhemikal is CC BY 4.0 and its attribution is the
+  first clause of the colophon at the foot of this page — deleting that line
+  breaks the licence, so leave it.
+
+  The Horizon wordmark is no longer used on this page. It survives only in
+  assets/img/og-card.png and the icons, which are Canva-rendered artwork, not
+  font files. The old to-do about confirming Horizon's commercial terms still
+  stands for those images, but the page itself no longer depends on it.
 -->
-
-<!--
-  FONT LICENSING — revisit before this ships publicly.
-
-  The wordmark is Horizon, rendered to artwork in Canva. Billy's Canva Pro
-  subscription covers using the face to make designs, which is why the mark
-  ships as a PNG and the font file does not. That distinction is the whole
-  reason it is safe: shipping Horizon.woff2 would be redistributing the font,
-  which a Canva licence does not extend to.
-
-  TO DO LATER: confirm Horizon's terms from the original foundry rather than
-  the aggregator sites, which contradict each other — some say free for
-  commercial use, others say commercial needs a paid licence. Fine as-is while
-  this is a mockup; worth settling before akindoflikeness.net is live and selling.
-  Note that og-card.png puts the same artwork into link previews.
--->
-
 <style>
-  @font-face {
-    font-family: "Pixeloid Mono";
-    src: url("/assets/fonts/pixeloid-mono.ttf") format("truetype");
-    font-display: block;
-  }
-  @font-face {
-    font-family: "Modern DOS";
-    src: url("/assets/fonts/modern-dos-8x16.ttf") format("truetype");
-    font-display: block;
-  }
-  @font-face {
-    font-family: "European Teletext";
-    src: url("/assets/fonts/european-teletext.ttf") format("truetype");
-    font-display: block;
-  }
+  @font-face{font-family:"Modern DOS";src:url("/assets/fonts/modern-dos-8x16.ttf") format("truetype");font-display:block}
+  @font-face{font-family:"European Teletext";src:url("/assets/fonts/european-teletext.ttf") format("truetype");font-display:block}
+  @font-face{font-family:"Pixeloid Mono";src:url("/assets/fonts/pixeloid-mono.ttf") format("truetype");font-display:block}
+  @font-face{font-family:"Alkhemikal";src:url("/assets/fonts/alkhemikal.ttf") format("truetype");font-display:block}
+  @font-face{font-family:"Inter";src:url("/assets/fonts/inter-latin-400.woff2") format("woff2");font-weight:400;font-display:swap}
 
-  /* The chrome ladder, lifted from workbench/src/house.rs rather than invented:
-     noninteractive bg_stroke gray(70), inactive gray(96), fg_stroke gray(160),
-     and WHITE reserved for hovered / active / selection. INK_CEILING caps the
-     drawn field at 0.26 -> gray(66), which is what makes true white read as
-     light against it. Alpha does not exist in the 1-bit language, so tone comes
-     from the 4x4 Bayer tile, not opacity. */
-  :root {
-    --black:    #000000;
-    --field:    #424242; /* gray(66) - INK_CEILING */
-    --rule:     #464646; /* gray(70) */
-    --inactive: #606060; /* gray(96) */
-    --text:     #A0A0A0; /* gray(160) */
-    --light:    #FFFFFF; /* light sources only */
-    /* Pixeloid's native grid is 9px. Every size is a whole multiple of it, which
-       is the whole reason it stays crisp. */
-    /* Modern DOS is 16px-native; the reading scale is whole multiples of it.
-       Was on Pixeloid's 9px grid, which is the wrong ladder for this face. */
-    --g:  8px;
-    --s1: 16px;
-    --s2: 32px;
-    --hero: 80px;   /* Alkhemikal is 16px-native: 16/32/48/64/80 */
+  :root{
+    --black:#000; --field:#424242; --rule:#464646; --inactive:#606060;
+    --text:#A0A0A0; --light:#fff; --gold:#A8843E; --green:#4E9E5C; --violet:#6F68C0;
   }
+  *{box-sizing:border-box}
+  html,body{background:var(--black);margin:0;padding:0}
+  body{
+    color:var(--text);font-family:"Modern DOS",ui-monospace,Consolas,monospace;
+    font-size:16px;line-height:1.35;-webkit-font-smoothing:none;text-rendering:geometricPrecision;
+  }
+  a{text-decoration:none;color:inherit}
+  :focus-visible{outline:1px solid var(--light);outline-offset:2px}
+  .page{max-width:1440px;margin:0 auto;background:var(--black)}
+  .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;margin:0;font-size:16px}
 
-  * { box-sizing: border-box; }
+  /* Hero: the field, and the lockup sitting in the dark slot it leaves. */
+  .hero{margin:0;position:relative;background:var(--black);overflow:hidden;height:min(48vh,440px)}
+  .hero canvas{position:absolute;inset:0;display:block;width:100%;height:100%;image-rendering:pixelated}
+  .lockup{
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    display:flex;align-items:center;gap:clamp(10px,4vw,28px);max-width:94vw;
+  }
+  .lockup .akol{font-size:clamp(38px,16vw,100px);line-height:.9;font-family:"Modern DOS",ui-monospace,monospace;
+    color:var(--light);text-align:center;font-style:italic;text-transform:uppercase}
+  .lockup .x{font-size:clamp(18px,7vw,44px);line-height:1;font-family:"Pixeloid Mono",ui-monospace,monospace;color:var(--light)}
+  .lockup .wraith{display:flex;flex-direction:column;align-items:center;gap:4px}
+  .lockup .wraith .name{font-size:clamp(30px,13vw,80px);line-height:.9;
+    font-family:"Alkhemikal","Pixeloid Mono",monospace;text-transform:capitalize;color:var(--light)}
+  .lockup .wraith .sub{font-size:clamp(10px,4vw,25px);line-height:1;letter-spacing:.2em;
+    font-family:"Modern DOS",ui-monospace,Consolas,monospace;text-transform:uppercase;color:var(--light);text-align:center}
 
-  body {
-    background: var(--black);
-    color: var(--text);
-    font-family: "Modern DOS", ui-monospace, Consolas, monospace;
-    font-size: var(--s1);
-    line-height: 1.35;
-    margin: 0;
-    padding: 0;
-    -webkit-font-smoothing: none;
-    font-smooth: never;
-    text-rendering: geometricPrecision;
-  }
+  .body{padding:40px 36px 8px;display:flex;flex-direction:column;gap:32px}
+  .block{display:flex;flex-direction:column;gap:16px}
+  h2{margin:0;font-weight:400;font-size:16px;letter-spacing:.16em;color:var(--field);
+    font-family:"European Teletext",ui-monospace,monospace}
 
-  .page { max-width: 1440px; margin: 0 auto; }
+  /* The record marquee. Duplicated four times and translated -25%, so the
+     loop is seamless. Without JS you still get the seven covers, still. */
+  @keyframes akol-marquee{from{transform:translateX(0)}to{transform:translateX(-25%)}}
+  .marquee{overflow:hidden}
+  .marquee-row{display:flex;gap:14px;width:max-content}
+  .marquee-row.animate{animation:akol-marquee 60s linear infinite}
+  .marquee-row:hover{animation-play-state:paused}
+  .rec{display:flex;flex-direction:column;width:170px;flex:0 0 auto}
+  .rec .art{position:relative;aspect-ratio:1/1;background:var(--black);overflow:hidden;display:block}
+  .rec img{position:absolute;inset:0;width:100%;height:100%;display:block;object-fit:cover;
+    image-rendering:pixelated;filter:none;transition:filter .2s}
+  .rec .over{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    flex-direction:column;gap:4px;text-align:center;padding:8px;color:var(--light);
+    font-family:"Modern DOS",ui-monospace,monospace;font-size:14px;letter-spacing:.04em;
+    background:rgba(0,0,0,.6);opacity:0;transition:opacity .2s;pointer-events:none}
+  .rec:hover img{filter:blur(6px)}
+  .rec:hover .over{opacity:1}
 
-  /* 1px hairlines at gray(70). Never a border-radius, never a shadow. */
-  .hr { height: 1px; background: var(--rule); }
+  /* Cards. The top border is the card's colour; everything else is the rule. */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}
+  .card{display:flex;flex-direction:column;border:1px solid var(--rule);background:var(--black)}
+  a.card:hover,a.card:focus-visible{border-color:var(--light)}
+  a.card:hover{border-top-color:var(--light)}
+  .card .thumb{position:relative;aspect-ratio:16/10;background:var(--black);overflow:hidden;
+    border-bottom:1px solid var(--rule);display:block}
+  .card .thumb canvas{position:absolute;inset:0;width:100%;height:100%;display:block;image-rendering:pixelated}
+  .card .glyph{display:flex;align-items:center;justify-content:center;height:100%;
+    font-family:"Pixeloid Mono",ui-monospace,monospace;font-size:34px;letter-spacing:.12em}
+  .card .meta{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;
+    gap:2px 12px;padding:8px 12px}
+  .card .name{flex:1 1 auto;min-width:0;overflow-wrap:break-word;color:var(--text);
+    letter-spacing:.04em;line-height:1.2;font-size:15px}
+  .card .state{flex:0 0 auto;max-width:100%;font-family:"European Teletext",ui-monospace,monospace;
+    font-size:13px;letter-spacing:.06em;white-space:nowrap}
+  .gold{border-top-color:var(--gold)} .gold .state{color:var(--gold)}
+  .green{border-top-color:var(--green)} .green .state{color:var(--green)} .green .glyph{color:var(--green)}
+  .violet{border-top-color:var(--violet)} .violet .state{color:var(--violet)} .violet .glyph{color:var(--violet)}
+  .dim .state{color:var(--field)}
+  .card.phyllo .state{font-family:"Modern DOS",ui-monospace,monospace}
 
-  .pad { padding: 0 36px; }
+  .hr{height:1px;background:var(--rule);margin-top:32px}
+  .colophon{padding:0 36px}
+  .colophon .links{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;
+    gap:6px 24px;padding:16px 0 8px;font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    font-size:9px;color:var(--field);letter-spacing:.04em;overflow-wrap:anywhere}
+  .colophon .links a{color:var(--field)}
+  .colophon .links a:hover,.colophon .links a:focus-visible{color:var(--light)}
+  .colophon .credit{font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    font-size:8px;color:var(--field);letter-spacing:.03em;padding-bottom:32px;line-height:1.8;max-width:60ch}
 
-  /* ---------- NAV ---------- */
-  nav {
-    height: 70px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+  @media(max-width:640px){
+    .body{padding:28px 18px 8px}
+    .colophon{padding:0 18px}
   }
-  .mark {
-    display: block;
-    height: 22px;
-    width: auto;
-    image-rendering: auto; /* it is artwork, not a bitmap grid — let it resample */
+  @media(prefers-reduced-motion:reduce){
+    .marquee-row.animate{animation:none}
+    .rec img{transition:none}
+    .rec .over{transition:none}
   }
-  .navlinks { display: flex; gap: 36px; }
-  nav a, .col a {
-    color: var(--inactive);
-    text-decoration: none;
-    letter-spacing: 0.04em;
-  }
-  nav a:hover, nav a:focus-visible,
-  .col a:hover, .col a:focus-visible { color: var(--light); }
-
-  /* ---------- HERO ---------- */
-  header {
-    padding: 81px 36px 72px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--s2);
-  }
-  h1 {
-    font-family: "Alkhemikal", "Pixeloid Mono", monospace;
-    font-size: var(--hero);
-    line-height: 1;
-    margin: 0;
-    color: var(--light); /* the light source */
-    letter-spacing: 0.08em;
-    font-weight: normal;
-  }
-  .tagline {
-    font-family: ui-monospace, Consolas, monospace;
-    color: var(--inactive);
-    letter-spacing: 0.14em;
-    margin: 0;
-  }
-
-  /* ---------- the moshed band ---------- */
-  figure { margin: 0; }
-  .hero {
-    position: relative;
-    background: var(--black);
-    overflow: hidden;
-    height: min(64vh, 560px);
-  }
-  .hero canvas, .hero .poster {
-    position: absolute; inset: 0;
-    display: block; width: 100%; height: 100%;
-    image-rendering: pixelated;
-  }
-  .hero .poster { object-fit: cover; }
-  .hero .wordmark {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    width: min(58%, 1185px);
-    height: auto;
-    image-rendering: pixelated;
-    /* Difference blending: the mark inverts whatever is behind it, so it reads
-       as cut OUT of the footage rather than laid on top, and it can never be
-       lost against a bright or dark frame. Needs the white artwork — black is
-       (0,0,0) and differencing that against the video is a no-op. */
-    mix-blend-mode: difference;
-  }
-  .tagline { padding: var(--s1) 0; }
-  figure img {
-    display: block;
-    width: 100%;
-    height: 198px;
-    object-fit: cover;
-    object-position: center 30%;
-    /* aliased on purpose: no smoothing, no interpolation */
-    image-rendering: pixelated;
-  }
-  figcaption {
-    font-family: ui-monospace, Consolas, monospace;
-    color: var(--field);
-    padding: var(--g) 36px;
-    letter-spacing: 0.1em;
-  }
-
-  /* ---------- COLUMNS ---------- */
-  .columns {
-    display: grid;
-    grid-template-columns: 1fr 1px 1fr 1px 1fr;
-    padding: 72px 36px;
-    gap: 0;
-  }
-  .vr { background: var(--rule); }
-  .col { padding: 0 36px; display: flex; flex-direction: column; gap: var(--s1); }
-  .col:first-child { padding-left: 0; }
-  .col:last-child { padding-right: 0; }
-  .col h2 {
-    font-size: var(--s1);
-    font-weight: normal;
-    margin: 0;
-    color: var(--light);
-    letter-spacing: 0.14em;
-  }
-  .col p { margin: 0; max-width: 34ch; }
-  .mark-img {
-    display: block;
-    width: 100%;
-    height: 132px;
-    object-fit: cover;
-    border: 1px solid var(--rule);
-    image-rendering: pixelated;
-  }
-  .listing { display: flex; flex-direction: column; }
-  .item {
-    display: flex;
-    justify-content: space-between;
-    gap: var(--s1);
-    padding: var(--g) 0;
-    border-bottom: 1px solid var(--rule);
-  }
-  .item:first-child { border-top: 1px solid var(--rule); }
-  .state {
-    /* the readout face, and only here: v1.0.2, IN PROGRESS, RELEASED are
-       values on an instrument. Billy's verdict — rare, never chrome. */
-    font-family: "European Teletext", ui-monospace, monospace;
-    font-size: 16px;   /* its native grid */
-    color: var(--field);
-    letter-spacing: 0.08em;
-    white-space: nowrap;
-  }
-  .state.on { color: var(--text); }
-
-  /* ---------- FOOTER ---------- */
-  footer {
-    height: 61px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-family: ui-monospace, Consolas, monospace;
-    color: var(--field);
-    letter-spacing: 0.08em;
-  }
-  footer a { color: var(--field); text-decoration: none; }
-  footer a:hover, footer a:focus-visible { color: var(--light); }
-  .colophon {
-    font-family: ui-monospace, Consolas, monospace;
-    color: var(--field);
-    letter-spacing: 0.06em;
-    padding-bottom: var(--s2);
-  }
-
-  /* Tone via the 4x4 Bayer tile from house.rs, never via opacity. */
-  .dither {
-    height: var(--g);
-    background-image: url("/assets/img/bayer-4x4.png");
-    background-repeat: repeat;
-    image-rendering: pixelated;
-  }
-
-  a:focus-visible { outline: 1px solid var(--light); outline-offset: 2px; }
-
-  /* The nav only ever looked right on a phone because there was no viewport
-     meta: the browser laid the page out at 980px and scaled it down. With a
-     real viewport, the mark plus three 36px-gapped links overflow 390px and
-     CONTACT falls off the edge. Let the row wrap instead. */
-  @media (max-width: 640px) {
-    nav { height: auto; padding: 14px 0; flex-wrap: wrap; gap: 10px 20px; }
-    .navlinks { gap: 20px; }
-  }
-
-  @media (max-width: 900px) {
-    .columns { grid-template-columns: 1fr; padding: 36px; gap: 36px; }
-    .vr { display: none; }
-    .col { padding: 0; }
-    :root { --hero: 48px; }
-    .hero { height: 46vh; }
-    .pad, footer { padding-left: 18px; padding-right: 18px; }
-  }
-
-  /* stacked content bands (replaced the three cramped columns) */
-  .band{ padding:48px 36px; display:flex; flex-direction:column; gap:var(--s2); }
-  .band h2{ font-size:var(--s1); font-weight:400; letter-spacing:.16em; color:var(--light); margin:0; }
-  .lede{ color:var(--text); max-width:62ch; margin:0; }
-  .feature{ display:flex; gap:36px; align-items:center; }
-  .feature-body{ flex:1; display:flex; flex-direction:column; gap:var(--s1); }
-  .feature-body h3{ margin:0; font-size:34px; color:var(--light); font-weight:400; letter-spacing:.04em; }
-  .feature-body p{ color:var(--text); max-width:52ch; margin:0; }
-  .feature-img{ width:44%; max-width:520px; aspect-ratio:1/1; height:auto; display:block; background:#000; border:1px solid var(--rule); }
-  @media(max-width:640px){ .feature-img{ width:100%; } }
-  .frow{ display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
-  .cta{ border:1px solid var(--light); color:var(--light); padding:10px 18px; letter-spacing:.08em; text-decoration:none; }
-  .cta:hover{ background:var(--light); color:var(--black); }
-  .cta.ghost{ border-color:var(--rule); color:var(--inactive); }
-  .cta.ghost:hover{ background:none; border-color:var(--light); color:var(--light); }
-  .wip{ color:var(--inactive); margin:0; letter-spacing:.02em; }
-  .wip .wl{ color:var(--field); font-family:"European Teletext",monospace; letter-spacing:.1em; margin-right:10px; }
-  .covers{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:16px; }
-  .cover{ display:flex; flex-direction:column; gap:8px; text-decoration:none; }
-  .cover img{ width:100%; aspect-ratio:1/1; object-fit:cover; border:1px solid var(--rule); display:block; }
-  .cover:hover img{ border-color:var(--light); }
-  .cover .ct{ color:var(--text); font-size:14px; line-height:1.3; }
-  .cover:hover .ct{ color:var(--light); }
-  .cover .cm{ color:var(--field); font-family:"European Teletext",monospace; font-size:12px; letter-spacing:.06em; }
-  @media(max-width:640px){ .feature{flex-direction:column;align-items:flex-start} .feature-img{width:100%} .band{padding:32px 18px} }
-
-  .social{ display:flex; gap:28px; flex-wrap:wrap; }
-  .social a{ display:inline-flex; align-items:center; gap:10px; color:var(--inactive); text-decoration:none; letter-spacing:.06em; }
-  .social a:hover, .social a:focus-visible{ color:var(--light); }
-  .social svg{ width:22px; height:22px; display:block; }
-
-  .notify{ display:flex; gap:12px; flex-wrap:wrap; align-items:center; max-width:520px; }
-  .notify input{ flex:1; min-width:200px; background:#000; border:1px solid var(--rule); color:var(--light);
-    font-family:"Modern DOS",ui-monospace,monospace; font-size:16px; padding:11px 14px; }
-  .notify input:focus{ outline:none; border-color:var(--light); }
-  .notify button{ background:none; border:1px solid var(--light); color:var(--light);
-    font:inherit; letter-spacing:.06em; padding:11px 18px; cursor:pointer; }
-  .notify button:hover{ background:var(--light); color:var(--black); }
-  .notify-msg{ color:var(--field); font-family:"European Teletext",monospace; font-size:13px; letter-spacing:.04em; margin:0; min-height:1em; }
 </style>
 
 <div class="page">
 
-  <div class="pad">
-    <nav>
-      <img class="mark" src="/assets/img/akol-mark.png" alt="AKOL" width="240" height="48">
-      <span class="navlinks">
-        <a href="/wiki/">WIKI</a>
-        <a href="#instruments">INSTRUMENTS</a>
-        <a href="#music">MUSIC</a>
-        <a href="#contact">CONTACT</a>
-      </span>
-    </nav>
-  </div>
-  <div class="hr"></div>
-
   <figure class="hero">
-    <canvas id="hero-c" role="img" aria-label="A phase-modulated figure, computed live and shaped by the pointer."></canvas>
-    <noscript><img class="poster" src="/assets/img/hero-poster.png" alt="" width="720" height="203"></noscript>
-    <h1><img class="wordmark" src="/assets/img/akol-wordmark.png" alt="AKOL" width="1185" height="236"></h1>
+    <canvas id="field-c" role="img" aria-label="A warped starfield drifting on a golden-angle bearing and falling into a black hole at the centre; the AKOL · Wraith Instruments lockup sits in the dark slot the captured stars leave."></canvas>
+    <h1 class="vh">AKOL · Wraith Instruments</h1>
+    <div class="lockup">
+      <div class="akol">AKOL</div>
+      <div class="x">x</div>
+      <div class="wraith">
+        <div class="name">Wraith</div>
+        <div class="sub">Instruments</div>
+      </div>
+    </div>
   </figure>
-  <div class="hr"></div>
-  <div class="pad"><p class="tagline">tools / art / systems</p></div>
-  <div class="hr"></div>
 
-  <section class="band" id="instruments">
-    <h2>INSTRUMENTS</h2>
-    <div class="feature">
-      <div class="feature-body">
-        <h3>BYPO</h3>
-        <p>blow your phase off — a monophonic fm drone synth. rust, MIT, no
-        envelopes. the source is public and the Windows build is free.</p>
-        <div class="frow">
-          <a class="cta" href="/bypo">open ▸</a>
-          <a class="cta ghost" href="https://github.com/wraithsys/fibonacci-synth/releases/download/v1.0.2/blow-your-phase-off-v1.0.2-windows-x64.zip">download · windows</a>
-          <span class="state on">v1.0.2</span>
+  <section class="body">
+
+    <div class="block">
+      <h2 class="vh">MUSIC</h2>
+      <div class="marquee">
+        <div class="marquee-row" id="marquee">
+          <a class="rec" href="https://akindoflikeness.bandcamp.com/album/hope-as-haunting" target="_blank" rel="noopener">
+            <span class="art"><img src="covers/hope-as-haunting.jpg" alt="hope as haunting cover" loading="lazy" width="170" height="170">
+            <span class="over"><span>hope as haunting</span><span>(2026)</span></span></span>
+          </a>
+          <a class="rec" href="https://akindoflikeness.bandcamp.com/album/rotting" target="_blank" rel="noopener">
+            <span class="art"><img src="covers/rotting.jpg" alt="rotting. cover" loading="lazy" width="170" height="170">
+            <span class="over"><span>rotting.</span><span>(2026)</span></span></span>
+          </a>
+          <a class="rec" href="https://akindoflikeness.bandcamp.com/album/mutation" target="_blank" rel="noopener">
+            <span class="art"><img src="covers/mutation.jpg" alt="Mutation cover" loading="lazy" width="170" height="170">
+            <span class="over"><span>Mutation</span><span>(2026)</span></span></span>
+          </a>
+          <a class="rec" href="https://akindoflikeness.bandcamp.com/album/the-past-in-progress" target="_blank" rel="noopener">
+            <span class="art"><img src="covers/the-past-in-progress.jpg" alt="THE PAST IN PROGRESS cover" loading="lazy" width="170" height="170">
+            <span class="over"><span>THE PAST IN PROGRESS</span><span>(2025)</span></span></span>
+          </a>
+          <a class="rec" href="https://akindoflikeness.bandcamp.com/album/sounds-of-solaris" target="_blank" rel="noopener">
+            <span class="art"><img src="covers/sounds-of-solaris.jpg" alt="Sounds of Solaris cover" loading="lazy" width="170" height="170">
+            <span class="over"><span>Sounds of Solaris</span><span>(2025)</span></span></span>
+          </a>
+          <a class="rec" href="https://akindoflikeness.bandcamp.com/album/a-tram-to-sadovaya" target="_blank" rel="noopener">
+            <span class="art"><img src="covers/a-tram-to-sadovaya.jpg" alt="A Tram To Sadovaya cover" loading="lazy" width="170" height="170">
+            <span class="over"><span>A Tram To Sadovaya</span><span>(2025)</span></span></span>
+          </a>
+          <a class="rec" href="https://akindoflikeness.bandcamp.com/album/i-miss-the-rain" target="_blank" rel="noopener">
+            <span class="art"><img src="covers/i-miss-the-rain.jpg" alt="i miss the rain cover" loading="lazy" width="170" height="170">
+            <span class="over"><span>i miss the rain</span><span>(2024)</span></span></span>
+          </a>
         </div>
       </div>
-      <canvas class="feature-img" id="logalith-c" role="img" aria-label="The Logalith — BYPO's Fibonacci shell, computed live."></canvas>
     </div>
-    <div class="feature">
-      <div class="feature-body">
-        <h3>PHYLLOTAXIS</h3>
-        <p>a polyphonic instrument that plays itself, in the browser. nothing to
-        download. its scales are computed from each algorithm&rsquo;s own spectrum
-        rather than assumed &mdash; so the more inharmonic a voice gets, the more
-        consonant it sounds. when the stream is on it plays itself on youtube,
-        and the chat plays it too: shape a patch, press share, paste the link
-        into the chat &mdash; the stream takes it, with your name on it.</p>
-        <div class="frow">
-          <a class="cta" href="/instruments/phyllotaxis/">play in browser &#9656;</a>
-          <a class="cta ghost" id="stream" hidden target="_blank" rel="noopener"
-             href="https://www.youtube.com/@akindoflikeness/live">stream &#183; youtube</a>
-          <span class="state on">no install</span>
-        </div>
+
+    <div class="block" id="instruments">
+      <h2>INSTRUMENTS</h2>
+      <div class="grid">
+
+        <a class="card gold phyllo" href="instruments/phyllotaxis/">
+          <span class="thumb"><canvas id="phyllo-c" aria-hidden="true"></canvas></span>
+          <span class="meta"><span class="name">PHYLLOTAXIS</span><span class="state">in browser</span></span>
+        </a>
+
+        <a class="card gold" href="bypo">
+          <span class="thumb"><canvas id="logalith-c" aria-hidden="true"></canvas></span>
+          <span class="meta"><span class="name">BYPO</span><span class="state">v1.0.2</span></span>
+        </a>
+
+        <span class="card dim" aria-label="THE ROOM — a reverb inside BYPO's engine, not yet a standalone release">
+          <span class="thumb"><canvas id="pentagram-c" aria-hidden="true"></canvas></span>
+          <span class="meta"><span class="name">THE ROOM</span><span class="state">free · vst3 · clap</span></span>
+        </span>
+
+        <a class="card green" id="live-card" href="https://www.youtube.com/@akindoflikeness/live" target="_blank" rel="noopener" hidden>
+          <span class="thumb"><span class="glyph">( )</span></span>
+          <span class="meta"><span class="name">LIVE</span><span class="state">● on air</span></span>
+        </a>
+
       </div>
     </div>
-    <p class="wip"><span class="wl">also in the works</span> fibonacci-drum · the dome · constellation</p>
-  </section>
 
-  <div class="hr"></div>
-
-  <section class="band" id="music">
-    <h2>MUSIC</h2>
-    <p class="lede">Experimental electronic as A KIND OF LIKENESS — seven releases on
-    Bandcamp. Work archived by the British Library Sound and Moving Image Collection.</p>
-    <div class="covers"><a class="cover" href="https://akindoflikeness.bandcamp.com/album/hope-as-haunting" target="_blank" rel="noopener"><img src="covers/hope-as-haunting.jpg" alt="hope as haunting cover" loading="lazy"><span class="ct">hope as haunting</span><span class="cm">4 tracks · 2026</span></a>
-      <a class="cover" href="https://akindoflikeness.bandcamp.com/album/rotting" target="_blank" rel="noopener"><img src="covers/rotting.jpg" alt="rotting. cover" loading="lazy"><span class="ct">rotting.</span><span class="cm">9 tracks · 2026</span></a>
-      <a class="cover" href="https://akindoflikeness.bandcamp.com/album/mutation" target="_blank" rel="noopener"><img src="covers/mutation.jpg" alt="Mutation cover" loading="lazy"><span class="ct">Mutation</span><span class="cm">7 tracks · 2026</span></a>
-      <a class="cover" href="https://akindoflikeness.bandcamp.com/album/the-past-in-progress" target="_blank" rel="noopener"><img src="covers/the-past-in-progress.jpg" alt="THE PAST IN PROGRESS cover" loading="lazy"><span class="ct">THE PAST IN PROGRESS</span><span class="cm">7 tracks · 2025</span></a>
-      <a class="cover" href="https://akindoflikeness.bandcamp.com/album/sounds-of-solaris" target="_blank" rel="noopener"><img src="covers/sounds-of-solaris.jpg" alt="Sounds of Solaris cover" loading="lazy"><span class="ct">Sounds of Solaris</span><span class="cm">12 tracks · 2025</span></a>
-      <a class="cover" href="https://akindoflikeness.bandcamp.com/album/a-tram-to-sadovaya" target="_blank" rel="noopener"><img src="covers/a-tram-to-sadovaya.jpg" alt="A Tram To Sadovaya cover" loading="lazy"><span class="ct">A Tram To Sadovaya</span><span class="cm">4 tracks · 2025</span></a>
-      <a class="cover" href="https://akindoflikeness.bandcamp.com/album/i-miss-the-rain" target="_blank" rel="noopener"><img src="covers/i-miss-the-rain.jpg" alt="i miss the rain cover" loading="lazy"><span class="ct">i miss the rain</span><span class="cm">5 tracks · 2024</span></a></div>
-  </section>
-
-  <div class="hr"></div>
-
-  <section class="band" id="contact">
-    <h2>CONTACT</h2>
-    <p>akindoflikeness@gmail.com</p>
-    <div class="social">
-      <a href="https://youtube.com/@akindoflikeness" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M10 8.5l5.5 3.5-5.5 3.5z" fill="currentColor" stroke="none"/></svg><span>youtube</span></a>
-      <a href="https://akindoflikeness.bandcamp.com" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="3"/><path d="M7.5 9h9l-4.5 6h-9z" fill="currentColor" stroke="none"/></svg><span>bandcamp</span></a>
-      <a href="https://instagram.com/akindoflikeness" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.4" cy="6.6" r="1.1" fill="currentColor" stroke="none"/></svg><span>instagram</span></a>
+    <div class="block">
+      <h2>WRITING</h2>
+      <div class="grid">
+        <a class="card violet" href="writing">
+          <span class="thumb"><span class="glyph">&gt;_</span></span>
+          <span class="meta"><span class="name">the exhaust</span><span class="state">probes · notes</span></span>
+        </a>
+      </div>
     </div>
-    <form class="notify" id="notify">
-      <input type="email" name="email" placeholder="email" required aria-label="your email">
-      <button type="submit">keep me in the loop ▸</button>
-    </form>
-    <p class="notify-msg" id="notify-msg" role="status"></p>
+
   </section>
+
   <div class="hr"></div>
 
-  <div class="pad">
-    <footer>
-      <span>akindoflikeness.net</span>
-      <span><a href="https://github.com/wraithsys" target="_blank" rel="noopener">github</a> · <a href="https://akindoflikeness.bandcamp.com" target="_blank" rel="noopener">bandcamp</a></span>
-    </footer>
-    <div class="colophon">wordmark set in Horizon — body Modern DOS &amp; readouts European Teletext, Jayvee Enaguas, CC0 1.0</div>
+  <div class="colophon">
+    <div class="links">
+      <span>akindoflikeness.net · akindoflikeness@gmail.com</span>
+      <span><a href="https://www.youtube.com/@akindoflikeness" target="_blank" rel="noopener">youtube</a> · <a href="https://bsky.app/profile/akindoflikeness.bsky.social" target="_blank" rel="noopener">bluesky</a> · <a href="https://mastodon.social/@akindoflikeness" target="_blank" rel="noopener">mastodon</a> · <a href="https://instagram.com/akindoflikeness" target="_blank" rel="noopener">instagram</a> · <a href="https://github.com/wraithsys" target="_blank" rel="noopener">github</a> · <a href="https://akindoflikeness.bandcamp.com" target="_blank" rel="noopener">bandcamp</a></span>
+    </div>
+    <div class="credit">"Wraith" set in Alkhemikal, jeti (fontenddev.com), CC BY 4.0 — body Modern DOS &amp; readouts European Teletext, Jayvee Enaguas, CC0 1.0. Work archived by the British Library Sound and Moving Image Collection.</div>
   </div>
 
 </div>
 
 <script>
-/* Landing hero: the phase figure, computed live. Base motion runs on its own;
- * the pointer shapes it. 1-bit, coarse buffer scaled up, no symmetry — a single
- * open sweep with a fading wake. Retired the datamosh video; the poster in the
- * <noscript> is the baked fallback. */
-(function(){
-  const c = document.getElementById('hero-c');
-  if(!c || !c.getContext) return;
-  const g = c.getContext('2d', { alpha:false });
-  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const BAYER=[0,8,2,10, 12,4,14,6, 3,11,1,9, 15,7,13,5];
-  const CELL=4;
-  let W=0,H=0,bw=0,bh=0;
-
-  function resize(){
-    const r=c.getBoundingClientRect(); W=r.width; H=r.height;
-    bw=Math.max(1,Math.round(W/CELL)); bh=Math.max(1,Math.round(H/CELL));
-    c.width=bw; c.height=bh;              // small buffer; CSS stretches, pixelated
+/* Marquee: clone the seven records three more times so the -25% translate
+   lands on an identical frame. Clones are aria-hidden — the screen reader
+   gets one copy, the eye gets a loop. */
+(function () {
+  var row = document.getElementById('marquee');
+  if (!row) return;
+  var originals = Array.prototype.slice.call(row.children);
+  for (var pass = 0; pass < 3; pass++) {
+    originals.forEach(function (el) {
+      var c = el.cloneNode(true);
+      c.setAttribute('aria-hidden', 'true');
+      c.setAttribute('tabindex', '-1');
+      row.appendChild(c);
+    });
   }
-  addEventListener('resize', resize); resize();
-
-  // pointer state, eased; a gentle default so it is alive before first touch
-  let mxv=0.62, myv=0.42, tx=0.62, ty=0.42, moving=0;
-  c.addEventListener('pointermove', e=>{
-    const r=c.getBoundingClientRect();
-    tx=(e.clientX-r.left)/r.width; ty=(e.clientY-r.top)/r.height; moving=1;
-  });
-  c.addEventListener('pointerleave', ()=>moving=0);
-
-  function figure(tt, shape, ox, oy, RX, RY, decay){
-    const spin=tt*0.14, N=1100; let fb=0;
-    g.fillStyle='#fff';
-    for(let i=0;i<N;i++){
-      const u=i/N*Math.PI*2;
-      fb=Math.sin(u*2 + spin - shape*fb*2.4);          // chew on inverted past
-      const rr=0.5+0.5*Math.sin(u*3 + spin*1.3);        // lobed, not a disc
-      const x=ox+Math.cos(u+spin)*RX*rr;
-      const y=oy+fb*RY*(0.55+0.45*rr);
-      const xi=x|0, yi=y|0;
-      if(xi<0||yi<0||xi>=bw||yi>=bh) continue;
-      const bright=decay*(0.5+0.5*Math.sin(u*3+spin));
-      if(bright*16 > BAYER[(yi&3)*4+(xi&3)]) g.fillRect(xi,yi,1,1);
-    }
-  }
-
-  let t=0;
-  function frame(){
-    t+=0.016;
-    if(!moving){ tx=0.5+0.3*Math.sin(t*0.19); ty=0.5+0.26*Math.cos(t*0.13); }
-    mxv+=(tx-mxv)*0.05; myv+=(ty-myv)*0.05;
-    const shape=Math.min(1,Math.max(0,mxv));   // pointer X: how much it tears
-    const wake =Math.min(1,Math.max(0,myv));   // pointer Y: length of the trail
-
-    g.fillStyle='#000'; g.fillRect(0,0,bw,bh);
-    const cx=bw*0.5, cy=bh*0.5;
-    const RY=Math.min(bw,bh)*0.46;
-    const RX=RY*(1.15 + 0.5*Math.min(1, bw/bh - 1));
-
-    const echoes=Math.round(wake*5);
-    for(let k=echoes;k>=0;k--){
-      const lag=k*0.55, decay=1-k/7;
-      const dx=k*bw*0.018, dy=-k*bh*0.010;     // one drift direction, asymmetric
-      figure(t-lag, shape, cx-dx, cy-dy, RX, RY, decay);
-    }
-    if(!reduced) requestAnimationFrame(frame);
-  }
-  if(reduced) frame(); else requestAnimationFrame(frame);
-  document.addEventListener('visibilitychange', ()=>{
-    if(!document.hidden && !reduced) requestAnimationFrame(frame);
-  });
+  row.classList.add('animate');
 })();
-</script>
 
-<script>
-/* The Logalith in the Instruments feature: BYPO's Fibonacci shell, computed.
- * Faithful to hostile-visualiser/src/ui.rs — 5-whorl log spiral (x2 growth,
- * not golden), suture + growth ribs, nothing filled — with the 2026-08-04 rock
- * (diagonal quasi-periodic sway, double-golden tilt, slow spin). Runs its own
- * base motion; hovering plays RIP (x, tears the coil) and HAUNT (y, pi/5 ghost
- * trail). Pauses when scrolled off-screen so the page stays lean. 1-bit greys. */
-(function(){
-  const c=document.getElementById('logalith-c'); if(!c||!c.getContext) return;
-  const g=c.getContext('2d',{alpha:false});
-  const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const PHI=1.6180339887, PI5=Math.PI/5, INK=0.26;
-  const WHORLS=5, GROWTH=2.0, TURNS=WHORLS, SWAY_P=13.0, SPIN_P=377.0;
-  const ROCK_SWAY=0.060, ROCK_TILT=0.075, ROCK_TILT2=0.34;
-  const THETA_MAX=TURNS*2*Math.PI;
+/* Whether the PHYLLOTAXIS stream is on. /api/live reads YouTube's canonical
+   answer; offline the card simply never appears. */
+(function () {
+  var card = document.getElementById('live-card');
+  if (!card) return;
+  fetch('/api/live').then(function (r) { return r.json(); }).then(function (d) {
+    if (d && d.live && d.url) { card.href = d.url; card.hidden = false; }
+  }).catch(function () {});
+})();
 
-  let W,H,DPR,cx,cy,R;
-  function resize(){
-    DPR=Math.min(devicePixelRatio||1,2);
-    const r=c.getBoundingClientRect(); W=r.width; H=r.height;
-    if(!W||!H) return;
-    c.width=W*DPR; c.height=H*DPR; g.setTransform(DPR,0,0,DPR,0,0);
-    g.imageSmoothingEnabled=false; g.lineWidth=1;
-    cx=W/2; cy=H/2; R=Math.min(W,H)*0.34;
+/* The field: a warped starfield on a golden-angle bearing, falling in. */
+(function () {
+  var cv = document.getElementById('field-c');
+  if (!cv || !cv.getContext) return;
+  var g = cv.getContext('2d', { alpha: false });
+  var reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var TAU = Math.PI * 2;
+  var M0 = 0x9E3779B97F4A7C15n, M1 = 0xBF58476D1CE4E5B9n, M2 = 0x94D049BB133111EBn, MASK = 0xFFFFFFFFFFFFFFFFn;
+  function hash01(seed, n) {
+    var x = (BigInt(seed) * M0 + BigInt(n)) & MASK;
+    x ^= x >> 30n; x = (x * M1) & MASK; x ^= x >> 27n; x = (x * M2) & MASK; x ^= x >> 31n;
+    return Number(x & 0xFFFFFFn) / 0xFFFFFF;
   }
-  addEventListener('resize',resize); resize();
+  var INK_CEILING = 0.26;
+  function clamp(x, a, b) { return x < a ? a : x > b ? b : x; }
+  function smooth(a, b, x) { var t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); }
+  function mix(a, b, t) { return a + (b - a) * t; }
+  function ink(v) { var b = Math.round(clamp(v, 0, 1) * INK_CEILING * 255); return 'rgb(' + b + ',' + b + ',' + b + ')'; }
+  var RON = { drift: 0.12, subject_frac: 0.24, seed: 790 };
+  var DRIFT_ANGLE = 2.3999632;
+  var T = { MOTES: 1200, drift: 0.10, infall: 14.0, swirl: 26.0, lens_k: 0.90, lens_cap: 1.45,
+    tidal_R: 1.55, tidal_Lmax: 22, tidal_pitch: 3.4, tidal_dotsMax: 6,
+    colour: true, colour_intensity: 0.6, doppler_gain: 1.0, redshift_gain: 0.7 };
+  var WARM = [184, 112, 46], COOL = [58, 110, 168];
+  var W, H, DPR, cx, cy, R, B_CRIT, N, mx, my, mdepth, mnear, mgen;
 
-  let mx=0.25,my=0.25,tmx=0.25,tmy=0.25;
-  c.addEventListener('pointermove',e=>{const r=c.getBoundingClientRect();
-    tmx=(e.clientX-r.left)/r.width; tmy=(e.clientY-r.top)/r.height;});
-  c.addEventListener('pointerleave',()=>{tmx=0.25;tmy=0.25;});
-
-  const shellR=th=>R*Math.pow(GROWTH,(th-THETA_MAX)/(2*Math.PI));
-  function seg(x0,y0,x1,y1,b,major){
-    let v=Math.min(1,b)*(major?1:0.72)*INK; const gc=Math.round(v*255);
-    if(gc<5) return;
-    g.strokeStyle='rgb('+gc+','+gc+','+gc+')';
-    g.beginPath(); g.moveTo(x0,y0); g.lineTo(x1,y1); g.stroke();
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    var r = cv.getBoundingClientRect(); W = r.width; H = r.height;
+    if (!W || !H) return;
+    cv.width = Math.max(1, Math.round(W * DPR)); cv.height = Math.max(1, Math.round(H * DPR));
+    g.setTransform(DPR, 0, 0, DPR, 0, 0);
+    cx = W / 2; cy = H / 2; R = H * RON.subject_frac;
+    B_CRIT = R * (3 * Math.sqrt(3) / 2 / 2.0);
   }
-  function shell(ox,oy,rotation,rip,decay){
-    const cr=Math.cos(rotation), sr=Math.sin(rotation);
-    const put=(x,y)=>[cx+ox+x*cr-y*sr, cy+oy+x*sr+y*cr];
-    const STEPS=460; let prev=null, fb=0;
-    for(let i=0;i<=STEPS;i++){
-      const th=THETA_MAX*i/STEPS; let r=shellR(th);
-      fb=Math.sin(th*3 - rip*fb*2.0); r*=1+rip*0.16*fb;
-      const [sx,sy]=put(Math.cos(th)*r, Math.sin(th)*r);
-      if(prev) seg(prev[0],prev[1],sx,sy,(0.35+0.65*(th/THETA_MAX))*decay,true);
-      prev=[sx,sy];
+  function onResize() { resize(); if (reduced) draw(); }
+  addEventListener('resize', onResize);
+
+  function spawn(i) {
+    var s = RON.seed ^ 0x51ED, gen = mgen[i] | 0;
+    var a = hash01(s, i * 97 + gen * 7 + 1) * TAU;
+    var rad = (0.55 + 0.75 * hash01(s, i * 97 + gen * 7 + 2)) * Math.max(W, H) * 0.62;
+    mx[i] = cx + Math.cos(a) * rad; my[i] = cy + Math.sin(a) * rad;
+    var d = hash01(s, i * 97 + gen * 7 + 3);
+    mdepth[i] = Math.floor(d * 3) / 3; mnear[i] = 0.35 + 0.65 * mdepth[i]; mgen[i] = gen + 1;
+  }
+  function initMotes() {
+    N = T.MOTES;
+    mx = new Float32Array(N); my = new Float32Array(N);
+    mdepth = new Float32Array(N); mnear = new Float32Array(N); mgen = new Int32Array(N);
+    var s = RON.seed ^ 0x51ED;
+    for (var i = 0; i < N; i++) {
+      mx[i] = hash01(s, i * 97 + 11) * W * 2 - W * 0.5;
+      my[i] = hash01(s, i * 97 + 12) * H * 2 - H * 0.5;
+      var d = hash01(s, i * 97 + 13); mdepth[i] = Math.floor(d * 3) / 3; mnear[i] = 0.35 + 0.65 * mdepth[i];
+      mgen[i] = 0;
     }
-    const RIBS=64;
-    for(let i=1;i<RIBS;i++){
-      const th=THETA_MAX*i/RIBS; if(th<2*Math.PI*0.6) continue;
-      const rOut=shellR(th), rIn=shellR(th-2*Math.PI);
-      const reach=0.30+0.45*(0.5+0.5*Math.sin(th*5)); let pv=null;
-      for(let sIdx=0;sIdx<=5;sIdx++){
-        const f=sIdx/5, rr=rOut+(rIn*reach-rOut)*f, a=th+f*0.33+Math.sin(f*Math.PI)*0.09;
-        let jx=0,jy=0; if(rip>0){const j=rip*3*Math.sin(th*7+f*9+t*3); jx=j; jy=j*0.5;}
-        const [sx,sy]=put(Math.cos(a)*rr+jx, Math.sin(a)*rr+jy);
-        if(pv) seg(pv[0],pv[1],sx,sy,(0.3+0.5*(th/THETA_MAX))*decay,false);
-        pv=[sx,sy];
+  }
+  var bearing = [Math.cos(DRIFT_ANGLE), Math.sin(DRIFT_ANGLE)];
+  function step(dt) {
+    var driftS = RON.drift * T.drift * 900;
+    for (var i = 0; i < N; i++) {
+      var dx = mx[i] - cx, dy = my[i] - cy;
+      var d = Math.hypot(dx, dy) || 0.001;
+      var rx = dx / d, ry = dy / d, tx = -ry, ty = rx;
+      var soft = Math.max(d, B_CRIT * 0.9);
+      var grav = (R * R) / (soft * soft);
+      var vx = -rx * T.infall * grav * mnear[i] * 60 + tx * T.swirl * grav * mnear[i] * 60;
+      var vy = -ry * T.infall * grav * mnear[i] * 60 + ty * T.swirl * grav * mnear[i] * 60;
+      vx += bearing[0] * driftS * mnear[i]; vy += bearing[1] * driftS * mnear[i];
+      mx[i] += vx * dt; my[i] += vy * dt;
+      if (d < B_CRIT * 0.55 || mx[i] < -W * 0.8 || mx[i] > W * 1.8 || my[i] < -H * 0.8 || my[i] > H * 1.8) spawn(i);
+    }
+  }
+  function draw() {
+    g.fillStyle = '#000'; g.fillRect(0, 0, W, H);
+    for (var i = 0; i < N; i++) {
+      var dx = mx[i] - cx, dy = my[i] - cy;
+      var d = Math.hypot(dx, dy) || 0.001;
+      if (d < B_CRIT) continue;
+      var rx = dx / d, ry = dy / d, tx = -ry, ty = rx;
+      var push = Math.min(T.lens_k * R * R / d, T.lens_cap * R);
+      var blend = smooth(B_CRIT, B_CRIT * 1.8, d);
+      var ux = mix(tx, rx, blend), uy = mix(ty, ry, blend);
+      var ax = mx[i] + ux * push, ay = my[i] + uy * push;
+      var rt = T.tidal_R * R;
+      var s = clamp(Math.pow(rt / d, 3), 0, 1);
+      var L = s * T.tidal_Lmax;
+      var ndots = 1 + Math.min(T.tidal_dotsMax - 1, Math.floor(L / T.tidal_pitch));
+      var px = (mdepth[i] > 0.6 ? 2 : 1);
+      var value = (1.0 + 1.0 * mdepth[i]);
+      var fill = ink(value * 0.62 + 0.38);
+      if (T.colour) {
+        var warmth = clamp(-tx, -1, 1);
+        var gz = clamp(R / (2 * Math.max(d, R)), 0, 1);
+        var temp = clamp(warmth * T.doppler_gain + gz * T.redshift_gain, -1, 1);
+        var spend = smooth(0, 1, Math.max(s, gz * 0.8)) * T.colour_intensity;
+        if (spend > 0.01) {
+          var tt = (temp + 1) / 2;
+          var cr = mix(COOL[0], WARM[0], tt), cg2 = mix(COOL[1], WARM[1], tt), cb = mix(COOL[2], WARM[2], tt);
+          var base = value * 0.62 + 0.38;
+          fill = 'rgb(' + Math.round(mix(base * INK_CEILING * 255, cr, spend)) + ','
+                        + Math.round(mix(base * INK_CEILING * 255, cg2, spend)) + ','
+                        + Math.round(mix(base * INK_CEILING * 255, cb, spend)) + ')';
+        }
+      }
+      g.fillStyle = fill;
+      for (var k = 0; k < ndots; k++) {
+        var f = ndots > 1 ? (k / (ndots - 1) - 0.5) : 0;
+        g.fillRect(Math.round(ax + rx * f * L), Math.round(ay + ry * f * L), px, px);
       }
     }
   }
-
-  let t=0, running=false;
-  function frame(){
-    if(!running) return;
-    t+=0.016; tmx&&0; mx+=(tmx-mx)*0.05; my+=(tmy-my)*0.05;
-    const rip=Math.min(1,Math.max(0,mx)), haunt=Math.min(1,Math.max(0,my));
-    const sp=t*2*Math.PI/SWAY_P, sp2=t*2*Math.PI/(SWAY_P/PHI), A=ROCK_SWAY*R*2.2;
-    const swayX=A*(Math.sin(sp)+0.5*Math.sin(sp2))/1.5;
-    const swayY=A*(Math.cos(sp*0.9)+0.5*Math.cos(sp2))/1.5*0.7;
-    const tp=t*2*Math.PI/SWAY_P;
-    const tilt=ROCK_TILT*(Math.sin(tp)+ROCK_TILT2*Math.sin(tp*PHI*PHI))/(1+ROCK_TILT2);
-    const spin=t*2*Math.PI/SPIN_P;
-    g.fillStyle='#000'; g.fillRect(0,0,W,H);
-    const ghosts=Math.round(haunt*5);
-    for(let k=ghosts;k>=0;k--) shell(swayX,swayY, tilt+spin+k*PI5, rip, 1-k/7);
-    if(!reduced) requestAnimationFrame(frame);
+  var raf = null, last = performance.now();
+  function frame(now) {
+    var dt = (now - last) / 1000; last = now;
+    dt = Math.min(dt, 0.05) * 0.5;
+    step(dt); draw();
+    if (!reduced) raf = requestAnimationFrame(frame);
   }
-  // only animate while on-screen
-  const io=new IntersectionObserver(es=>{
-    es.forEach(e=>{
-      if(e.isIntersecting){ if(!running){ running=true; resize(); if(reduced) frame(); else requestAnimationFrame(frame);} }
-      else running=false;
-    });
-  },{threshold:0.05});
-  io.observe(c);
+  resize(); initMotes();
+  if (reduced) { step(0.5); draw(); } else raf = requestAnimationFrame(frame);
 })();
-</script>
 
-<script>
-(function(){
-  var f=document.getElementById('notify'); if(!f) return;
-  var m=document.getElementById('notify-msg');
-  f.addEventListener('submit', function(e){
-    e.preventDefault();
-    var email=f.email.value.trim();
-    m.textContent='...';
-    fetch('/api/notify',{method:'POST',headers:{'content-type':'application/json'},
-      body:JSON.stringify({email:email})})
-      .then(function(r){return r.json();})
-      .then(function(d){
-        if(d.ok){ f.reset(); m.textContent="in the loop — you'll hear when there's a build or a record, and only then."; }
-        else { m.textContent=(d.error||'that didn’t take — try again?'); }
-      })
-      .catch(function(){ m.textContent='no connection — try again?'; });
-  });
-})();
-</script>
-
-<script>
-/* Whether the PHYLLOTAXIS stream is on. /api/live reads YouTube's canonical
-   link server-side, cached a minute at the edge. Hidden until it answers —
-   offline it stays a quiet link to the channel, live it drops the ghost and
-   points straight at the watch URL. */
-(function(){
-  var a=document.getElementById('stream'); if(!a) return;
-  fetch('/api/live').then(function(r){return r.json();}).then(function(d){
-    a.hidden=false;
-    if(d && d.live && d.url){
-      a.href=d.url;
-      a.textContent='● live now — watch';
-      a.classList.remove('ghost');
-      if(d.title) a.title=d.title;
+/* PHYLLOTAXIS card: the golden-angle spiral, turning. */
+(function () {
+  var c = document.getElementById('phyllo-c');
+  if (!c || !c.getContext) return;
+  var g = c.getContext('2d', { alpha: false });
+  var reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var GA = 2.39996323, INK = 0.26, NDOTS = 220;
+  var W, H, DPR, cx, cy, S, running = false, t = 0, raf = null;
+  function resize() {
+    DPR = Math.min(devicePixelRatio || 1, 2);
+    var r = c.getBoundingClientRect(); W = r.width; H = r.height; if (!W || !H) return;
+    c.width = Math.round(W * DPR); c.height = Math.round(H * DPR); g.setTransform(DPR, 0, 0, DPR, 0, 0);
+    cx = W / 2; cy = H / 2; S = Math.min(W, H) * 0.030;
+  }
+  addEventListener('resize', resize); resize();
+  function frame() {
+    if (!running) return;
+    t += 0.006;
+    g.fillStyle = '#000'; g.fillRect(0, 0, W, H);
+    for (var i = 0; i < NDOTS; i++) {
+      var a = i * GA + t, rr = S * Math.sqrt(i);
+      if (rr > Math.min(W, H) * 0.5) break;
+      var q = Math.round((0.45 + 0.55 * (i / NDOTS)) * INK * 255);
+      g.fillStyle = 'rgb(' + q + ',' + q + ',' + q + ')';
+      g.fillRect(Math.round(cx + Math.cos(a) * rr), Math.round(cy + Math.sin(a) * rr), i > NDOTS * 0.6 ? 2 : 1, i > NDOTS * 0.6 ? 2 : 1);
     }
-  }).catch(function(){ /* endpoint missing: no row, no error */ });
+    if (!reduced) raf = requestAnimationFrame(frame);
+  }
+  new IntersectionObserver(function (es) {
+    es.forEach(function (e) {
+      if (e.isIntersecting) { if (!running) { running = true; resize(); if (reduced) frame(); else raf = requestAnimationFrame(frame); } }
+      else { running = false; }
+    });
+  }, { threshold: 0.05 }).observe(c);
+})();
+
+/* BYPO card: the Logalith, the Fibonacci shell. */
+(function () {
+  var c = document.getElementById('logalith-c');
+  if (!c || !c.getContext) return;
+  var g = c.getContext('2d', { alpha: false });
+  var reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var PHI = 1.6180339887, PI5 = Math.PI / 5, INK = 0.26;
+  var GROWTH = 2.0, TURNS = 5, SWAY_P = 13.0, SPIN_P = 377.0;
+  var ROCK_SWAY = 0.060, ROCK_TILT = 0.075, ROCK_TILT2 = 0.34;
+  var THETA_MAX = TURNS * 2 * Math.PI;
+  var W, H, DPR, cx, cy, R, raf = null, t = 0, running = false;
+  function resize() {
+    DPR = Math.min(devicePixelRatio || 1, 2);
+    var r = c.getBoundingClientRect(); W = r.width; H = r.height; if (!W || !H) return;
+    c.width = W * DPR; c.height = H * DPR; g.setTransform(DPR, 0, 0, DPR, 0, 0);
+    g.imageSmoothingEnabled = false; g.lineWidth = 1;
+    cx = W / 2; cy = H / 2; R = Math.min(W, H) * 0.58;
+  }
+  addEventListener('resize', resize); resize();
+  var mx = 0.25, my = 0.25, tmx = 0.25, tmy = 0.25;
+  c.addEventListener('pointermove', function (e) {
+    var r = c.getBoundingClientRect();
+    tmx = (e.clientX - r.left) / r.width; tmy = (e.clientY - r.top) / r.height;
+  });
+  c.addEventListener('pointerleave', function () { tmx = 0.25; tmy = 0.25; });
+  function shellR(th) { return R * Math.pow(GROWTH, (th - THETA_MAX) / (2 * Math.PI)); }
+  function seg(x0, y0, x1, y1, b, major) {
+    var v = Math.min(1, b) * (major ? 1 : 0.72) * INK, gc = Math.round(v * 255);
+    if (gc < 5) return;
+    g.strokeStyle = 'rgb(' + gc + ',' + gc + ',' + gc + ')';
+    g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
+  }
+  function shell(ox, oy, rotation, rip, decay) {
+    var cr = Math.cos(rotation), sr = Math.sin(rotation);
+    function put(x, y) { return [cx + ox + x * cr - y * sr, cy + oy + x * sr + y * cr]; }
+    var STEPS = 460, prev = null, fb = 0, i;
+    for (i = 0; i <= STEPS; i++) {
+      var th = THETA_MAX * i / STEPS, r = shellR(th);
+      fb = Math.sin(th * 3 - rip * fb * 2.0); r *= 1 + rip * 0.16 * fb;
+      var pt = put(Math.cos(th) * r, Math.sin(th) * r);
+      if (prev) seg(prev[0], prev[1], pt[0], pt[1], (0.35 + 0.65 * (th / THETA_MAX)) * decay, true);
+      prev = pt;
+    }
+    for (i = 1; i < 64; i++) {
+      var th2 = THETA_MAX * i / 64; if (th2 < 2 * Math.PI * 0.6) continue;
+      var rOut = shellR(th2), rIn = shellR(th2 - 2 * Math.PI);
+      var reach = 0.30 + 0.45 * (0.5 + 0.5 * Math.sin(th2 * 5)), pv = null;
+      for (var sIdx = 0; sIdx <= 5; sIdx++) {
+        var f = sIdx / 5, rr = rOut + (rIn * reach - rOut) * f;
+        var a = th2 + f * 0.33 + Math.sin(f * Math.PI) * 0.09;
+        var jx = 0, jy = 0;
+        if (rip > 0) { var j = rip * 3 * Math.sin(th2 * 7 + f * 9 + t * 3); jx = j; jy = j * 0.5; }
+        var p2 = put(Math.cos(a) * rr + jx, Math.sin(a) * rr + jy);
+        if (pv) seg(pv[0], pv[1], p2[0], p2[1], (0.3 + 0.5 * (th2 / THETA_MAX)) * decay, false);
+        pv = p2;
+      }
+    }
+  }
+  function frame() {
+    if (!running) return;
+    t += 0.016; mx += (tmx - mx) * 0.05; my += (tmy - my) * 0.05;
+    var rip = Math.min(1, Math.max(0, mx)), haunt = Math.min(1, Math.max(0, my));
+    var sp = t * 2 * Math.PI / SWAY_P, sp2 = t * 2 * Math.PI / (SWAY_P / PHI), A = ROCK_SWAY * R * 2.2;
+    var swayX = A * (Math.sin(sp) + 0.5 * Math.sin(sp2)) / 1.5;
+    var swayY = A * (Math.cos(sp * 0.9) + 0.5 * Math.cos(sp2)) / 1.5 * 0.7;
+    var tp = t * 2 * Math.PI / SWAY_P;
+    var tilt = ROCK_TILT * (Math.sin(tp) + ROCK_TILT2 * Math.sin(tp * PHI * PHI)) / (1 + ROCK_TILT2);
+    var spin = t * 2 * Math.PI / SPIN_P;
+    g.fillStyle = '#000'; g.fillRect(0, 0, W, H);
+    var ghosts = Math.round(haunt * 5);
+    for (var k = ghosts; k >= 0; k--) shell(swayX, swayY, tilt + spin + k * PI5, rip, 1 - k / 7);
+    if (!reduced) raf = requestAnimationFrame(frame);
+  }
+  new IntersectionObserver(function (es) {
+    es.forEach(function (e) {
+      if (e.isIntersecting) { if (!running) { running = true; resize(); if (reduced) frame(); else raf = requestAnimationFrame(frame); } }
+      else { running = false; }
+    });
+  }, { threshold: 0.05 }).observe(c);
+})();
+
+/* THE ROOM card: five nodes, bubbling cross-feed, Bayer-dithered. */
+(function () {
+  var c = document.getElementById('pentagram-c');
+  if (!c || !c.getContext) return;
+  var g = c.getContext('2d', { alpha: false });
+  var reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var TAU = Math.PI * 2, INK = 0.26;
+  var NODES = 5, CROSS_FEED = 3, RADIUS_FRAC = 0.40, WEB_POINTS = 21;
+  var NODE_R = 7.0, ARC_INSET = 9.0, NODE_DITHER_R = 5.5, DITHER_CELL = 2.0, NODE_DITHER_GAIN = 2.0;
+  var BUB_SPACE_ON = 7.0, BUB_SPACE_OFF = 10.0, BUB_R_MIN = 1.3, BUB_R_SWING = 1.4;
+  var BUB_PHASE_STEP = 0.9, BUB_PHASE_LEN = 0.13, DORMANT_DOT = 1.5;
+  var SOURCE_PANEL_H = 110.0, BUBBLE_TRAVEL = 1.2;
+  var BAYER = [[0/16,8/16,2/16,10/16],[12/16,4/16,14/16,6/16],[3/16,11/16,1/16,9/16],[15/16,7/16,13/16,5/16]];
+  var SH_HOLD_S = 2.6, SH_HOLD_JITTER = 1.1, SH_SLEW_S = 0.7, SH_DEPTH = 0.85;
+  var SH_HAUNT_HOLD_MULT = 4.0, SH_HAUNT_MIN = 0.15, SH_HAUNT_MAX = 1.0;
+  function ink(v) { var b = Math.round((v < 0 ? 0 : v > 1 ? 1 : v) * INK * 255); return 'rgb(' + b + ',' + b + ',' + b + ')'; }
+  var rng = 0x1F2B3C4D >>> 0;
+  function uniform() { rng = (rng * 48271) % 2147483647; return rng / 2147483647; }
+  function nextHold() { return SH_HOLD_S + (uniform() * 2 - 1) * SH_HOLD_JITTER; }
+  var env = [], envH = [];
+  for (var q = 0; q < NODES; q++) { env.push(0); envH.push({ cur: 0, tgt: 0, at: q * 0.37 }); }
+  var haunt = { cur: SH_HAUNT_MIN, tgt: SH_HAUNT_MIN, at: 0 }, hauntV = SH_HAUNT_MIN;
+  function sandhTick(clk, dt) {
+    var k = 1 - Math.exp(-dt / SH_SLEW_S);
+    for (var i = 0; i < NODES; i++) {
+      if (clk >= envH[i].at) { envH[i].tgt = uniform() * SH_DEPTH; envH[i].at = clk + nextHold(); }
+      envH[i].cur += (envH[i].tgt - envH[i].cur) * k; env[i] = envH[i].cur;
+    }
+    if (clk >= haunt.at) { haunt.tgt = SH_HAUNT_MIN + uniform() * (SH_HAUNT_MAX - SH_HAUNT_MIN); haunt.at = clk + nextHold() * SH_HAUNT_HOLD_MULT; }
+    haunt.cur += (haunt.tgt - haunt.cur) * k; hauntV = haunt.cur;
+  }
+  var W, H, DPR, cx, cy, R, K, clk = 0, phase = 0, raf = null, running = false, last = 0;
+  function resize() {
+    DPR = Math.min(devicePixelRatio || 1, 2);
+    var r = c.getBoundingClientRect(); W = r.width; H = r.height; if (!W || !H) return;
+    c.width = Math.round(W * DPR); c.height = Math.round(H * DPR); g.setTransform(DPR, 0, 0, DPR, 0, 0);
+    g.imageSmoothingEnabled = false; g.lineWidth = 1;
+    cx = W / 2; cy = H / 2; R = Math.min(W, H) * RADIUS_FRAC;
+    K = Math.max(1, Math.min(W, H) / SOURCE_PANEL_H);
+  }
+  addEventListener('resize', resize); resize();
+  function nodePt(i) { var a = -Math.PI / 2 + TAU * i / NODES; return [cx + Math.cos(a) * R, cy + Math.sin(a) * R]; }
+  function circlePt(t) { var a = -Math.PI / 2 + TAU * t; return [cx + Math.cos(a) * R, cy + Math.sin(a) * R]; }
+  function ditherCircle(x0, y0, radius, density, cell) {
+    if (density <= 0) return;
+    var r2 = radius * radius, steps = Math.ceil(radius * 2 / cell);
+    for (var iy = 0; iy < steps; iy++) for (var ix = 0; ix < steps; ix++) {
+      var ox = ix * cell - radius, oy = iy * cell - radius;
+      if (ox * ox + oy * oy <= r2 && density > BAYER[iy & 3][ix & 3])
+        g.fillRect(Math.round(x0 + ox), Math.round(y0 + oy), Math.max(1, Math.round(cell - 1)), Math.max(1, Math.round(cell - 1)));
+    }
+  }
+  function bubbleChain(ax, ay, bx, by, active) {
+    var spx = bx - ax, spy = by - ay, len = Math.hypot(spx, spy);
+    if (len < 4 * K) return;
+    var spacing = (active ? BUB_SPACE_ON : BUB_SPACE_OFF) * K, n = Math.max(2, Math.ceil(len / spacing));
+    for (var j = 0; j <= n; j++) {
+      var t = j / n, px = Math.round(ax + spx * t), py = Math.round(ay + spy * t);
+      if (active) {
+        var r = BUB_R_MIN + BUB_R_SWING * (0.5 + 0.5 * Math.sin(j * BUB_PHASE_STEP + (len / K) * BUB_PHASE_LEN - phase));
+        g.beginPath(); g.arc(px, py, Math.max(0.5, r * K), 0, TAU); g.stroke();
+      } else {
+        var s = Math.max(1, Math.round(DORMANT_DOT * K));
+        g.fillRect(Math.round(px - s / 2), Math.round(py - s / 2), s, s);
+      }
+    }
+  }
+  function draw() {
+    g.fillStyle = '#000'; g.fillRect(0, 0, W, H);
+    if (Math.min(W, H) < 16) return;
+    var chords = Math.floor((hauntV < 0 ? 0 : hauntV > 1 ? 1 : hauntV) * WEB_POINTS), cc;
+    g.strokeStyle = ink(0.85); g.lineWidth = 1;
+    for (cc = 1; cc <= chords; cc++) {
+      var a = circlePt(cc / WEB_POINTS), b = circlePt((cc * 2 % WEB_POINTS) / WEB_POINTS);
+      g.beginPath(); g.moveTo(Math.round(a[0]), Math.round(a[1])); g.lineTo(Math.round(b[0]), Math.round(b[1])); g.stroke();
+    }
+    g.strokeStyle = ink(0.8);
+    for (var i = 0; i < NODES; i++) {
+      var f = nodePt(i), t2 = nodePt((i + CROSS_FEED) % NODES);
+      var dx = t2[0] - f[0], dy = t2[1] - f[1], L = Math.hypot(dx, dy) || 1;
+      dx /= L; dy /= L;
+      bubbleChain(f[0] + dx * ARC_INSET * K, f[1] + dy * ARC_INSET * K, t2[0] - dx * ARC_INSET * K, t2[1] - dy * ARC_INSET * K, hauntV > 0);
+    }
+    for (var m = 0; m < NODES; m++) {
+      var p = nodePt(m), px = Math.round(p[0]), py = Math.round(p[1]);
+      g.fillStyle = '#000'; g.beginPath(); g.arc(px, py, NODE_R * K, 0, TAU); g.fill();
+      g.strokeStyle = ink(1.0); g.beginPath(); g.arc(px, py, NODE_R * K, 0, TAU); g.stroke();
+      g.fillStyle = ink(0.95);
+      ditherCircle(px, py, NODE_DITHER_R * K, Math.min(1, env[m] * hauntV * NODE_DITHER_GAIN), DITHER_CELL * Math.max(1, Math.round(K)));
+    }
+  }
+  function frame(now) {
+    if (!running) return;
+    if (!last) last = now;
+    var dt = (now - last) / 1000; last = now; dt = dt < 0 ? 0 : dt > 0.1 ? 0.1 : dt;
+    clk += dt; phase = (phase + dt * BUBBLE_TRAVEL) % TAU;
+    sandhTick(clk, dt); draw();
+    if (!reduced) raf = requestAnimationFrame(frame);
+  }
+  new IntersectionObserver(function (es) {
+    es.forEach(function (e) {
+      if (e.isIntersecting) { if (!running) { running = true; last = 0; resize(); if (reduced) { sandhTick(0, 0); draw(); } else raf = requestAnimationFrame(frame); } }
+      else { running = false; }
+    });
+  }, { threshold: 0.05 }).observe(c);
 })();
 </script>
