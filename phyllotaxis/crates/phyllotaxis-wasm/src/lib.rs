@@ -117,6 +117,16 @@ pub struct Engine {
     /// One-pole coefficient for the frequency glide (~50 ms), fixed at
     /// construction so the per-sample path never calls `exp`.
     sub_glide: f32,
+    /// The sub's level, smoothed. `param::SUB` is written straight into the
+    /// array by `set` and read here every sample; applying it raw steps the
+    /// amplitude of a 27 Hz sine the instant the control moves, which is a
+    /// click. Glided on the same coefficient as the frequency.
+    sub_level: f32,
+    /// The master, smoothed, for the same reason and by the same means.
+    /// `param::MASTER` multiplies the whole mix on the per-sample path, so
+    /// dragging it stepped every sample of the output — a zipper across the
+    /// entire instrument rather than just the sub.
+    master_level: f32,
 
     params: [f32; param::COUNT as usize],
     scope: Box<[f32; SCOPE_LEN]>,
@@ -130,6 +140,46 @@ pub struct Engine {
 /// Upper bound on scale degrees. `DEGREES_PER_SCALE` is 8; the headroom costs
 /// nothing and means a wider scale can never index out of bounds.
 const MAX_DEGREES: usize = 16;
+
+/// What `param::SUB` at 1.0 actually means as an amplitude.
+///
+/// **The sub was never gain-staged.** It went into the mix as a bare
+/// full-scale sine — `sin(φ) * SUB` — beside a wet bus that measures, over
+/// thirty seconds of default patch, a peak of **0.094**. So SUB at 1.0 put the
+/// sub about nine times louder than the entire rest of the instrument, roughly
+/// 19 dB above it, and SUB 1.0 with MASTER 1.0 summed to **1.088** and hard
+/// clipped at the device. A clipped 27 Hz sine is a near-square wave, and the
+/// harmonic spray off it is what reads as the clicking — the two complaints
+/// were the one fault. (Billy, 2026-09-05: *"clicky and way too fucking
+/// loud"*; and 2026-08-21, *"the only thing i dont like is the sub"* — that
+/// earlier dislike is why the default is silence, and this is the reason
+/// under it.)
+///
+/// 0.35 puts the sub at full about three times the instrument's own peak,
+/// which is a strong anchor rather than a takeover, and leaves the sum unable
+/// to clip at any combination of settings. It stays deliberately generous
+/// because low frequencies need more amplitude for the same loudness — this is
+/// the number to move by ear, and the test below guards the invariant (never
+/// clips) rather than the taste.
+const SUB_HEADROOM: f32 = 0.25;
+
+/// The sub control's taper: what the slider's position means as amplitude.
+///
+/// **Square law, not linear.** Billy, 2026-09-05, after the first pass took
+/// the peak from 1.088 to 0.438: *"volume is better tho still hot"*. Linear
+/// against a 0.094 instrument puts everything usable in the bottom of the
+/// travel, so the dial has one live inch and the rest is too much — which is a
+/// badly staged control, not a wrong constant. Squaring spreads it: half
+/// travel is a quarter of the headroom, and the top of the dial stays
+/// available for anyone who wants the instrument buried.
+///
+/// Safe to change the meaning of: `param::SUB` defaults to silence and no
+/// shipped URL carries a value for it, so nothing in the wild is re-tuned by
+/// this.
+fn sub_amp(control: f32) -> f32 {
+    let s = control.clamp(0.0, 1.0);
+    s * s * SUB_HEADROOM
+}
 
 fn defaults() -> [f32; param::COUNT as usize] {
     let mut p = [0.0f32; param::COUNT as usize];
@@ -191,6 +241,10 @@ impl Engine {
             sub_hz: 0.0,
             sub_target_hz: 0.0,
             sub_glide: 1.0 - (-1.0 / (0.05 * sample_rate)).exp(),
+            // Starts where the parameter is, so a URL that arrives with SUB
+            // already set does not ramp up audibly on the first block.
+            sub_level: sub_amp(params[param::SUB as usize]),
+            master_level: params[param::MASTER as usize],
             params,
             scope: Box::new([0.0; SCOPE_LEN]),
             scope_head: 0,
@@ -536,10 +590,19 @@ impl Engine {
         // ground, not width. Level is the one control; Master still rules all.
         self.sub_hz += (self.sub_target_hz - self.sub_hz) * self.sub_glide;
         self.sub_phase = (self.sub_phase + self.sub_hz / self.sample_rate).fract();
-        let sub = (core::f32::consts::TAU * self.sub_phase).sin()
-            * self.params[param::SUB as usize].clamp(0.0, 1.0);
+        // Level glided, not read raw: see `sub_level`. Headroom applied here
+        // rather than folded into the control, so `param::SUB` stays a plain
+        // 0..1 the URL and the slider both mean literally.
+        let sub_target = sub_amp(self.params[param::SUB as usize]);
+        self.sub_level += (sub_target - self.sub_level) * self.sub_glide;
+        let sub = (core::f32::consts::TAU * self.sub_phase).sin() * self.sub_level;
 
-        let m = self.params[param::MASTER as usize];
+        // The master is glided too: raw, it stepped the whole mix on every
+        // input event, which is the zipper heard across the instrument and not
+        // only under the sub.
+        self.master_level +=
+            (self.params[param::MASTER as usize] - self.master_level) * self.sub_glide;
+        let m = self.master_level;
         let (l, r) = ((wl + sub) * m, (wr + sub) * m);
 
         // The scope is one trace of what is actually leaving the instrument.
@@ -567,11 +630,46 @@ impl Engine {
         }
     }
 
+    /// Write a parameter, and rebuild only if this one is a parameter the
+    /// rebuild reads.
+    ///
+    /// **`apply()` used to run on every write.** It calls `Pool::set_entry`,
+    /// which walks all five voices calling `Voice::set_params` → `retune()` →
+    /// `gain_for`, and `gain_for` builds a predicted partial spectrum. So
+    /// dragging a volume slider — a value `apply` does not even look at — was
+    /// reconstructing five voices' spectra on every input event, at input
+    /// rate. Billy, 2026-09-05: *"it's almost like a phase reset per value
+    /// change on the volume"*. Nothing resets phase (`Operator::set_hz` only
+    /// moves the increment), but a full pool re-init per value change is what
+    /// he was hearing, and it is the same shape of fault.
+    ///
+    /// `apply` reads ENTRY, INDEX and ROOT_HZ, plus the five field parameters.
+    /// Everything else — the mixes, the master, the sub — needs no rebuild,
+    /// and gets none.
     pub fn set(&mut self, id: u32, value: f32) {
         if (id as usize) < self.params.len() {
             self.params[id as usize] = value;
-            self.apply();
+            if Self::needs_apply(id) {
+                self.apply();
+            }
         }
+    }
+
+    /// Which parameters `apply` actually reads. Kept beside `apply` in spirit:
+    /// a parameter added to `field_params` or to `apply` must be added here or
+    /// it will silently stop taking effect.
+    fn needs_apply(id: u32) -> bool {
+        matches!(
+            id,
+            param::ENTRY
+                | param::INDEX
+                | param::ROOT_HZ
+                | param::TAIL
+                | param::DEPTH
+                | param::KNEE
+                | param::ATTACK
+                | param::DECAY
+        )
     }
 
     pub fn get(&self, id: u32) -> f32 {
@@ -1035,6 +1133,115 @@ mod tests {
             worst = worst.max((buf[0] - before).abs());
         }
         assert!(worst < 0.5, "a parameter change stepped the output by {worst}");
+    }
+
+    /// **The sub cannot clip the output, at any setting.**
+    ///
+    /// It used to: SUB 1.0 with MASTER 1.0 measured 1.088 and hard clipped at
+    /// the device, and the harmonics off a clipped 27 Hz sine were the
+    /// clicking. This is the invariant, not the taste — `SUB_HEADROOM` is
+    /// meant to be moved by ear, and moving it far enough to clip again is the
+    /// thing that must not pass quietly.
+    #[test]
+    fn the_sub_cannot_clip_the_output() {
+        let mut e = Engine::new(SR);
+        e.set(param::SUB, 1.0);
+        e.set(param::MASTER, 1.0);
+        let mut buf = [0.0f32; QUANTUM];
+        let mut peak: f32 = 0.0;
+        // Long enough for several chords, so the octave drops and the fifth
+        // schedule both land inside the window.
+        for _ in 0..11_000 {
+            e.process(&mut buf);
+            for s in buf {
+                peak = peak.max(s.abs());
+            }
+        }
+        assert!(peak <= 1.0, "the sub clipped the output at {peak}");
+    }
+
+    /// The sub's own level must not click either.
+    ///
+    /// `set` writes straight into the parameter array and the mix reads it
+    /// every sample, so an unsmoothed level steps the amplitude of a sine
+    /// sitting near 27 Hz — audible as a click on every slider move. The
+    /// existing anti-click test only ever exercised INDEX, which is why this
+    /// one went unnoticed.
+    #[test]
+    fn sub_level_changes_do_not_click() {
+        let mut e = Engine::new(SR);
+        let mut buf = [0.0f32; QUANTUM];
+        for _ in 0..400 {
+            e.process(&mut buf);
+        }
+        let mut worst: f32 = 0.0;
+        // Slam it between silent and full, which is harsher than any drag.
+        for k in 0..200 {
+            e.set(param::SUB, if k % 2 == 0 { 1.0 } else { 0.0 });
+            let before = buf[QUANTUM - 1];
+            e.process(&mut buf);
+            worst = worst.max((buf[0] - before).abs());
+        }
+        assert!(worst < 0.05, "a sub level change stepped the output by {worst}");
+    }
+
+    /// The master must not click either — it multiplies the whole mix, so
+    /// applied raw it zippers the entire instrument and not just the sub.
+    #[test]
+    fn master_changes_do_not_click() {
+        let mut e = Engine::new(SR);
+        e.set(param::SUB, 1.0);
+        let mut buf = [0.0f32; QUANTUM];
+        for _ in 0..400 {
+            e.process(&mut buf);
+        }
+        let mut worst: f32 = 0.0;
+        for k in 0..200 {
+            e.set(param::MASTER, if k % 2 == 0 { 1.0 } else { 0.0 });
+            let before = buf[QUANTUM - 1];
+            e.process(&mut buf);
+            worst = worst.max((buf[0] - before).abs());
+        }
+        assert!(worst < 0.05, "a master change stepped the output by {worst}");
+    }
+
+    /// **`set` no longer rebuilds the voice pool on every write — so prove the
+    /// ones that still need to, still do.**
+    ///
+    /// `needs_apply` is a hand-written list of what `apply` reads. The failure
+    /// it invites is a parameter quietly falling off it and ceasing to do
+    /// anything, which is far worse than the wasted work the gate removes. One
+    /// assertion per gated parameter: change it, and the instrument has to
+    /// sound different.
+    #[test]
+    fn every_gated_parameter_still_takes_effect() {
+        let render = |id: u32, v: f32| -> Vec<f32> {
+            let mut e = Engine::new(SR);
+            if id != u32::MAX {
+                e.set(id, v);
+            }
+            let mut buf = [0.0f32; QUANTUM];
+            let mut all = Vec::new();
+            for _ in 0..600 {
+                e.process(&mut buf);
+                all.extend_from_slice(&buf);
+            }
+            all
+        };
+        let base = render(u32::MAX, 0.0);
+        for (id, v, name) in [
+            (param::ENTRY, 4.0, "ENTRY"),
+            (param::INDEX, 9.0, "INDEX"),
+            (param::ROOT_HZ, 220.0, "ROOT_HZ"),
+            (param::TAIL, 0.1, "TAIL"),
+            (param::DEPTH, 0.2, "DEPTH"),
+            (param::KNEE, 0.9, "KNEE"),
+            (param::ATTACK, 0.9, "ATTACK"),
+            (param::DECAY, 0.4, "DECAY"),
+        ] {
+            assert!(Engine::needs_apply(id), "{name} is not in needs_apply");
+            assert_ne!(render(id, v), base, "{name} changed nothing — has it fallen off needs_apply?");
+        }
     }
 
     #[test]
