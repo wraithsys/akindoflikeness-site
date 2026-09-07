@@ -24,7 +24,7 @@ them, not because they must be.
 
 Panoptic Monospace — by Josiah Bishop; *"Panoptic Monospace has been released
 into the Public Domain"* (1001fonts.com licence page, checked 2026-08-21;
-Billy's download, same day). It was briefly wired up as a candidate wordmark
+AKOL's download, same day). It was briefly wired up as a candidate wordmark
 face; that `@font-face` rule has since been removed from `index.html` as dead
 code (2026-08-24 — nothing in the markup renders live text in it, the wordmark
 stays the Horizon PNG artwork below). The file ships unreferenced — harmless,
@@ -36,7 +36,7 @@ Alkhemikal — by jeti (fontenddev.com), CC BY 4.0, licence quoted in
 shipping a licence file; same provenance shape as `hostile-visualiser`'s copy,
 which is where this copy came from). Added 2026-08-24 to set "Wraith" in the
 header lockup — a display face, not body text, matching its role everywhere
-else in Billy's tree. Required credit: *"Alkhemikal by jeti (fontenddev.com),
+else in AKOL's tree. Required credit: *"Alkhemikal by jeti (fontenddev.com),
 licensed CC BY 4.0."*
 
 ## Not here, deliberately
@@ -44,7 +44,7 @@ licensed CC BY 4.0."*
 The **Horizon** wordmark is not a font file in this repo and must not become
 one. It ships as artwork — `assets/img/akol-mark.png` (nav),
 `assets/img/akol-wordmark.png` (hero), and the derived `og-card.png` /
-`icon-*.png` / `favicon.ico`. Billy's Canva Pro licence covers *using* the face
+`icon-*.png` / `favicon.ico`. AKOL's Canva Pro licence covers *using* the face
 to make designs; it does not cover redistributing `Horizon.woff2`. Rendering to
 artwork is what keeps that distinction intact.
 
@@ -68,7 +68,7 @@ is that they are pixel-exact. Not worth it; revisit only if the fonts grow.
 | `inter-latin-400.woff2` | Inter, regular weight, latin subset | SIL Open Font License 1.1 (c) 2016 The Inter Project Authors, see `OFL-Inter.txt` |
 
 The footer and colophon moved off the bitmap faces to Inter at 9px / 8px
-(Billy: "put the footer in a normal font inter or something and make it very
+(AKOL: "put the footer in a normal font inter or something and make it very
 small"). Bitmap faces off their native grid go soft at that size; a vector
 face does not. This is the latin-subset regular weight as served by Google
 Fonts (unicode-range U+0000-00FF plus general punctuation, which covers the

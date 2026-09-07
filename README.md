@@ -112,7 +112,7 @@ form returns ok and stores nothing.
 
 **This repository is public**, so the `phyllotaxis/` workspace — `DESIGN.md` and
 all of its source — is readable by anyone. That was raised as a problem and
-Billy's call is that it is not one: *"keep it where it is, it's not causing any
+Settled - AKOL is that it is not one: *"keep it where it is, it's not causing any
 problems."* `fibonacci-synth` is public and MIT already, so this is the same
 posture, not a new one.
 
@@ -128,7 +128,7 @@ Two mechanics that follow from it, both handled:
 ## Titles are not search terms, deliberately
 
 `AKOL — art / tools / systems` and `BYPO — blow your phase off` were briefly
-rewritten to carry search keywords — "a free FM drone synth" and similar. Billy
+rewritten to carry search keywords — "a free FM drone synth" and similar. AKOL
 reverted it: *"let's not sloppify the site and downsell our own vision and
 innovation."*
 

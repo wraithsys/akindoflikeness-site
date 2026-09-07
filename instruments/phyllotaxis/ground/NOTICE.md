@@ -1,6 +1,6 @@
 # The ground — provenance
 
-Eight textures from Billy's own library (`dev/shared/hostile-visualiser-audio/
+Eight textures from AKOL's own library (`dev/shared/hostile-visualiser-audio/
 pause`, the TXT_ set, 2026-08-12). His recordings, his rights; nothing here is
 third-party. This note exists because the assets gate is a habit, not a
 judgement call — every audio or font file on this site carries its provenance

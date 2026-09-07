@@ -1,6 +1,6 @@
 # The taste field, v0 (2026-08-21)
 
-First fitted model of Billy's harmonic taste, from 132 rated passages
+First fitted model of AKOL's harmonic taste, from 132 rated passages
 across seven tasting passes (harmony-tastings.html corpus). Ridge
 regression over 16 passage-level features, leave-one-out validated.
 

@@ -4,7 +4,7 @@ A polyphonic web instrument. Rust compiled to WASM for the DSP, JS and WebGL
 for the surface. Every structural number in it is Fibonacci-derived, and the
 tuning is computed from the timbre rather than assumed.
 
-Settled over a whiteboard session, 2026-08-18. Billy is design lead; this file
+Settled over a whiteboard session, 2026-08-18. AKOL is design lead; this file
 is the working spec the implementation follows. Where a decision has a reason,
 the reason is written down — if a number here feels arbitrary, that is a
 documentation bug.
@@ -223,7 +223,7 @@ pretending it has a scale.
 
 Rendered with `examples/audition.rs`: the same chord, the same timbre, played
 first in the computed tuning and then in the nearest 12-TET, so nothing changes
-but the tuning. Billy's verdict on the roster, `fm II` carrying the largest
+but the tuning. AKOL's verdict on the roster, `fm II` carrying the largest
 drift at 32 ¢:
 
 > *"ghostly — atmospheric — but also capable of harmonic precision … those wavs
@@ -237,7 +237,7 @@ prompting. Everything downstream can be built on it.
 
 ### The dry voice is already chorused — measured, not impressionistic
 
-Billy, on the same bare additive render: *"there was also unison going on"* —
+AKOL, on the same bare additive render: *"there was also unison going on"* —
 against a file that applies no unison, chorus or reverb anywhere. He is right,
 and the reason matters more than the observation. (The rest of that message was
 him saying he can identify those characteristics unaided and did not need the
@@ -278,7 +278,7 @@ arrives with 354 beating pairs while `rm I` sits at nine partials and is bone dr
 
 ~~**Proposed and withdrawn the same day: derive FX depth from the algorithm's
 partial count**, so a sparse algorithm gets the full plate and a dense one gets
-almost none.~~ Withdrawn by Billy, and the reason is worth more than the idea:
+almost none.~~ Withdrawn by AKOL, and the reason is worth more than the idea:
 
 > *"I'd say let people drive that — it's too contextual and perceptual. Like if I
 > want a distorted sound out of a cleaner synth like constellation I use a
@@ -300,7 +300,7 @@ That is not a control at all, so no law governs it, and it turns a hidden
 property of the roster into something the surface says out loud.
 
 **Density control, if it is wanted, is a signal-flow design and gets a toggle.**
-Billy: *"envelope follower on the verb send and reconcile with a sidechain to
+AKOL: *"envelope follower on the verb send and reconcile with a sidechain to
 voice output and ride down decay on scheduled voice steal"* — which is a real
 mechanism made of hearable parts, not a lookup keyed to the algorithm. It is
 built with the FX bus (§8), behind a switch, and it stays only if it earns its
@@ -326,7 +326,7 @@ the new scale. Glide covers the seam.
 
 ### Why this sounds nothing like Blow Your Phase Off
 
-Billy, on first hearing the renders: *"it sounds really different to the other
+AKOL, on first hearing the renders: *"it sounds really different to the other
 fibonaccis too — I knew it would, the design takes heavy detours, but I didn't
 think it would be that different."*
 
@@ -746,7 +746,7 @@ one you cannot.
 
 ### The plate is a party to the envelope without touching amplitude
 
-Billy, on the whole-chain A/B: *"the second bit of audio in each file has a
+AKOL, on the whole-chain A/B: *"the second bit of audio in each file has a
 superior amp mod shape, so B over A."* The bus won its A/B under §11's rule —
 but it changes no amplitude at all, so why it reads that way is the interesting
 part.
@@ -922,7 +922,7 @@ So, for steps 3 through 8:
    the stage is called done. `phyllotaxis-voice/examples/audition.rs` is the
    harness; adding a stage means adding its comparison.
 2. **Anything that does not clearly improve that A/B gets a switch, or gets
-   cut.** Billy's standard for the density control, generalised: *"have a toggle
+   cut.** AKOL's standard for the density control, generalised: *"have a toggle
    that turns it on and off and we will see if it earns its keep."*
 3. **The bare voice stays reachable as a preset.** Not as a debug mode — as a
    patch, with a name, that a player can get back to.
@@ -976,7 +976,7 @@ intervals music already uses, without being told about them.
 
 ## 12. What shipping it found
 
-The instrument went live and Billy played it. Everything below was wrong in the
+The instrument went live and AKOL played it. Everything below was wrong in the
 build that shipped, and all of it was wrong in a way that produced no error —
 no exception, no console warning, no failing test. The suite was green
 throughout. It is written down because the *pattern* is the lesson: every one
@@ -988,7 +988,7 @@ of these was a test measuring the intent rather than the behaviour.
 delay whatever the buffer length is. The tank buffers are 46–228 ms and were
 allocated at `len + 32` precisely so a modulated tap could sit at the far end —
 that headroom is the surviving evidence of what was meant. The plate was a
-~3 kHz resonator. It sounded like nothing, which is exactly how Billy
+~3 kHz resonator. It sounded like nothing, which is exactly how AKOL
 described it.
 
 Every coprimality test passed, because they check `TANK_LEN`. Nothing checked
@@ -1038,7 +1038,7 @@ right: `Mirror::reflect_chord` exempts the lowest voice as a pedal — logic tha
 exists *for* chords — and under that guard it was never once called on one.
 Dead by construction, on half the roster.
 
-Billy reported this twice from two directions ("several of the chord types seem
+AKOL reported this twice from two directions ("several of the chord types seem
 bugged", "cadence has no utility in chord modes") before it was found.
 
 ### Deriving a tuning ran on the audio thread
@@ -1090,7 +1090,7 @@ up to 1.55 a frame. The field was not over-exposed by taste; it was a divergent
 sum, and once it ran past 1.0 the 8-bit target clamped all three channels
 together.
 
-The first correction was to the wrong quantity. Billy's read was sharper than
+The first correction was to the wrong quantity. AKOL's read was sharper than
 the measurement: *"worry less about brightness and more about it losing its
 greenness."* Clipping is a **loss of hue**, not an excess of light, and dimming
 does not bring the colour back because the colour is already gone in the buffer.

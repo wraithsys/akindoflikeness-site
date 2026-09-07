@@ -88,7 +88,7 @@
   .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;margin:0;font-size:16px}
 
   /* Hero: the field, and the lockup sitting in the dark slot it leaves. */
-  .hero{margin:0;position:relative;background:var(--black);overflow:hidden;height:min(48vh,440px)}
+  .hero{margin:0;position:relative;background:var(--black);overflow:hidden;height:min(48vh,250px)}
   .hero canvas{position:absolute;inset:0;display:block;width:100%;height:100%;image-rendering:pixelated}
   .lockup{
     position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
@@ -107,7 +107,7 @@
      folds into a row when there is no margin left to sit in. Here it sits
      over the field, which is why it carries its own black ground. */
   .rail{
-    position:fixed;left:18px;top:50%;transform:translateY(-50%);z-index:20;
+    position:fixed;left:18px;top:18%;transform:translateY(-50%);z-index:20;
     display:flex;flex-direction:column;align-items:center;gap:14px;
     padding:14px 10px;border:1px solid var(--rule);background:var(--black);
   }
@@ -130,7 +130,7 @@
      loop is seamless. Without JS you still get the seven covers, still. */
   @keyframes akol-marquee{from{transform:translateX(0)}to{transform:translateX(-25%)}}
   .marquee{overflow:hidden}
-  .marquee-row{display:flex;gap:14px;width:max-content}
+  .marquee-row{display:flex;gap:0px;width:max-content}
   .marquee-row.animate{animation:akol-marquee 60s linear infinite}
   .marquee-row:hover{animation-play-state:paused}
   .rec{display:flex;flex-direction:column;width:170px;flex:0 0 auto}
@@ -210,11 +210,13 @@
     <span class="sep"></span>
     <a href="https://www.youtube.com/@akindoflikeness" target="_blank" rel="noopener" title="YouTube" aria-label="YouTube"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true"><rect x="1.5" y="3.5" width="13" height="9" rx="2.5"/><path d="M6.8 6.4 L10.6 8 L6.8 9.6 Z"/></svg></a>
     <a href="https://bsky.app/profile/akindoflikeness.bsky.social" target="_blank" rel="noopener" title="Bluesky" aria-label="Bluesky"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true"><path d="M8 10.4 C6.4 7.3 3.7 4.7 2.5 5.5 C1.6 6.1 2 8.7 2.9 9.5 C3.6 10.1 4.9 10.4 6.1 10.4"/><path d="M8 10.4 C9.6 7.3 12.3 4.7 13.5 5.5 C14.4 6.1 14 8.7 13.1 9.5 C12.4 10.1 11.1 10.4 9.9 10.4"/><path d="M8 10.4 V12.8"/></svg></a>
-    <a href="https://mastodon.social/@akindoflikeness" target="_blank" rel="noopener" title="Mastodon" aria-label="Mastodon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true"><path d="M13.5 6.7 C13.5 3.7 11.6 2.3 8 2.3 C4.4 2.3 2.5 3.7 2.5 6.7 C2.5 10.3 3.1 12.4 6.6 13.1"/><path d="M13.5 6.7 C13.5 9.4 12.6 10.7 10 11 L6.6 11"/><path d="M5.4 9.1 V6.7 C5.4 5.4 7.1 5.4 7.1 6.7 V8.1"/><path d="M8.9 9.1 V6.7 C8.9 5.4 10.6 5.4 10.6 6.7 V9.1"/></svg></a>
+    <a hrzef="https://mastodon.social/@akindoflikeness" target="_blank" rel="noopener" title="Mastodon" aria-label="Mastodon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true"><path d="M13.5 6.7 C13.5 3.7 11.6 2.3 8 2.3 C4.4 2.3 2.5 3.7 2.5 6.7 C2.5 10.3 3.1 12.4 6.6 13.1"/><path d="M13.5 6.7 C13.5 9.4 12.6 10.7 10 11 L6.6 11"/><path d="M5.4 9.1 V6.7 C5.4 5.4 7.1 5.4 7.1 6.7 V8.1"/><path d="M8.9 9.1 V6.7 C8.9 5.4 10.6 5.4 10.6 6.7 V9.1"/></svg></a>
     <a href="https://instagram.com/akindoflikeness" target="_blank" rel="noopener" title="Instagram" aria-label="Instagram"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true"><rect x="2" y="2" width="12" height="12" rx="3.5"/><circle cx="8" cy="8" r="3"/><circle cx="11.4" cy="4.6" r="0.6" fill="currentColor" stroke="none"/></svg></a>
     <a href="https://github.com/wraithsys" target="_blank" rel="noopener" title="GitHub" aria-label="GitHub"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true"><path d="M6.2 13.4 C3.6 12.6 2 10.2 2 7.4 C2 4.1 4.7 1.8 8 1.8 C11.3 1.8 14 4.1 14 7.4 C14 10.2 12.4 12.6 9.8 13.4 V11.2 C9.8 10.4 9.5 10 9.2 9.8 C11 9.6 12.3 8.9 12.3 6.8 C12.3 6 12 5.4 11.6 5 C11.7 4.7 11.8 4.1 11.5 3.4 C11.5 3.4 10.9 3.2 9.7 4 C9.2 3.9 8.6 3.8 8 3.8 C7.4 3.8 6.8 3.9 6.3 4 C5.1 3.2 4.5 3.4 4.5 3.4 C4.2 4.1 4.3 4.7 4.4 5 C4 5.4 3.7 6 3.7 6.8 C3.7 8.9 5 9.6 6.8 9.8 C6.5 10 6.3 10.3 6.2 10.8 C5 11.2 4.2 10.5 3.7 9.8"/></svg></a>
     <a href="https://akindoflikeness.bandcamp.com" target="_blank" rel="noopener" title="Bandcamp" aria-label="Bandcamp"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true"><path d="M1.6 11.4 L6.1 4.6 H14.4 L9.9 11.4 Z"/></svg></a>
-  </nav>
+    <a href="https://discord.gg/xBtGXU7Etf" target="_blank" rel="noopener" title="Discord" aria-label="Discord"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true">
+        <path d="M13.545 2.913a13.2 13.2 0 0 0 -3.257 -1.01 0.049 0.049 0 0 0 -0.053 0.025c-0.14 0.25 -0.296 0.576 -0.405 0.833a12.2 12.2 0 0 0 -3.658 0 8.667 8.667 0 0 0 -0.411 -0.833 0.053 0.053 0 0 0 -0.053 -0.025A13.133 13.133 0 0 0 2.451 2.913a0.067 0.067 0 0 0 -0.021 0.018C0.355 6.031 -0.213 9.053 0.066 12.038a0.053 0.053 0 0 0 0.021 0.038 13.267 13.267 0 0 0 3.995 2.02 0.053 0.053 0 0 0 0.056 -0.019 9.333 9.333 0 0 0 0.817 -1.329 0.051 0.051 0 0 0 -0.027 -0.071 8.667 8.667 0 0 1 -1.248 -0.595 0.051 0.051 0 0 1 -0.005 -0.085 6.667 6.667 0 0 0 0.248 -0.195 0.047 0.047 0 0 1 0.051 -0.007c2.619 1.195 5.453 1.195 8.041 0a0.047 0.047 0 0 1 0.052 0.007q0.121 0.099 0.249 0.195a0.051 0.051 0 0 1 -0.004 0.085 8.2 8.2 0 0 1 -1.249 0.595 0.051 0.051 0 0 0 -0.027 0.071c0.24 0.465 0.515 0.908 0.817 1.329a0.053 0.053 0 0 0 0.056 0.019 13.2 13.2 0 0 0 4.001 -2.02 0.053 0.053 0 0 0 0.021 -0.036c0.333 -3.451 -0.559 -6.449 -2.366 -9.107a0.04 0.04 0 0 0 -0.021 -0.02zM5.347 10.22c-0.789 0 -1.438 -0.723 -1.438 -1.613 0 -0.889 0.637 -1.613 1.438 -1.613 0.807 0 1.451 0.731 1.438 1.613 0 0.889 -0.637 1.612 -1.438 1.612m5.317 0c-0.789 0 -1.438 -0.723 -1.438 -1.613 0 -0.889 0.637 -1.613 1.438 -1.613 0.807 0 1.451 0.731 1.438 1.613 0 0.889 -0.631 1.612 -1.438 1.612"/></svg>
+    </nav>
 
 
   <figure class="hero">

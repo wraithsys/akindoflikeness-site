@@ -65,7 +65,7 @@ patch itself (the same patch replants the same plant; sending it twice is
 two plantings):
 
 - **The plant reseeds.** New divergence angle — drawn from the fifteen
-  angles Billy chose on the workbench (117–170°, the golden angle never
+  angles AKOL chose on the workbench (117–170°, the golden angle never
   among them, per the taste ledger's law 4) — new growth rate, spin, trail,
   and a slow curvature breath borrowed from the starfield presets. The field
   collapses to a sprout and reassembles over 8–34 s while the old plant
@@ -80,7 +80,7 @@ two plantings):
   the eight kept starfield presets, occasionally a bare void, fading in
   over ~5 s. The object also floats — a slow bob and sway, never quite
   still — and the lens follows it.
-- **The ground reseeds.** A grain cloud over one of eight of Billy's own
+- **The ground reseeds.** A grain cloud over one of eight of AKOL's own
   textures (`instruments/phyllotaxis/ground/`, provenance in its NOTICE.md)
   runs beside the engine with no controls at all: grain positions walk the
   tape by the same golden-Weyl step the harmony uses, density and level

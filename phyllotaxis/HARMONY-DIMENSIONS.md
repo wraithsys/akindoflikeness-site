@@ -2,7 +2,7 @@
 
 Research-agent deliverable, 2026-08-21, digested the same day. Frame: **nothing
 is an axiom — every dimension gets a weight and a confidence, estimated from
-Billy's 1–5 ratings** ("perhaps it's all non zero", 2026-08-21). Model
+AKOL's 1–5 ratings** ("perhaps it's all non zero", 2026-08-21). Model
 vocabulary: each node is a bass/context pitch with 12 weighted destination
 degrees above it and 12 weighted outgoing bass edges, conditioned on the
 previous edge (n−1 memory).
