@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>AKOL · Wraith Instruments</title>
+<title>AKOL</title>
 <meta name="description" content="Instruments, records and systems by A KIND OF LIKENESS: BYPO and PHYLLOTAXIS, and seven releases on Bandcamp.">
 <link rel="canonical" href="https://akindoflikeness.net/">
 <meta name="theme-color" content="#000000">
@@ -14,7 +14,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="AKOL">
 <meta property="og:url" content="https://akindoflikeness.net/">
-<meta property="og:title" content="AKOL · Wraith Instruments">
+<meta property="og:title" content="AKOL">
 <meta property="og:description" content="Instruments, records and systems by A KIND OF LIKENESS: BYPO and PHYLLOTAXIS, and seven releases on Bandcamp.">
 <meta property="og:image" content="https://akindoflikeness.net/assets/img/og-card.png">
 <meta property="og:image:width" content="1200">
@@ -52,19 +52,6 @@
 <link rel="preload" href="/assets/fonts/alkhemikal/Alkhemikal.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="/assets/fonts/european-teletext.ttf" as="font" type="font/ttf" crossorigin>
 
-<!--
-  FONT LICENSING — see assets/fonts/NOTICE.md.
-
-  The hero lockup is now TYPE, not artwork: "AKOL" in Modern DOS italic and
-  "Wraith" in Alkhemikal. Alkhemikal is CC BY 4.0 and its attribution is the
-  first clause of the colophon at the foot of this page — deleting that line
-  breaks the licence, so leave it.
-
-  The Horizon wordmark is no longer used on this page. It survives only in
-  assets/img/og-card.png and the icons, which are Canva-rendered artwork, not
-  font files. The old to-do about confirming Horizon's commercial terms still
-  stands for those images, but the page itself no longer depends on it.
--->
 <style>
   @font-face{font-family:"Modern DOS";src:url("/assets/fonts/modern-dos-8x16.ttf") format("truetype");font-display:block}
   @font-face{font-family:"European Teletext";src:url("/assets/fonts/european-teletext.ttf") format("truetype");font-display:block}
@@ -87,7 +74,6 @@
   .page{max-width:1440px;margin:0 auto;background:var(--black)}
   .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;margin:0;font-size:16px}
 
-  /* Hero: the field, and the lockup sitting in the dark slot it leaves. */
   .hero{margin:0;position:relative;background:var(--black);overflow:hidden;height:min(48vh,250px)}
   .hero canvas{position:absolute;inset:0;display:block;width:100%;height:100%;image-rendering:pixelated}
   .lockup{
@@ -103,9 +89,7 @@
   .lockup .wraith .sub{font-size:clamp(10px,4vw,25px);line-height:1;letter-spacing:.2em;
     font-family:"Modern DOS",ui-monospace,Consolas,monospace;text-transform:uppercase;color:var(--light);text-align:center}
 
-  /* The rail. Same as bypo: fixed to the left margin, rides the scroll,
-     folds into a row when there is no margin left to sit in. Here it sits
-     over the field, which is why it carries its own black ground. */
+
   .rail{
     position:fixed;left:18px;top:18%;transform:translateY(-50%);z-index:20;
     display:flex;flex-direction:column;align-items:center;gap:14px;
@@ -126,8 +110,7 @@
   h2{margin:0;font-weight:400;font-size:16px;letter-spacing:.16em;color:var(--field);
     font-family:"European Teletext",ui-monospace,monospace}
 
-  /* The record marquee. Duplicated four times and translated -25%, so the
-     loop is seamless. Without JS you still get the seven covers, still. */
+
   @keyframes akol-marquee{from{transform:translateX(0)}to{transform:translateX(-25%)}}
   .marquee{overflow:hidden}
   .marquee-row{display:flex;gap:0px;width:max-content}
@@ -144,7 +127,6 @@
   .rec:hover img{filter:blur(6px)}
   .rec:hover .over{opacity:1}
 
-  /* Cards. The top border is the card's colour; everything else is the rule. */
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}
   .card{display:flex;flex-direction:column;border:1px solid var(--rule);background:var(--black)}
   a.card:hover,a.card:focus-visible{border-color:var(--light)}
@@ -166,7 +148,7 @@
   .dim .state{color:var(--field)}
   .card.phyllo .state{font-family:"Modern DOS",ui-monospace,monospace}
 
-  /* The list. His own copy, kept verbatim. */
+
   .notify{display:flex;flex-wrap:wrap;gap:10px}
   .notify input{
     flex:1 1 240px;min-width:0;background:var(--black);color:var(--text);
@@ -220,14 +202,10 @@
 
 
   <figure class="hero">
-    <canvas id="field-c" role="img" aria-label="A warped starfield drifting on a golden-angle bearing and falling into a black hole at the centre; the AKOL · Wraith Instruments lockup sits in the dark slot the captured stars leave."></canvas>
-    <h1 class="vh">AKOL · Wraith Instruments</h1>
+    <canvas id="field-c" role="img" aria-label="A warped starfield drifting on a golden-angle bearing and falling into a black hole at the centre; the AKOL lockup sits in the dark slot the captured stars leave."></canvas>
+    <h1 class="vh">AKOL</h1>
     <div class="lockup">
       <div class="akol">AKOL</div>
-      <div class="x">x</div>
-      <div class="wraith">
-        <div class="name">Wraith</div>
-        <div class="sub">Instruments</div>
       </div>
     </div>
   </figure>
@@ -296,30 +274,7 @@
 
       </div>
     </div>
-
-    <!-- WRITING. Held back until there is a /writing page to point at: the
-         card was a dead link. Uncomment the block, nothing else, when the
-         exhaust is ready to be read.
-    <div class="block">
-      <h2>WRITING</h2>
-      <div class="grid">
-        <a class="card violet" href="/writing">
-          <span class="thumb"><span class="glyph">&gt;_</span></span>
-          <span class="meta"><span class="name">the exhaust</span><span class="state">probes · notes</span></span>
-        </a>
-      </div>
-    </div>
-    -->
-
-    <div class="block">
-      <h2>THE LIST</h2>
-      <form class="notify" id="notify">
-        <input type="email" name="email" placeholder="email" required aria-label="your email">
-        <button type="submit">keep me in the loop &#9656;</button>
-      </form>
-      <p class="notify-msg" id="notify-msg" role="status"></p>
-    </div>
-
+    
   </section>
 
   <div class="hr"></div>
@@ -329,15 +284,12 @@
       <span>akindoflikeness.net · akindoflikeness@gmail.com</span>
       <span><a href="https://www.youtube.com/@akindoflikeness" target="_blank" rel="noopener">youtube</a> · <a href="https://bsky.app/profile/akindoflikeness.bsky.social" target="_blank" rel="noopener">bluesky</a> · <a href="https://mastodon.social/@akindoflikeness" target="_blank" rel="noopener">mastodon</a> · <a href="https://instagram.com/akindoflikeness" target="_blank" rel="noopener">instagram</a> · <a href="https://github.com/wraithsys" target="_blank" rel="noopener">github</a> · <a href="https://akindoflikeness.bandcamp.com" target="_blank" rel="noopener">bandcamp</a></span>
     </div>
-    <div class="credit">"Wraith" set in Alkhemikal, jeti (fontenddev.com), CC BY 4.0 — body Modern DOS &amp; readouts European Teletext, Jayvee Enaguas, CC0 1.0. Work archived by the British Library Sound and Moving Image Collection.</div>
   </div>
 
 </div>
 
 <script>
-/* Marquee: clone the seven records three more times so the -25% translate
-   lands on an identical frame. Clones are aria-hidden — the screen reader
-   gets one copy, the eye gets a loop. */
+
 (function () {
   var row = document.getElementById('marquee');
   if (!row) return;
@@ -353,36 +305,7 @@
   row.classList.add('animate');
 })();
 
-/* Whether the PHYLLOTAXIS stream is on. /api/live reads YouTube's canonical
-   answer; offline the card simply never appears. */
-(function () {
-  var card = document.getElementById('live-card');
-  if (!card) return;
-  fetch('/api/live').then(function (r) { return r.json(); }).then(function (d) {
-    if (d && d.live && d.url) { card.href = d.url; card.hidden = false; }
-  }).catch(function () {});
-})();
 
-/* The list. Posts to /api/notify, which writes into the akol-notify KV
-   namespace. It now reports a real failure if the binding is missing, so a
-   silent success can never mean a discarded address again. */
-(function () {
-  var f = document.getElementById('notify'), m = document.getElementById('notify-msg');
-  if (!f || !m) return;
-  f.addEventListener('submit', function (e) {
-    e.preventDefault();
-    var email = f.email.value.trim();
-    m.textContent = '...';
-    fetch('/api/notify', { method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ email: email }) })
-      .then(function (r) { return r.json(); })
-      .then(function (d) {
-        if (d.ok) { f.reset(); m.textContent = "in the loop \u2014 you'll hear when there's a build or a record, and only then."; }
-        else { m.textContent = (d.error || 'that didn\u2019t take \u2014 try again?'); }
-      })
-      .catch(function () { m.textContent = 'no connection \u2014 try again?'; });
-  });
-})();
 
 /* The field: a warped starfield on a golden-angle bearing, falling in. */
 (function () {
@@ -508,7 +431,7 @@
   if (reduced) { step(0.5); draw(); } else raf = requestAnimationFrame(frame);
 })();
 
-/* PHYLLOTAXIS card: the golden-angle spiral, turning. */
+
 (function () {
   var c = document.getElementById('phyllo-c');
   if (!c || !c.getContext) return;
@@ -544,7 +467,6 @@
   }, { threshold: 0.05 }).observe(c);
 })();
 
-/* BYPO card: the Logalith, the Fibonacci shell. */
 (function () {
   var c = document.getElementById('logalith-c');
   if (!c || !c.getContext) return;
@@ -625,7 +547,7 @@
   }, { threshold: 0.05 }).observe(c);
 })();
 
-/* THE ROOM card: five nodes, bubbling cross-feed, Bayer-dithered. */
+
 (function () {
   var c = document.getElementById('pentagram-c');
   if (!c || !c.getContext) return;
