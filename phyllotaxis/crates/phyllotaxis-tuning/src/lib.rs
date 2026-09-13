@@ -314,17 +314,25 @@ mod tests {
     /// feeling broken.
     ///
     /// The first version asserted no degree moves by more than a cent. It
-    /// fails: on `FM √2` one degree lands 25.8 cents away. Raising the cap to
-    /// 96 gives *exactly* the same 25.8, which is the tell — this is not drift
-    /// from dropping quiet partials, it is one degree selecting a different
-    /// local minimum. Two minima sit close together, the greedy 50-cent
-    /// separation rule can only take one, and a hair of curve depth decides
-    /// which. Both are real minima of a real dissonance curve, so neither
-    /// answer is wrong.
+    /// fails: two minima sit close together, the greedy 50-cent separation rule
+    /// can only take one, and a hair of curve depth decides which. Both are real
+    /// minima of a real dissonance curve, so neither answer is wrong.
     ///
-    /// The honest bound is therefore a semitone rather than a cent. What
-    /// actually matters is asserted elsewhere: degrees stay ordered and inside
-    /// the octave, and no two entries collapse onto the same scale.
+    /// **Compare the two as sets, not position by position.** Zipping them was
+    /// the wrong instrument, and it only looked right while the ranking was
+    /// dominated by the curve's overall slope. Under prominence ranking six of
+    /// the eight entries now come out *byte-identical* capped and uncapped — a
+    /// better result than the old 25.8-cent drift on `FM √2` — and the two that
+    /// differ substitute one degree rather than moving any. `FM √5` uncapped
+    /// finds a dip at 313¢ that the cap does not, and takes 1136¢ instead; its
+    /// other six degrees are the same to the cent. Zipped, that single
+    /// insertion shifts the tail and reads as a 203-cent move that nothing
+    /// actually made.
+    ///
+    /// So: same count, and every degree within a semitone of *some* degree of
+    /// the other derivation. What matters beyond that is asserted elsewhere —
+    /// degrees stay ordered and inside the octave, and no two entries collapse
+    /// onto the same scale.
     #[test]
     fn the_partial_cap_keeps_every_scale_recognisable() {
         for e in ROSTER {
@@ -334,13 +342,14 @@ mod tests {
                 scale::from_spectrum(&s, dissonance::REFERENCE_HZ, DEGREES_PER_SCALE).cents()
             };
             assert_eq!(capped.len(), full.len(), "{} changed degree count", e.name);
-            for (c, f) in capped.iter().zip(&full) {
+            for c in &capped {
+                let nearest =
+                    full.iter().map(|f| (c - f).abs()).fold(f64::INFINITY, f64::min);
                 assert!(
-                    (c - f).abs() < 100.0,
-                    "{} moved a degree by {:.1} cents — more than a neighbouring \
-                     minimum can explain",
+                    nearest < 100.0,
+                    "{} put a degree at {c:.0}¢ with nothing within a semitone of it \
+                     uncapped: {full:?}",
                     e.name,
-                    (c - f).abs()
                 );
             }
         }

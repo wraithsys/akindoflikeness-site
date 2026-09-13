@@ -38,6 +38,9 @@ pub struct Degree {
     pub cents: f64,
     /// Curve value at the minimum. Lower is smoother.
     pub dissonance: f64,
+    /// How far the curve climbs out of this dip before it reaches a deeper
+    /// one. This is what the degree was selected on — see [`from_spectrum`].
+    pub prominence: f64,
 }
 
 impl Degree {
@@ -143,14 +146,75 @@ pub fn curve(spectrum: &Spectrum, fundamental_hz: f64) -> Vec<(f64, f64)> {
         .collect()
 }
 
-/// Read a tuning off a spectrum: the `max_degrees` smoothest intervals in the
+/// How far the curve climbs out of the dip at `i` before it reaches a deeper
+/// one — the topographic prominence of a minimum, read upside down.
+///
+/// Walk outward in both directions, keeping the highest point seen, and stop on
+/// the first sample lower than the dip itself. The smaller of the two climbs is
+/// the prominence: a dip you can leave cheaply in either direction is a ripple,
+/// and one walled in on both sides is an interval. The measure is local, which
+/// is exactly why it survives a curve with a strong overall trend.
+///
+/// Linear per minimum, and there are tens of them against 6300 samples — beside
+/// [`curve`], which is O(n²) in partials at every one of those samples, this is
+/// free.
+fn prominence(values: &[f64], i: usize) -> f64 {
+    let floor = values[i];
+
+    let mut left = floor;
+    for j in (0..i).rev() {
+        if values[j] < floor {
+            break;
+        }
+        left = left.max(values[j]);
+    }
+
+    let mut right = floor;
+    for j in i + 1..values.len() {
+        if values[j] < floor {
+            break;
+        }
+        right = right.max(values[j]);
+    }
+
+    left.min(right) - floor
+}
+
+/// Read a tuning off a spectrum: the `max_degrees` most pronounced dips in the
 /// octave, root included.
 ///
-/// Minima are ranked by curve value rather than by prominence — a shallow dip
-/// at a genuinely low dissonance is a usable interval, while a deep dip out of
-/// a rough region is not, however dramatic it looks on the plot — and then
-/// taken greedily subject to [`MIN_SEPARATION_CENTS`], so the result is a scale
-/// someone can play rather than a cluster around the curve's lowest region.
+/// **Minima are ranked by prominence, not by curve value, and the difference is
+/// the whole scale.** Ranking by value was the original choice, on the argument
+/// that a shallow dip at a genuinely low dissonance is a usable interval while
+/// a deep dip out of a rough region is not. That argument assumes the curve is
+/// a landscape. It is not — it is a hill. Averaged per hundred cents, FM φ at
+/// index 4 falls from 9.82 near the unison to 6.42 at the octave, a 34 % slope,
+/// while the ripples riding on it are worth about 2 %. Physically this is
+/// expected: transposing a copy upward pulls its partials out of the original's
+/// critical bands, so roughness decays with interval size whether or not
+/// anything aligns.
+///
+/// On a slope that steep, "lowest value" is a proxy for "furthest right".
+/// Ranking by it filled the scale downward from the octave at exactly
+/// [`MIN_SEPARATION_CENTS`] — FM φ came out `0 778 833 943 997 1069 1146 1200`,
+/// seven degrees of eight above 778¢ with a 778¢ hole beneath them and six
+/// consecutive gaps near the separation floor. Those are not steps, they are
+/// mistuned unisons, and against the octave-displaced registers in the engine
+/// they beat. It is the bulk of what "out of tune" meant here. Across the
+/// roster at 32 modulation indices it put the first degree above 400¢ in 240
+/// tunings of 256; prominence does it in 40.
+///
+/// Prominence asks the question the slope cannot answer: how far must the curve
+/// climb out of this dip before it finds a deeper one. That is a local measure,
+/// so a real partial coincidence in the crowded bottom of the octave competes
+/// on equal terms with the smooth ground near the top. The same spectrum now
+/// gives `0 438 560 724 833 943 1106 1200`, and the harmonic control case
+/// returns just intonation — 386, 498, 583, 702, 884, 969 — which is the check
+/// that the method reads a spectrum rather than the shape of its envelope.
+///
+/// Ranked candidates are then taken greedily subject to
+/// [`MIN_SEPARATION_CENTS`], so the result is a scale someone can play rather
+/// than a cluster around the curve's lowest region.
 ///
 /// A spectrum may yield fewer than `max_degrees`. That is information, not a
 /// failure: a sparse spectrum has few partials to collide, so its curve is
@@ -163,33 +227,34 @@ pub fn from_spectrum(spectrum: &Spectrum, fundamental_hz: f64, max_degrees: usiz
     }
 
     let samples = curve(spectrum, fundamental_hz);
+    let values: Vec<f64> = samples.iter().map(|&(_, d)| d).collect();
     let mut minima = Vec::new();
 
-    for w in samples.windows(3) {
-        let (before, at, after) = (w[0], w[1], w[2]);
-        let is_minimum = at.1 < before.1 && at.1 <= after.1;
-        if !is_minimum || at.0 <= 0.0 || at.0 > CENTS_PER_OCTAVE {
+    for i in 1..values.len() - 1 {
+        let (before, at, after) = (values[i - 1], values[i], values[i + 1]);
+        let is_minimum = at < before && at <= after;
+        if !is_minimum || samples[i].0 <= 0.0 || samples[i].0 > CENTS_PER_OCTAVE {
             continue;
         }
 
         // Parabolic refinement through the three samples: the true vertex is
         // rarely on a grid point, and a degree is worth placing properly.
-        let denom = before.1 - 2.0 * at.1 + after.1;
+        let denom = before - 2.0 * at + after;
         let offset = if denom.abs() > f64::EPSILON {
-            0.5 * (before.1 - after.1) / denom
+            0.5 * (before - after) / denom
         } else {
             0.0
         };
-        let cents = (at.0 + offset * RESOLUTION_CENTS).clamp(0.0, CENTS_PER_OCTAVE);
-        minima.push(Degree { cents, dissonance: at.1 });
+        let cents = (samples[i].0 + offset * RESOLUTION_CENTS).clamp(0.0, CENTS_PER_OCTAVE);
+        minima.push(Degree { cents, dissonance: at, prominence: prominence(&values, i) });
     }
 
-    minima.sort_by(|a, b| a.dissonance.partial_cmp(&b.dissonance).expect("no NaN dissonance"));
+    minima.sort_by(|a, b| b.prominence.partial_cmp(&a.prominence).expect("no NaN prominence"));
 
     // The root is a degree by definition — perfect coincidence, and the
     // smoothest interval there is. It also seeds the separation check, which is
     // what keeps a degree from landing a few cents above the tonic.
-    let mut degrees = vec![Degree { cents: 0.0, dissonance: 0.0 }];
+    let mut degrees = vec![Degree { cents: 0.0, dissonance: 0.0, prominence: f64::INFINITY }];
     for candidate in minima {
         if degrees.len() >= max_degrees {
             break;
